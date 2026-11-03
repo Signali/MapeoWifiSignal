@@ -1,0 +1,25 @@
+# Secretos y configuración local: NUNCA se suben (usar .env.example como plantilla)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Configuración local de Claude Code (personal de cada equipo)
+.claude/settings.local.json
+
+# Dependencias y builds (se regeneran)
+node_modules/
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

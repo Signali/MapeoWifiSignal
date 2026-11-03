@@ -10,5 +10,15 @@
 A continuacion podra vizualizar el primer prototipo
 - [Prototipo Version 1.0](https://www.figma.com/make/DSvQteygbvInD0FsngpKSB/Prototipo-navegable-SignalMap?t=dhTFBYDAmpXw2Hxb-20&fullscreen=1)
 
+## Estructura del repositorio
+| Carpeta / archivo | Contenido |
+|---|---|
+| [`backend/`](backend/README.md) | Código del servicio (API REST) en capas e instrucciones para levantarlo |
+| [`docs/`](docs/README.md) | Documento técnico (PDF) y tabla de la API |
+| [`db/`](db/README.md) | Modelo de datos y script de creación de la base de datos |
+| [`postman/`](postman/README.md) | Colección del cliente de pruebas |
+| `.env.example` | Variables de configuración de ejemplo (sin datos reales) |
+| [`Skills/`](Skills/README.md) | Skills de Claude Code usadas y declaración de uso |
+
 ## Skills
 Skills de Claude Code usadas en el proyecto y declaración de uso: [Skills](Skills/README.md)
