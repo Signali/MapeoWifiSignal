@@ -1,0 +1,8 @@
+# Saltos de línea: LF en el repositorio y en la copia de trabajo de cualquier PC
+# (Pc-Casa y Pc-Portatil), sin depender del core.autocrlf de cada equipo.
+* text=auto eol=lf
+
+# Binarios: nunca convertir
+*.pdf binary
+*.png binary
+*.jpg binary
