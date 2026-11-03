@@ -9,3 +9,6 @@
 ## Interfaz y Prototipo (Figma)
 A continuacion podra vizualizar el primer prototipo
 - [Prototipo Version 1.0](https://www.figma.com/make/DSvQteygbvInD0FsngpKSB/Prototipo-navegable-SignalMap?t=dhTFBYDAmpXw2Hxb-20&fullscreen=1)
+
+## Skills
+Skills de Claude Code usadas en el proyecto y declaración de uso: [Skills](Skills/README.md)
