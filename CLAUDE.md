@@ -33,14 +33,18 @@ Reglas:
 - **Arquitectura:** monolito en capas. El equipo es de **2 personas**: citar ese número en el argumento monolito vs. distribuido.
 - **Orden:** el contrato de la API (tabla en `docs/`) se escribe y acuerda antes de programar.
 - **Contrato (Bloque 1, cerrado 2026-11-04):**
-  - Rutas en inglés con prefijo `/api/v1`, estilo plano: `/buildings`, `/points?floorId=`, `POST /points` con `floor_id` en el cuerpo, `/points/:id`.
-  - Pisos: solo `GET /floors?buildingId=` (lectura).
-  - Edificio: solo `name`. Punto: `code`, `x`, `y` (metros, 2D por piso, sin `z`), `nfc_uid` único global; x/y dentro de `width_m`/`height_m` del piso.
+  - Rutas en inglés con prefijo `/api/v1`, estilo plano: `/buildings`, `/points?floor_id=`, `POST /points` con `floor_id` en el cuerpo, `/points/:id`.
+  - Pisos: solo `GET /floors?building_id=` (lectura).
+  - **Todo en `snake_case`** (cuerpo, respuesta y parámetros de consulta).
+  - IDs enteros autoincrementales, tratados como opacos por el cliente (migración futura a UUID sería `v2`).
+  - Edificio: solo `name`, único por organización. Punto: `code` (único por piso), `x`, `y` (metros, 2D por piso, sin `z`), `nfc_uid` único global; x/y dentro de `width_m`/`height_m` del piso. `floor_id` no se cambia con `PATCH` (`400`).
+  - Contrato completo: `docs/api-contract.md`.
   - Actualizar solo con `PATCH`. Crear: `201` + `Location` + objeto.
   - Errores `{ "message": "..." }`: `400` formato · `401` · `403` · `404` · `409` conflicto (duplicado, borrar edificio con pisos; sin cascada) · `422` regla de dominio.
 - **Autenticación (Bloque 2, cerrado 2026-11-04):**
   - `POST /api/v1/auth/login` → JWT `{ sub, org_id, role }`, sin refresh. **Duración por rol** desde `.env` (`JWT_EXPIRES_IN_ADMIN=8h`, `_TECNICO=10h`, `_CLIENTE=2h`); la elige el servicio de auth.
-  - Edificios: escribe solo `admin`. Puntos: `POST`/`PATCH` `admin` y `tecnico`; `DELETE` solo `admin`. Lectura: los tres roles. Sin permiso → `403`.
+  - Edificios: escribe solo `admin`. Puntos: `POST`/`PATCH` `admin` y `tecnico`; `DELETE` solo `admin`. Sin permiso → `403`.
+  - Lectura: `admin` y `tecnico` ven todos los edificios de su org; `cliente` solo sus **edificios asignados** (tabla usuario–edificio, uno o más; por seed) y sus pisos/puntos. Fuera de eso → `404`. Las asignaciones se consultan en cada petición (no van en el token).
   - Usuarios solo por seed (1 org, 3 usuarios), **solo desarrollo/demo**; sin endpoint de usuarios. En un entorno real no se corre el seed.
   - Contraseñas del seed desde `.env` (`SEED_*_PASSWORD`) vía `npm run seed`, hasheadas con bcrypt; ninguna clave ni hash en el repo.
   - Recurso de otra organización → `404` (toda consulta filtra por `org_id`). Login fallido → `401` genérico "Credenciales inválidas".

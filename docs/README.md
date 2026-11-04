@@ -6,4 +6,7 @@ Documentación entregable del proyecto.
 - **Documento técnico del back-end** en PDF (máximo 30 páginas sin anexos), con la sección de cambios respecto al Hito 1.
 - **Tabla de la API**: rutas, verbos, parámetros, cuerpo de ejemplo y códigos de estado de éxito y de error. También va dentro del documento.
 
-> **Estado:** pendiente.
+## Archivos
+- [`api-contract.md`](api-contract.md) — contrato de la API (tabla de endpoints, ejemplos y errores). **Borrador por acordar.**
+
+> **Estado:** contrato en borrador; documento técnico (PDF) pendiente.
