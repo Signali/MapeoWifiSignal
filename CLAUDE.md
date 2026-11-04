@@ -48,6 +48,24 @@ Reglas:
   - Usuarios solo por seed (1 org, 3 usuarios), **solo desarrollo/demo**; sin endpoint de usuarios. En un entorno real no se corre el seed.
   - Contraseñas del seed desde `.env` (`SEED_*_PASSWORD`) vía `npm run seed`, hasheadas con bcrypt; ninguna clave ni hash en el repo.
   - Recurso de otra organización → `404` (toda consulta filtra por `org_id`). Login fallido → `401` genérico "Credenciales inválidas".
+- **Datos (Bloque 3, cerrado 2026-11-04):**
+  - **PostgreSQL nativo** en ambos PCs (sin Docker ni nube; Docker diferido → trazabilidad). Fijar versión mínima en el README.
+  - **6 tablas:** `organizations`, `users`, `buildings`, `floors`, `points`, `user_buildings`. `org_id` solo en `users` y `buildings`; pisos y puntos llegan a la org por `JOIN` con el edificio.
+  - **Acceso a datos:** `pg` con SQL explícito y parámetros, sin ORM; las consultas viven solo en `repositories/`.
+  - **`db/`:** `schema.sql` + `seed.sql` (datos de dominio, sin usuarios ni claves) + diagrama ER en Mermaid. Los usuarios los crea `npm run seed` con las claves del `.env`, que también ejecuta `seed.sql`.
+- **Bloques 1, 2 y 3 validados** con el compañero (2026-11-04).
+- **Dirección hacia Docker (Hito 3):** se migrará a Docker real. En el Hito 2 se diseña "listo para Docker", sin escribir aún `Dockerfile` ni `docker-compose.yml`:
+  - Toda configuración por variables de entorno (host de la base incluido); nada de `localhost` ni rutas fijas en el código.
+  - `db/schema.sql` ejecutable tal cual por el `initdb` de la imagen oficial de PostgreSQL; seed idempotente.
+  - Fijar versión de Node (`.nvmrc` / `engines`) y versión mínima de PostgreSQL.
+  - El servicio escucha en `0.0.0.0` y mantiene `GET /health` (sirve para el healthcheck del contenedor).
+  - Logs a stdout; sin estado en el disco local.
+- **Ejecución y demo (Bloque 4, 2026-11-04):**
+  - **Node 26** fijado con `.nvmrc` y `engines` (versión de Pc-Casa por confirmar).
+  - **PostgreSQL 17** nativo; rol `signalmap_user` y bases `signalmap` y `signalmap_test` (esta última solo para tests, variable `DB_NAME_TEST`).
+  - **Tests:** pocos, solo casos de error (`401`/`403`/`404`/`409`/`422`), con Vitest + Supertest, contra `signalmap_test`.
+  - **Postman (demo en vivo):** exactamente **4 peticiones** sobre `/points`, en este orden: `POST /points` → `201` · `PATCH /points/:id` → `200` · `DELETE /points/:id` → `204` · `GET /points/:id` → `404` (error y prueba de que el borrado fue real). El login (admin) se hace antes de la demo y el token queda en una variable de la colección; **por confirmar** que la rúbrica lo acepte. El `403` con rol `cliente` se cubre en los tests, no en la demo. El CRUD de edificios se muestra fuera de las 4 peticiones (pgAdmin o documento).
+  - **Ensayo de portabilidad en Pc-Casa:** al terminar el primer recurso (edificios), siguiendo solo el README; repetir en la semana 4.
 - **No adelantar trabajo del Hito 3** (mapa de calor, comparación antes/después, trilateración, recomendación, reporte PDF) salvo pedido explícito.
 - Detalle y supuestos pendientes: vault, `SignalMap\Propuesta Back-End\Propuesta Back-End.md`.
 
