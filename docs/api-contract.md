@@ -1,6 +1,6 @@
 # Contrato de la API — SignalMap (Hito 2)
 
-> **Estado:** borrador para acordar entre los integrantes del equipo antes de programar.
+> **Estado:** acordado y validado entre los integrantes del equipo (2026-11-04).
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales
