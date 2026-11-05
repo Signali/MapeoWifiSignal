@@ -1,0 +1,71 @@
+# CI: revisa tipos y corre los tests contra un PostgreSQL 17 real en cada push y PR a main.
+# Los valores de entorno son FALSOS a propósito: la base es descartable y vive solo durante el run.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # Superusuario del contenedor: solo crea el rol y la base, como en db/README.md (paso 1).
+          POSTGRES_PASSWORD: ci_postgres_falsa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Todo lo que valida backend/src/config.ts y scripts/seed.ts.
+      NODE_ENV: test
+      PORT: 3000
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: signalmap
+      DB_NAME_TEST: signalmap_test
+      DB_USER: signalmap_user
+      DB_PASSWORD: ci_clave_falsa
+      SEED_ADMIN_PASSWORD: ci_admin_falsa
+      SEED_TECNICO_PASSWORD: ci_tecnico_falsa
+      SEED_CLIENTE_PASSWORD: ci_cliente_falsa
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: backend/.nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Crear rol y base de tests (db/README.md, paso 1)
+        env:
+          PGPASSWORD: ci_postgres_falsa
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE $DB_USER LOGIN PASSWORD '$DB_PASSWORD';" \
+            -c "CREATE DATABASE $DB_NAME_TEST OWNER $DB_USER;"
+
+      - name: Crear tablas con db/schema.sql (db/README.md, paso 2)
+        env:
+          PGPASSWORD: ${{ env.DB_PASSWORD }}
+        run: psql -h localhost -U "$DB_USER" -d "$DB_NAME_TEST" -v ON_ERROR_STOP=1 -f ../db/schema.sql
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
