@@ -26,7 +26,8 @@ Reglas:
 
 ## Decisiones tomadas (Hito 2)
 - **TypeScript (2026-11-04):** Node 26 ejecuta los `.ts` directo (type stripping); `tsc` solo revisa tipos (`npm run typecheck`, con `erasableSyntaxOnly`). Costo asumido: sin `enum`/`namespace`/parameter properties y dependencia de la versión de Node. Preparado para migrar a `tsc → dist/` en el Hito 3 si hiciera falta (`rewriteRelativeImportExtensions`). Detalle en `backend/README.md`.
-- **Calidad (2026-11-04):** objetivo profesional, no el mínimo de la rúbrica (sin sumar funcionalidades). **CI en GitHub Actions** (typecheck + tests contra PostgreSQL 17, sin dependencias nuevas) + **`/code-review` y `/security-review` al cerrar cada recurso** + auditoría completa al final del hito. Fuera por ahora: ESLint/Prettier y `helmet`/límite de intentos (se reconsideran en la auditoría final). Ramas + Pull Requests: por confirmar con el compañero.
+- **Calidad (2026-11-04):** objetivo profesional, no el mínimo de la rúbrica (sin sumar funcionalidades). **CI en GitHub Actions** (typecheck + tests contra PostgreSQL 17, sin dependencias nuevas) + **`/code-review` y `/security-review` al cerrar cada recurso** + auditoría completa al final del hito. Fuera por ahora: ESLint/Prettier y `helmet`/límite de intentos (se reconsideran en la auditoría final).
+- **Ramas + Pull Requests y CI (confirmado 2026-11-05):** todo cambio entra a `main` por PR desde una rama. `main` está protegida en GitHub: PR obligatorio, check `test` del CI en verde y rama al día con `main`; las reglas aplican **también al admin**; sin force-push ni borrado. **0 aprobaciones obligatorias** (las aprobaciones son por cuenta de GitHub y los dos PCs usan la misma), pero en **cada PR** se deja un comentario mencionando al compañero (`Gabo-collab`) con qué cambia y cómo se probó, y se le pide revisión. Se une con **Squash and merge**. CI: `.github/workflows/ci.yml`, runner fijado en `ubuntu-26.04`; si `config.ts` o el seed exigen una variable nueva, agregarla al `env:` del workflow y a `.env.example` en el mismo PR. Detalle en `backend/README.md`.
 - **Seed (2026-11-04):** `npm run seed` **resetea** (`TRUNCATE ... RESTART IDENTITY`) y recarga; IDs fijos (P-07 = id 7). Se niega con `NODE_ENV=production`. Los tests resiembran `signalmap_test` solos (`globalSetup`).
 - **Alcance:** el Hito 2 es solo back-end y API REST. La app Android no se evalúa en este hito (por confirmar con el compañero).
 - **Recursos con CRUD completo:** edificios y puntos.
@@ -97,8 +98,9 @@ Reglas:
 
 ## Trabajo en dos computadores
 - Los equipos se llaman **Pc-Casa** y **Pc-Portatil** (ver tabla de vaults arriba). En las notas del vault y al reportar avances, aclarar en cuál se hizo el trabajo.
-- Al empezar: `git pull`. Al terminar: `git commit` + `git push`. Commits pequeños y frecuentes.
-- Evita editar el mismo archivo en ambos equipos sin sincronizar; usa ramas para trabajo en paralelo con el compañero.
+- Al empezar: `git switch main` + `git pull`, y crear una rama para el trabajo. Al terminar: `git commit` + `git push` de la rama y PR a `main` (push directo a `main` está bloqueado). Commits pequeños y frecuentes.
+- Evita editar el mismo archivo en ambos equipos sin sincronizar; cada trabajo en paralelo va en su propia rama.
+- GitHub CLI (`gh`) para PRs y runs del CI. En Pc-Portatil está en `%LOCALAPPDATA%\Programs\gh\bin`; en Pc-Casa, pendiente de instalar.
 - Los archivos ignorados (`.env`, configuración local) no viajan por git: se recrean en cada equipo desde `.env.example`.
 - El vault de Obsidian está fuera de git y se sincroniza aparte.
 
