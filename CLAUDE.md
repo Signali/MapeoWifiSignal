@@ -52,7 +52,11 @@ Reglas:
   - Recurso de otra organización → `404` (toda consulta filtra por `org_id`). Login fallido → `401` genérico "Credenciales inválidas".
 - **Datos (Bloque 3, cerrado 2026-11-04):**
   - **PostgreSQL nativo** en ambos PCs (sin Docker ni nube; Docker diferido → trazabilidad). Fijar versión mínima en el README.
-  - **6 tablas:** `organizations`, `users`, `buildings`, `floors`, `points`, `user_buildings`. `org_id` solo en `users` y `buildings`; pisos y puntos llegan a la org por `JOIN` con el edificio.
+  - **7 tablas** (diagrama en `db/er-diagram.md`): `organizations`, `email_domains`, `users`, `buildings`, `floors`, `points`, `user_buildings`. `org_id` en `users`, `buildings` y `email_domains` (solo corporativos); pisos y puntos llegan a la org por `JOIN` con el edificio.
+  - **Emails (2026-11-04):** login solo con `email`; se guarda partido en `users.email_local` + FK a `email_domains` (`domain` único, `kind` `corporativo`/`personal`; corporativo con `org_id` dueña, personal sin dueña). Prioridad del corporativo: si la org tiene dominio corporativo, sus usuarios lo usan (lo aplica `npm run seed`). Todo en minúsculas. Motivo: evitar redundancia del dominio y emails repetidos.
+  - **Coordenadas y dimensiones:** `numeric(7,2)`; un único `setTypeParser` global en `pg` las convierte a `number` y un test recorre todas las columnas `numeric` (regla en `backend/src/repositories/README.md`).
+  - **Entrada de puntos:** `x`/`y` con más de 2 decimales → `400` (Zod; la base redondearía en silencio). `nfc_uid` se guarda en mayúsculas (el servicio convierte, la base lo exige con `CHECK`).
+  - **Borrado:** `ON DELETE RESTRICT` en toda la jerarquía; `CASCADE` solo en `user_buildings`. `UNIQUE (building_id, name)` en pisos.
   - **Acceso a datos:** `pg` con SQL explícito y parámetros, sin ORM; las consultas viven solo en `repositories/`.
   - **`db/`:** `schema.sql` + `seed.sql` (datos de dominio, sin usuarios ni claves) + diagrama ER en Mermaid. Los usuarios los crea `npm run seed` con las claves del `.env`, que también ejecuta `seed.sql`.
 - **Bloques 1, 2 y 3 validados** con el compañero (2026-11-04).

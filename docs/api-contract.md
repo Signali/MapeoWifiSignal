@@ -68,7 +68,7 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 |---|---|---|
 | `id` | entero | — |
 | `building_id` | entero | Edificio al que pertenece |
-| `name` | texto | Ej. `"Piso 3"` |
+| `name` | texto | Ej. `"Piso 3"` · único dentro del edificio (lo garantiza la base) |
 | `width_m` | número | Ancho del piso en metros (> 0) |
 | `height_m` | número | Largo del piso en metros (> 0) |
 
@@ -80,11 +80,11 @@ Los pisos se cargan con los datos de prueba; no tienen creación, edición ni bo
 | `id` | entero | Lo asigna el servidor |
 | `floor_id` | entero | Obligatorio al crear · el piso debe existir en la organización → si no, `404` · **no se puede cambiar** con `PATCH` → `400` |
 | `code` | texto | Obligatorio al crear · 1 a 20 caracteres (ej. `"P-07"`) · único dentro del piso → `409` |
-| `x` | número | Obligatorio al crear · metros desde el borde izquierdo del plano · `0 ≤ x ≤ width_m` del piso → si no, `422` |
-| `y` | número | Obligatorio al crear · metros desde el borde superior del plano · `0 ≤ y ≤ height_m` del piso → si no, `422` |
-| `nfc_uid` | texto | Obligatorio al crear · 1 a 32 caracteres · identificador de la tira NFC · único en todo el sistema → `409` |
+| `x` | número | Obligatorio al crear · metros desde el borde izquierdo del plano · máximo 2 decimales (centímetros) → si no, `400` · `0 ≤ x ≤ width_m` del piso → si no, `422` |
+| `y` | número | Obligatorio al crear · metros desde el borde superior del plano · máximo 2 decimales (centímetros) → si no, `400` · `0 ≤ y ≤ height_m` del piso → si no, `422` |
+| `nfc_uid` | texto | Obligatorio al crear · 1 a 32 caracteres · identificador de la tira NFC · el servidor lo guarda y lo devuelve **en mayúsculas** (`04a2…` y `04A2…` son la misma tira) · único en todo el sistema → `409` |
 
-Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y` es `400` (formato); un número fuera del piso es `422` (regla de dominio).
+Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y`, o con más de 2 decimales (`12.345`), es `400` (formato); un número fuera del piso es `422` (regla de dominio).
 
 ## 5. Tabla de endpoints
 
