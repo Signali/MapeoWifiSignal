@@ -47,6 +47,7 @@ Reglas:
   - Contrato completo: `docs/api-contract.md`.
   - Actualizar solo con `PATCH`. Crear: `201` + `Location` + objeto.
   - Errores `{ "message": "..." }`: `400` formato · `401` · `403` · `404` · `409` conflicto (duplicado, borrar edificio con pisos; sin cascada) · `422` regla de dominio.
+  - **Agregados en la base común (2026-11-05, a confirmar con el compañero en el PR):** `404 "Ruta no encontrada"` para ruta o verbo inexistente (sin `405`) · `413` cuerpo > 100 kB · `415` charset/codificación no soportados. El `500` es genérico; el detalle va al log (solo stack). Services lanzan `AppError(kind, message)` sin códigos HTTP. Detalle en `backend/src/middlewares/README.md`.
 - **Autenticación (Bloque 2, cerrado 2026-11-04):**
   - **JWT sin librería (2026-11-04):** HS256 implementado con `node:crypto` (`createHmac` + `timingSafeEqual`), sin dependencias nuevas. Costo asumido: la verificación es responsabilidad nuestra → tests obligatorios para `alg` distinto de HS256 (incl. `none`), firma alterada, secreto distinto, vencido y token deforme (siempre `401`, nunca `500`).
   - `POST /api/v1/auth/login` → JWT `{ sub, org_id, role }`, sin refresh. **Duración por rol** desde `.env` (`JWT_EXPIRES_IN_ADMIN=8h`, `_TECNICO=10h`, `_CLIENTE=2h`); la elige el servicio de auth.
