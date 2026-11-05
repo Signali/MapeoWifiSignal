@@ -29,7 +29,9 @@ Reglas:
 - **Recursos con CRUD completo:** edificios y puntos.
 - **Autenticación mínima:** login + JWT con `org_id` y rol.
 - **Pisos:** entran por seed; sin CRUD propio en este hito.
-- **PostGIS diferida:** `x`/`y` como columnas numéricas hasta que una consulta espacial lo justifique.
+- **PostGIS diferida al Hito 3 (decidido 2026-11-04):** en el Hito 2 `x`/`y` son columnas numéricas (metros, 2D por piso); PostGIS se aplica y ejecuta en el Hito 3, junto con las consultas espaciales que la justifiquen (migración: columna `geometry(Point, 0)` generada desde `x`/`y`). Implica en el Hito 3 usar la imagen `postgis/postgis:17` y crear la extensión con un rol con permisos. **Condición de control:** al empezar el Hito 3, antes de instalarla, escribir la consulta espacial concreta que la necesita; si existe, se aplica y se defiende con ese caso; si no, se documenta como decisión revisada ("no hace falta con ~24 puntos por piso"). Nunca instalarla como adorno. No instalarla ni declararla en el Hito 2. Se documenta como cambio respecto al Hito 1 (que decía "se implementa en el Hito 2").
+- **PostgreSQL 17 confirmado** (2026-11-04); la propuesta decía 16 y se corrigió. El esquema no usa nada exclusivo de la 17.
+- **Stack (firmado en el Hito 1 §5, se mantiene):** Node.js + **Express + TypeScript** (frente a Spring Boot) y **Zod** para validar (un schema por endpoint). Costo asumido: Express da poca estructura; se compensa con las capas `routes/` → `controllers/` → `services/` → `repositories/` y `middlewares/`. Comparativa ampliada (Fastify, NestJS, Hono, Spring Boot) en el vault: `SignalMap\Propuesta Back-End\Justificación de tecnologías.md`. Por decidir: cómo corre TypeScript (`tsc` o directo) y el porqué de `pg`/Vitest frente a alternativas.
 - **Arquitectura:** monolito en capas. El equipo es de **2 personas**: citar ese número en el argumento monolito vs. distribuido.
 - **Orden:** el contrato de la API (tabla en `docs/`) se escribe y acuerda antes de programar.
 - **Contrato (Bloque 1, cerrado 2026-11-04):**
