@@ -36,6 +36,17 @@ async function startServer(): Promise<{ port: number; output: () => string; exit
   return { port, output: () => output, exit };
 }
 
+// Petición con las cabeceras a medio enviar: la conexión no queda "inactiva" y
+// server.close() la espera. La pausa da tiempo a que los bytes lleguen al servidor
+// antes de la señal; sin ella, la conexión puede llegar vacía y cerrarse al instante.
+async function openHangingRequest(port: number): Promise<void> {
+  socket = connect(port, '127.0.0.1');
+  socket.on('error', () => {}); // el corte forzado la resetea (ECONNRESET): es lo esperado
+  await new Promise((resolve) => socket!.on('connect', resolve));
+  socket.write('GET /health HTTP/1.1\r\nHost: localhost\r\n');
+  await new Promise((resolve) => setTimeout(resolve, 300));
+}
+
 describe.skipIf(process.platform === 'win32')('apagado ordenado', () => {
   test('SIGTERM → cierra el servidor y el pool, y sale con código 0', async () => {
     const server = await startServer();
@@ -46,10 +57,7 @@ describe.skipIf(process.platform === 'win32')('apagado ordenado', () => {
 
   test('una petición que no termina → a los 8 s corta las conexiones y sale con código 1', { timeout: 15_000 }, async () => {
     const server = await startServer();
-    // Cabeceras a medio enviar: la conexión no queda "inactiva" y server.close() la espera.
-    socket = connect(server.port, '127.0.0.1');
-    await new Promise((resolve) => socket!.on('connect', resolve));
-    socket.write('GET /health HTTP/1.1\r\nHost: localhost\r\n');
+    await openHangingRequest(server.port);
 
     child!.kill('SIGTERM');
     expect(await server.exit).toBe(1);
@@ -58,9 +66,7 @@ describe.skipIf(process.platform === 'win32')('apagado ordenado', () => {
 
   test('segunda señal durante el cierre → sale al instante con código 1', async () => {
     const server = await startServer();
-    socket = connect(server.port, '127.0.0.1');
-    await new Promise((resolve) => socket!.on('connect', resolve));
-    socket.write('GET /health HTTP/1.1\r\nHost: localhost\r\n');
+    await openHangingRequest(server.port);
 
     const start = Date.now();
     child!.kill('SIGTERM');
