@@ -21,6 +21,8 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (res.headersSent) return next(err);
 
   if (err instanceof AppError) {
+    // Todo 401 indica cómo autenticarse (RFC 9110 §15.5.2, RFC 6750 §3).
+    if (err.kind === 'unauthorized') res.set('WWW-Authenticate', 'Bearer');
     res.status(statusByKind[err.kind]).json({ message: err.message });
     return;
   }

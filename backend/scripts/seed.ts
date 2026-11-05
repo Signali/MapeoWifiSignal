@@ -8,9 +8,9 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { config } from '../src/config.ts';
 import { pool } from '../src/repositories/db.ts';
+import { BCRYPT_ROUNDS } from '../src/password.ts';
 
 const ORG_NAME = 'Inmobiliaria Norte';
-const BCRYPT_ROUNDS = 10;
 
 export async function seed(): Promise<void> {
   if (config.env === 'production') {
