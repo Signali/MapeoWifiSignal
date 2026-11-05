@@ -10,7 +10,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Versión fija (no ubuntu-latest): el entorno solo cambia cuando lo decidimos.
+    runs-on: ubuntu-26.04
 
     services:
       postgres:
