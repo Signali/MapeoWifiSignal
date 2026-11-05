@@ -6,7 +6,7 @@ Modelo de datos y scripts de la base de datos (PostgreSQL 17).
 |---|---|
 | `er-diagram.md` | Diagrama entidad-relación (Mermaid), relaciones, comportamiento al borrar y qué regla garantiza la base y cuál el servicio |
 | `schema.sql` | Crea las 7 tablas **desde cero** en una base vacía |
-| `seed.sql` | *(pendiente)* Datos de dominio de ejemplo; lo ejecuta `npm run seed` |
+| `seed.sql` | Datos de dominio de ejemplo (sin usuarios ni claves). **Vacía las tablas** y recarga. Lo ejecuta `npm run seed` (ver [`backend/README.md`](../backend/README.md)), que además crea los usuarios con las claves del `.env` |
 
 ## Requisitos
 

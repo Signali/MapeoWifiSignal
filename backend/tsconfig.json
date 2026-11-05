@@ -1,0 +1,22 @@
+{
+  // Node 26 ejecuta los .ts directo (quita los tipos). Este archivo solo sirve
+  // para `npm run typecheck`: tsc revisa los tipos y no genera archivos.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+
+    // Solo sintaxis que Node puede borrar: tsc marca enum, namespace y
+    // parameter properties (Vitest los aceptaría y `npm start` fallaría).
+    "erasableSyntaxOnly": true,
+    // Obliga a `import type` en los imports que son solo tipos.
+    "verbatimModuleSyntax": true,
+    // Permite `import ... from './x.ts'`. Si en el Hito 3 se compila a dist/
+    // (quitar noEmit y agregar outDir), tsc reescribe .ts -> .js solo.
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src", "scripts", "tests", "vitest.config.ts"]
+}
