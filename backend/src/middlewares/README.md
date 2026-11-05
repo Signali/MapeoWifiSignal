@@ -7,7 +7,7 @@ Autenticación (JWT), validación de entrada y manejo centralizado de errores. S
 
 | Error que llega | Respuesta |
 |---|---|
-| `AppError` (ver `src/errors.ts`) | El código de su `kind`: `validation` 400 · `unauthorized` 401 · `forbidden` 403 · `not_found` 404 · `conflict` 409 · `domain_rule` 422, con su `message` |
+| `AppError` (ver `src/errors.ts`) | El código de su `kind`: `validation` 400 · `unauthorized` 401 · `forbidden` 403 · `not_found` 404 · `conflict` 409 · `domain_rule` 422, con su `message`. Todo `401` lleva además `WWW-Authenticate: Bearer` (RFC 9110 §15.5.2) |
 | JSON mal formado (`express.json`) | `400 "JSON mal formado"` |
 | Cuerpo mayor a 100 kB | `413 "Cuerpo demasiado grande"` |
 | Otro error 4xx del parser (charset o codificación no soportados → `415`, subida cortada → `400`) | Su código, con `"Petición inválida"` |
@@ -32,3 +32,23 @@ Reglas:
    - **Tipos:** Express no pasa los tipos de un middleware al handler siguiente, así que el controller declara los suyos desde el schema: `Request<z.output<typeof idParams>, unknown, z.output<typeof createBody>>`. Así `tsc` detecta si el controller y el schema no coinciden.
    - **Ids de ruta y de consulta:** además de "solo dígitos", limitar a `1 … 2147483647` (`integer` de PostgreSQL). Si no, `/points/99999999999` llega a la base y responde `500` en vez de `400`.
 4. Orden en la ruta (contrato §2: `401 → 403 → 400`): autenticación y rol **antes** de `validate`.
+
+## `auth.ts`: token y rol
+
+```ts
+router.post('/points', authenticate, requireRole('admin', 'tecnico'), validate({ body: createPointBody }), controller.create);
+router.get('/points/:id', authenticate, validate({ params: idParams }), controller.getById); // todos los roles
+```
+
+- **`authenticate`**: lee `Authorization: Bearer <token>` y lo verifica con `services/token.ts`. Deja `req.user = { id, orgId, role }` (los repositorios filtran por `orgId`). Respuestas (contrato §7):
+
+  | Caso | `401` |
+  |---|---|
+  | Sin cabecera o vacía | `Token requerido` |
+  | Otro esquema (`Basic`), `Bearer` sin token, espacios de más, firma mala, cabecera del JWT distinta de la nuestra, payload deforme | `Token inválido` |
+  | Firma correcta pero `exp` ya pasó | `Token vencido` |
+
+  El esquema `Bearer` no distingue mayúsculas (RFC 7235 §2.1). La firma se revisa antes que el vencimiento: un token vencido y alterado es "inválido".
+- **`requireRole(...roles)`**: `403 "No tiene permiso para esta acción"` si `req.user.role` no está en la lista. Va siempre **después** de `authenticate` (si no, es un bug y responde `500`).
+- Las rutas públicas (`/health`, `POST /auth/login`) no llevan `authenticate`.
+- El token no lleva los edificios asignados del `cliente`: el servicio de cada recurso los consulta en cada petición (contrato §3).

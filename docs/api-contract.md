@@ -129,7 +129,8 @@ Comprueba que el servicio está arriba. No requiere token.
 }
 ```
 - `expires_in` en segundos; depende del rol (admin 8 h, técnico 10 h, cliente 2 h, configurable en `.env`).
-- El token lleva `sub` (id del usuario), `org_id` y `role`. No hay renovación: al vencer, `401` y nuevo login.
+- El token lleva `sub` (id del usuario, como texto: `"1"`, según RFC 7519), `org_id`, `role` y `exp`. No hay renovación: al vencer, `401` y nuevo login.
+- El email no distingue mayúsculas ni espacios al borde (`" Admin@Demo.cl"` = `admin@demo.cl`).
 
 | Caso | Respuesta |
 |---|---|
@@ -284,6 +285,8 @@ Comprueba que el servicio está arriba. No requiere token.
 | Sin cabecera `Authorization` | `401 { "message": "Token requerido" }` |
 | Token mal formado o con firma inválida | `401 { "message": "Token inválido" }` |
 | Token vencido | `401 { "message": "Token vencido" }` |
+| Todo `401` (token o login fallido) | Lleva la cabecera `WWW-Authenticate: Bearer` (RFC 9110 §15.5.2, RFC 6750 §3) |
+| Rol sin permiso | `403 { "message": "No tiene permiso para esta acción" }` |
 | JSON mal formado en el cuerpo | `400 { "message": "JSON mal formado" }` |
 | Cuerpo mayor a 100 kB | `413 { "message": "Cuerpo demasiado grande" }` |
 | Charset o codificación del cuerpo no soportados | `415 { "message": "Petición inválida" }` |

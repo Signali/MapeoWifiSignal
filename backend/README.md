@@ -2,7 +2,7 @@
 
 Servicio del lado del servidor (Hito 2). Stack decidido en el Hito 1: Node.js + Express + TypeScript, con PostgreSQL.
 
-> **Estado:** esqueleto y base común listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod y apagado ordenado, con sus tests). Recursos pendientes.
+> **Estado:** esqueleto, base común y autenticación listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod, apagado ordenado, login con JWT y middleware de token y rol, con sus tests). Recursos (edificios y puntos) pendientes.
 
 ## TypeScript sin paso de build
 
@@ -22,6 +22,9 @@ Node 26 ejecuta los `.ts` directamente (borra las anotaciones de tipo al cargar 
 | `controllers/` | Lee la petición, llama a un servicio y arma la respuesta HTTP con su código de estado | **Sin lógica de negocio** |
 | `services/` | Lógica de negocio | No conoce HTTP ni escribe SQL |
 | `repositories/` | Acceso a datos | **Las consultas viven solo aquí** |
+| `schemas/` | Schemas de Zod de cada endpoint (los usa `validate` en la ruta y el controller para sus tipos) | Solo forma de la entrada; sin reglas de negocio |
+
+En la raíz de `src/`: `config.ts` (entorno validado), `errors.ts` (`AppError`) y `roles.ts` (los 3 roles).
 
 Flujo de una petición: `route → middleware → controller → service → repository → base de datos`.
 
@@ -40,7 +43,11 @@ Fuera de `src/`: `scripts/seed.ts` (herramienta de desarrollo, no parte del serv
    ```bash
    cp .env.example .env
    ```
-   `DB_PASSWORD` es la clave de `signalmap_user`; `SEED_*_PASSWORD` serán las claves de los usuarios de prueba. El `.env` nunca se sube.
+   `DB_PASSWORD` es la clave de `signalmap_user`; `SEED_*_PASSWORD` serán las claves de los usuarios de prueba. `JWT_SECRET` se **genera** (mínimo 32 caracteres; el servicio no arranca con el valor de ejemplo, que es público):
+   ```bash
+   node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+   ```
+   El `.env` nunca se sube.
 2. Instalar dependencias:
    ```bash
    cd backend
@@ -78,6 +85,23 @@ Si una petición no termina en **8 s**, corta las conexiones y sale con código 
 | `admin@demo.cl` | `admin` | `SEED_ADMIN_PASSWORD` | Todos los de la organización |
 | `tecnico@demo.cl` | `tecnico` | `SEED_TECNICO_PASSWORD` | Todos los de la organización |
 | `cliente@demo.cl` | `cliente` | `SEED_CLIENTE_PASSWORD` | Solo «Torre Norte» |
+
+## Autenticación (JWT)
+
+`POST /api/v1/auth/login` con `{ "email", "password" }` devuelve un token que se envía en cada petición como `Authorization: Bearer <token>` (contrato §6.2 y §7).
+
+- **JWT HS256 propio** con `node:crypto` (`src/services/token.ts`), sin librería. Payload `{ sub, org_id, role, exp }`, con `sub` como texto. Se acepta **solo** la cabecera que emitimos (`{"alg":"HS256","typ":"JWT"}`): `alg: none`, `HS512`, `RS256`, `kid`… → `401`. La firma se compara en tiempo constante (`timingSafeEqual`) y como texto (el decodificador base64url de Node ignora caracteres sobrantes).
+- **Duración por rol** desde el `.env` (`JWT_EXPIRES_IN_ADMIN=8h`, `_TECNICO=10h`, `_CLIENTE=2h`; formato entero + `s`/`m`/`h`/`d`). Sin renovación: al vencer, nuevo login.
+- **Login fallido:** `401 "Credenciales inválidas"`, el mismo si falla el email o la clave. Si el email no existe, igual se ejecuta bcrypt contra un hash ficticio: así el tiempo de respuesta no revela qué emails están registrados.
+- **Middlewares** (`src/middlewares/auth.ts`): `authenticate` (401) y `requireRole(...)` (403), antes de `validate` en cada ruta. Detalle en [`src/middlewares/README.md`](src/middlewares/README.md).
+- Limitaciones aceptadas: un token no se puede revocar antes de su `exp`; sin límite de intentos de login (se reconsidera en la auditoría final); bcrypt solo considera los primeros 72 bytes de la clave.
+
+### El secreto en producción (plan para el Hito 3)
+
+Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la credencial más sensible del servicio. Hoy: fuera del repo, generado por cada equipo, mínimo 32 caracteres y nunca el de ejemplo (`config.ts` lo exige). Cifrar el `.env` no lo protegería: la clave para descifrarlo tendría que estar en el mismo servidor. Para el despliegue con Docker (Hito 3):
+
+- **Docker secrets:** montar el secreto como archivo en memoria (`/run/secrets/jwt_secret`) y leerlo desde una variable `JWT_SECRET_FILE`, en vez de pasarlo como variable de entorno (no aparece en `docker inspect`, en volcados del entorno ni en procesos hijos).
+- **Rotación manual:** cambiar `JWT_SECRET` y reiniciar. Todos los tokens emitidos dejan de valer y los usuarios vuelven a hacer login. Se hace ante cualquier sospecha de filtración.
 
 ## Scripts
 

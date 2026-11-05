@@ -37,6 +37,11 @@ jobs:
       DB_NAME_TEST: signalmap_test
       DB_USER: signalmap_user
       DB_PASSWORD: ci_clave_falsa
+      # >= 32 caracteres y distinto del de .env.example (lo exige config.ts).
+      JWT_SECRET: ci_secreto_jwt_falso_solo_para_el_ci_0123456789
+      JWT_EXPIRES_IN_ADMIN: 8h
+      JWT_EXPIRES_IN_TECNICO: 10h
+      JWT_EXPIRES_IN_CLIENTE: 2h
       SEED_ADMIN_PASSWORD: ci_admin_falsa
       SEED_TECNICO_PASSWORD: ci_tecnico_falsa
       SEED_CLIENTE_PASSWORD: ci_cliente_falsa
