@@ -36,6 +36,8 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | `403 Forbidden` | El rol del token no tiene permiso para la acción |
 | `404 Not Found` | El recurso no existe, **pertenece a otra organización** o, para un `cliente`, **está en un edificio que no tiene asignado** (en ningún caso se revela que existe) |
 | `409 Conflict` | Duplicado (`nfc_uid`, `code` en el piso, `name` del edificio en la organización) · borrar un edificio que tiene pisos |
+| `413 Content Too Large` | Cuerpo de la petición mayor a 100 kB |
+| `415 Unsupported Media Type` | Charset o codificación del cuerpo no soportados (ej. `charset=latin1`) |
 | `422 Unprocessable Entity` | Formato correcto, pero viola una regla de dominio: coordenadas fuera del piso |
 | `500 Internal Server Error` | Error inesperado. Mensaje genérico, sin detalles internos |
 
@@ -283,6 +285,9 @@ Comprueba que el servicio está arriba. No requiere token.
 | Token mal formado o con firma inválida | `401 { "message": "Token inválido" }` |
 | Token vencido | `401 { "message": "Token vencido" }` |
 | JSON mal formado en el cuerpo | `400 { "message": "JSON mal formado" }` |
+| Cuerpo mayor a 100 kB | `413 { "message": "Cuerpo demasiado grande" }` |
+| Charset o codificación del cuerpo no soportados | `415 { "message": "Petición inválida" }` |
+| Ruta o verbo inexistente (ej. `PUT /api/v1/buildings`) | `404 { "message": "Ruta no encontrada" }` |
 | Error inesperado | `500 { "message": "Error interno del servidor" }` |
 
 ## 8. Fuera de este contrato (próximos hitos)

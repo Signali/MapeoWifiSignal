@@ -2,7 +2,7 @@
 
 Servicio del lado del servidor (Hito 2). Stack decidido en el Hito 1: Node.js + Express + TypeScript, con PostgreSQL.
 
-> **Estado:** esqueleto listo (`/health`, configuración desde el entorno, pool de `pg`, seed y test del parser de `numeric`). Recursos pendientes.
+> **Estado:** esqueleto y base común listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod y apagado ordenado, con sus tests). Recursos pendientes.
 
 ## TypeScript sin paso de build
 
@@ -24,6 +24,8 @@ Node 26 ejecuta los `.ts` directamente (borra las anotaciones de tipo al cargar 
 | `repositories/` | Acceso a datos | **Las consultas viven solo aquí** |
 
 Flujo de una petición: `route → middleware → controller → service → repository → base de datos`.
+
+Errores: un service lanza `AppError(kind, message)` (`src/errors.ts`), sin códigos HTTP; el controller no lo captura y `middlewares/error-handler.ts` responde `{ "message": "..." }` con el código del contrato. Un error inesperado responde `500` genérico y deja el detalle en el log (stderr). Detalle en [`src/middlewares/README.md`](src/middlewares/README.md).
 
 Fuera de `src/`: `scripts/seed.ts` (herramienta de desarrollo, no parte del servicio) y `tests/`.
 
@@ -57,6 +59,17 @@ Fuera de `src/`: `scripts/seed.ts` (herramienta de desarrollo, no parte del serv
 5. Verificar: abrir `http://localhost:3000/health` → `{"status":"ok"}`.
 
 Si falta o está mal una variable del `.env`, el servicio no arranca y dice cuál es.
+
+### Detener el servicio (apagado ordenado)
+
+`Ctrl+C` en la terminal (SIGINT) o `SIGTERM` (lo que envía `docker stop`): el servicio deja de aceptar conexiones, espera las peticiones en curso, cierra el pool de PostgreSQL y sale con código 0. Salida esperada:
+
+```
+SIGINT recibido: cerrando el servicio...
+Servicio cerrado
+```
+
+Si una petición no termina en **8 s**, corta las conexiones y sale con código 1 (Docker mata el proceso a los 10 s). Un **segundo `Ctrl+C`** durante el cierre corta al instante (código 1). El test automático de esto (`tests/shutdown.test.ts`) corre solo en Linux (el CI): en Windows una señal enviada por código termina el proceso sin pasar por el manejador, así que ahí se prueba a mano con `Ctrl+C`.
 
 ### Usuarios de prueba (creados por `npm run seed`)
 
