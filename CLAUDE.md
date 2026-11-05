@@ -26,6 +26,7 @@ Reglas:
 
 ## Decisiones tomadas (Hito 2)
 - **TypeScript (2026-11-04):** Node 26 ejecuta los `.ts` directo (type stripping); `tsc` solo revisa tipos (`npm run typecheck`, con `erasableSyntaxOnly`). Costo asumido: sin `enum`/`namespace`/parameter properties y dependencia de la versión de Node. Preparado para migrar a `tsc → dist/` en el Hito 3 si hiciera falta (`rewriteRelativeImportExtensions`). Detalle en `backend/README.md`.
+- **Calidad (2026-11-04):** objetivo profesional, no el mínimo de la rúbrica (sin sumar funcionalidades). **CI en GitHub Actions** (typecheck + tests contra PostgreSQL 17, sin dependencias nuevas) + **`/code-review` y `/security-review` al cerrar cada recurso** + auditoría completa al final del hito. Fuera por ahora: ESLint/Prettier y `helmet`/límite de intentos (se reconsideran en la auditoría final). Ramas + Pull Requests: por confirmar con el compañero.
 - **Seed (2026-11-04):** `npm run seed` **resetea** (`TRUNCATE ... RESTART IDENTITY`) y recarga; IDs fijos (P-07 = id 7). Se niega con `NODE_ENV=production`. Los tests resiembran `signalmap_test` solos (`globalSetup`).
 - **Alcance:** el Hito 2 es solo back-end y API REST. La app Android no se evalúa en este hito (por confirmar con el compañero).
 - **Recursos con CRUD completo:** edificios y puntos.
@@ -46,6 +47,7 @@ Reglas:
   - Actualizar solo con `PATCH`. Crear: `201` + `Location` + objeto.
   - Errores `{ "message": "..." }`: `400` formato · `401` · `403` · `404` · `409` conflicto (duplicado, borrar edificio con pisos; sin cascada) · `422` regla de dominio.
 - **Autenticación (Bloque 2, cerrado 2026-11-04):**
+  - **JWT sin librería (2026-11-04):** HS256 implementado con `node:crypto` (`createHmac` + `timingSafeEqual`), sin dependencias nuevas. Costo asumido: la verificación es responsabilidad nuestra → tests obligatorios para `alg` distinto de HS256 (incl. `none`), firma alterada, secreto distinto, vencido y token deforme (siempre `401`, nunca `500`).
   - `POST /api/v1/auth/login` → JWT `{ sub, org_id, role }`, sin refresh. **Duración por rol** desde `.env` (`JWT_EXPIRES_IN_ADMIN=8h`, `_TECNICO=10h`, `_CLIENTE=2h`); la elige el servicio de auth.
   - Edificios: escribe solo `admin`. Puntos: `POST`/`PATCH` `admin` y `tecnico`; `DELETE` solo `admin`. Sin permiso → `403`.
   - Lectura: `admin` y `tecnico` ven todos los edificios de su org; `cliente` solo sus **edificios asignados** (tabla usuario–edificio, uno o más; por seed) y sus pisos/puntos. Fuera de eso → `404`. Las asignaciones se consultan en cada petición (no van en el token).
@@ -71,7 +73,7 @@ Reglas:
 - **Ejecución y demo (Bloque 4, 2026-11-04):**
   - **Node 26** fijado con `.nvmrc` y `engines` (versión de Pc-Casa por confirmar).
   - **PostgreSQL 17** nativo; rol `signalmap_user` y bases `signalmap` y `signalmap_test` (esta última solo para tests, variable `DB_NAME_TEST`).
-  - **Tests:** pocos, solo casos de error (`401`/`403`/`404`/`409`/`422`), con Vitest + Supertest, contra `signalmap_test`.
+  - **Tests (revisado 2026-11-04):** de integración con Vitest + Supertest contra `signalmap_test`, **uno por cada respuesta del contrato** (caso feliz y errores `400`/`401`/`403`/`404`/`409`/`422`). Reemplaza la decisión original "pocos, solo casos de error", por el criterio de calidad profesional.
   - **Postman (demo en vivo):** exactamente **4 peticiones** sobre `/points`, en este orden: `POST /points` → `201` · `PATCH /points/:id` → `200` · `DELETE /points/:id` → `204` · `GET /points/:id` → `404` (error y prueba de que el borrado fue real). El login (admin) se hace antes de la demo y el token queda en una variable de la colección; **por confirmar** que la rúbrica lo acepte. El `403` con rol `cliente` se cubre en los tests, no en la demo. El CRUD de edificios se muestra fuera de las 4 peticiones (pgAdmin o documento).
   - **Ensayo de portabilidad en Pc-Casa:** al terminar el primer recurso (edificios), siguiendo solo el README; repetir en la semana 4.
 - **No adelantar trabajo del Hito 3** (mapa de calor, comparación antes/después, trilateración, recomendación, reporte PDF) salvo pedido explícito.
