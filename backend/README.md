@@ -75,3 +75,35 @@ Si falta o está mal una variable del `.env`, el servicio no arranca y dice cuá
 | `npm run seed` | Resetea la base `DB_NAME` y carga `db/seed.sql` + los 3 usuarios |
 | `npm run typecheck` | Revisa los tipos con `tsc` (no genera archivos) |
 | `npm test` | Resiembra `DB_NAME_TEST` y corre los tests (Vitest). Requiere esa base con las tablas creadas |
+
+## Integración continua (GitHub Actions)
+
+Cada push y cada Pull Request a `main` corre [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) en un servidor de GitHub:
+
+1. Levanta un **PostgreSQL 17** vacío. El superusuario solo crea el rol `signalmap_user` (sin superusuario) y la base `signalmap_test`, como en el paso 1 de [`db/README.md`](../db/README.md).
+2. Crea las tablas con `db/schema.sql` (`psql -v ON_ERROR_STOP=1`) como `signalmap_user`.
+3. Instala Node (versión de `.nvmrc`) y las dependencias con `npm ci` (exactas, desde `package-lock.json`).
+4. Corre `npm run typecheck` y `npm test`.
+
+Las variables de entorno del CI están en el mismo YAML, con **valores falsos** (`ci_*_falsa`). La base existe solo durante el run, así que no hay nada que proteger y no se usan GitHub Secrets. Si `src/config.ts` o el seed empiezan a exigir una variable nueva, hay que agregarla también ahí (y en `.env.example`), o el CI falla al arrancar.
+
+Un PR solo se une a `main` con el CI en verde.
+
+### Cómo leer una falla
+
+En el PR, **Checks → CI → test**, o con `gh run view <id> --log-failed`. El paso marcado con ✗ dice dónde está el problema:
+
+| Paso que falla | Causa probable | Qué hacer |
+|---|---|---|
+| `Initialize containers` | La imagen de PostgreSQL no levantó | Volver a correr el job; si se repite, revisar el bloque `services` |
+| `Crear rol y base` / `Crear tablas` | `db/schema.sql` tiene un error, o pide permisos que `signalmap_user` no tiene | Probarlo localmente en una base vacía (`db/README.md`, paso 2) |
+| `npm ci` | `package-lock.json` no coincide con `package.json` | `npm install` local y commitear el lock |
+| `npm run typecheck` | Error de tipos o sintaxis no "borrable" | `npm run typecheck` local |
+| `npm test` | Un test falló, o falta una variable de entorno (`Configuración inválida ...`) | Leer el `AssertionError`; GitHub también lo anota en la línea del test dentro del PR. Reproducir con `npm test` local |
+
+Ejemplo real (prueba del CI, PR #1): al desactivar el parser de `numeric` en `src/repositories/db.ts`, solo falla `npm test`:
+
+```
+AssertionError: floors.height_m: expected 'string' to be 'number'
+ ❯ tests/numeric-parser.test.ts:23:46
+```
