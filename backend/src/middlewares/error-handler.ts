@@ -35,6 +35,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     res.status(413).json({ message: 'Cuerpo demasiado grande' });
     return;
   }
+  // Un parámetro de ruta con un %-escape inválido (/buildings/%ZZ): el router lanza un
+  // URIError con status 400, pero sin `expose`. Pasa antes de authenticate.
+  if (err instanceof URIError && (err as URIError & { status?: number }).status === 400) {
+    res.status(400).json({ message: 'Petición inválida' });
+    return;
+  }
   // Otros del parser (charset o codificación no soportados, subida cortada): marcan
   // `expose` y traen su código 4xx.
   if (err?.expose === true && err.status >= 400 && err.status < 500) {

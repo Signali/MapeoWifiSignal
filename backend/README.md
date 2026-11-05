@@ -2,7 +2,7 @@
 
 Servicio del lado del servidor (Hito 2). Stack decidido en el Hito 1: Node.js + Express + TypeScript, con PostgreSQL.
 
-> **Estado:** esqueleto, base común y autenticación listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod, apagado ordenado, login con JWT y middleware de token y rol, con sus tests). Recursos (edificios y puntos) pendientes.
+> **Estado:** esqueleto, base común y autenticación listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod, apagado ordenado, login con JWT y middleware de token y rol, con sus tests). **Edificios con CRUD completo** (primer recurso, molde de los demás). Puntos pendiente.
 
 ## TypeScript sin paso de build
 
@@ -102,6 +102,22 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 
 - **Docker secrets:** montar el secreto como archivo en memoria (`/run/secrets/jwt_secret`) y leerlo desde una variable `JWT_SECRET_FILE`, en vez de pasarlo como variable de entorno (no aparece en `docker inspect`, en volcados del entorno ni en procesos hijos).
 - **Rotación manual:** cambiar `JWT_SECRET` y reiniciar. Todos los tokens emitidos dejan de valer y los usuarios vuelven a hacer login. Se hace ante cualquier sospecha de filtración.
+
+## Edificios (primer recurso)
+
+`/api/v1/buildings` con `GET` (lista y por id), `POST`, `PATCH` y `DELETE` (contrato §5, filas 3 a 7). Recorrido de una petición por las capas:
+
+| Capa | Archivo | Qué hace |
+|---|---|---|
+| Ruta | `routes/buildings.ts` | `authenticate` → `requireRole('admin')` (solo en las escrituras) → `validate` → controller |
+| Schema | `schemas/buildings.ts`, `schemas/common.ts` | `name`: caracteres permitidos y normalización (NFKC, espacios, mayúscula inicial por palabra; contrato §4). `idParams`: `1 … 2147483647`. `noQuery`: sin parámetros de consulta |
+| Controller | `controllers/buildings.ts` | `200`, `201` + `Location`, `204`. Sin lógica |
+| Service | `services/buildings.ts` | Alcance de lectura según el rol (el `cliente`, solo sus edificios asignados) y `404 "Edificio no encontrado"` |
+| Repositorio | `repositories/buildings.ts` | SQL con `org_id` en toda consulta; duplicado y edificio con pisos → `409` vía `query()` de `db.ts` |
+
+- Un edificio de otra organización, inexistente o no asignado al `cliente` responde el **mismo** `404`: no se revela que existe.
+- `UNIQUE (org_id, name)` distingue mayúsculas en la base, pero como la API normaliza el nombre, `"torre NORTE"` choca con `"Torre Norte"` (`409`).
+- Tests: `tests/buildings.test.ts` (una respuesta del contrato por caso, con los tokens de los 3 roles, más una segunda organización, un cliente sin asignaciones y una asignación cruzada creados por el propio test y borrados al final).
 
 ## Scripts
 

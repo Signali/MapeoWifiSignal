@@ -63,7 +63,9 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | Campo | Tipo | Reglas |
 |---|---|---|
 | `id` | entero | Lo asigna el servidor |
-| `name` | texto | Obligatorio al crear · 1 a 100 caracteres (sin espacios al borde) · único dentro de la organización → `409` |
+| `name` | texto | Obligatorio al crear · 1 a 100 caracteres · solo letras (con tildes y `ñ`), números, espacios y `. , - ' ( ) / #` → si no, `400` · el servidor lo **normaliza** antes de guardarlo (ver abajo) · único dentro de la organización → `409` |
+
+**Normalización del nombre** (al crear y al editar), en este orden: forma Unicode NFKC (una tilde combinada pasa a ser un solo carácter; letras de ancho completo o de estilo matemático y espacios especiales pasan a su forma normal) · sin espacios al borde y espacios repetidos juntos · mayúscula la primera letra de cada palabra y el resto en minúscula (una palabra empieza al inicio o después de un espacio o un signo; después de un apóstrofo, solo si antes hay una sola letra) · los caracteres permitidos y el largo se revisan sobre el resultado. Los rellenos invisibles de Hangul (U+115F, U+1160, U+3164, U+FFA0) no se admiten. Ejemplos: `"  torre   NORTE "` y `"Ｔｏｒｒｅ Ｎｏｒｔｅ"` → `"Torre Norte"` (choca con la existente → `409`) · `"edificio o'higgins"` → `"Edificio O'Higgins"` · `"children's"` → `"Children's"` · `"3er piso-anexo"` → `"3er Piso-Anexo"` · las siglas no se conservan: `"Sede TI"` → `"Sede Ti"`. Normalizar dos veces da lo mismo, así que el nombre que devuelve la API siempre se puede volver a enviar. Por la API no entran dos nombres que solo difieren en mayúsculas, espacios o variantes de una letra.
 
 ### Piso (`floor`) — solo lectura
 | Campo | Tipo | Reglas |
@@ -160,7 +162,7 @@ Comprueba que el servicio está arriba. No requiere token.
 ### 5. `POST /api/v1/buildings`
 ```json
 // Petición
-{ "name": "Bodega Sur" }
+{ "name": "  bodega   sur " }
 
 // 201 Created
 // Location: /api/v1/buildings/3
@@ -168,7 +170,9 @@ Comprueba que el servicio está arriba. No requiere token.
 ```
 | Caso | Respuesta |
 |---|---|
-| Falta `name`, vacío o > 100 caracteres | `400 { "message": "name es obligatorio (1 a 100 caracteres)" }` |
+| Falta `name`, no es texto, vacío o > 100 caracteres | `400 { "message": "name es obligatorio (1 a 100 caracteres)" }` |
+| `name` con caracteres no permitidos (emojis, símbolos, saltos de línea…) | `400 { "message": "name solo admite letras, números, espacios y . , - ' ( ) / #" }` |
+| Parámetro de consulta o campo desconocido | `400` |
 | Rol `tecnico` o `cliente` | `403 { "message": "No tiene permiso para esta acción" }` |
 | Ya existe un edificio con ese nombre en la organización | `409 { "message": "Ya existe un edificio con ese nombre" }` |
 
@@ -177,12 +181,12 @@ Comprueba que el servicio está arriba. No requiere token.
 // Petición
 { "name": "Torre Norte (remodelada)" }
 
-// 200 OK
-{ "id": 1, "name": "Torre Norte (remodelada)" }
+// 200 OK (nombre normalizado, §4)
+{ "id": 1, "name": "Torre Norte (Remodelada)" }
 ```
 | Caso | Respuesta |
 |---|---|
-| Cuerpo vacío o campo desconocido | `400` |
+| Cuerpo vacío, campo desconocido, `name` inválido (mismas reglas que al crear) o `id` no entero | `400` |
 | Rol distinto de `admin` | `403` |
 | No existe o es de otra organización | `404` |
 | El nombre nuevo ya lo usa otro edificio de la organización | `409` |
@@ -290,6 +294,7 @@ Comprueba que el servicio está arriba. No requiere token.
 | JSON mal formado en el cuerpo | `400 { "message": "JSON mal formado" }` |
 | Cuerpo mayor a 100 kB | `413 { "message": "Cuerpo demasiado grande" }` |
 | Charset o codificación del cuerpo no soportados | `415 { "message": "Petición inválida" }` |
+| URL con un escape inválido en un parámetro (ej. `/api/v1/buildings/%ZZ`) | `400 { "message": "Petición inválida" }` (con o sin token) |
 | Ruta o verbo inexistente (ej. `PUT /api/v1/buildings`) | `404 { "message": "Ruta no encontrada" }` |
 | Error inesperado | `500 { "message": "Error interno del servidor" }` |
 
