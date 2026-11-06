@@ -1,19 +1,10 @@
 import type { Request, Response } from 'express';
 import type { z } from 'zod';
 import type { buildingBody } from '../schemas/buildings.ts';
-import type { idParams } from '../schemas/common.ts';
 import * as buildingsService from '../services/buildings.ts';
+import { idOf } from './params.ts';
 
 type Body = z.output<typeof buildingBody>;
-
-// Express deduce el tipo de `:id` del texto de la ruta (string) y no admite declararlo
-// number en el handler; validate({ params: idParams }) ya lo dejó convertido. Si llega
-// texto, la ruta se armó sin validate: es un bug (500), no un 400.
-function idOf(req: { params: object }): number {
-  const { id } = req.params as z.output<typeof idParams>;
-  if (typeof id !== 'number') throw new Error('Ruta con :id sin validate({ params: idParams })');
-  return id;
-}
 
 // req.user lo deja `authenticate`, que va antes en todas las rutas de edificios.
 

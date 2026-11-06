@@ -41,7 +41,7 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | `422 Unprocessable Entity` | Formato correcto, pero viola una regla de dominio: coordenadas fuera del piso |
 | `500 Internal Server Error` | Error inesperado. Mensaje genérico, sin detalles internos |
 
-**Orden de verificación:** `401` → `403` → `400` → `404` → `409` / `422`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`.
+**Orden de verificación:** `401` → `403` → `400` → `404` → `422` → `409`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`. Un punto fuera del piso **y** con `code` repetido recibe `422`: las coordenadas se validan antes de escribir.
 
 ## 3. Roles y permisos
 
@@ -83,10 +83,10 @@ Los pisos se cargan con los datos de prueba; no tienen creación, edición ni bo
 |---|---|---|
 | `id` | entero | Lo asigna el servidor |
 | `floor_id` | entero | Obligatorio al crear · el piso debe existir en la organización → si no, `404` · **no se puede cambiar** con `PATCH` → `400` |
-| `code` | texto | Obligatorio al crear · 1 a 20 caracteres (ej. `"P-07"`) · único dentro del piso → `409` |
+| `code` | texto | Obligatorio al crear · 1 a 20 caracteres (ej. `"P-07"`) · solo letras, números, espacios y `- _ . /` → si no, `400` · el servidor lo **normaliza**: forma Unicode NFKC, sin espacios al borde, espacios repetidos juntos y **en mayúsculas** (`" p-07 "` y `"Ｐ－０７"` → `"P-07"`; los caracteres permitidos y el largo se revisan sobre el resultado) · único dentro del piso → `409` |
 | `x` | número | Obligatorio al crear · metros desde el borde izquierdo del plano · máximo 2 decimales (centímetros) → si no, `400` · `0 ≤ x ≤ width_m` del piso → si no, `422` |
 | `y` | número | Obligatorio al crear · metros desde el borde superior del plano · máximo 2 decimales (centímetros) → si no, `400` · `0 ≤ y ≤ height_m` del piso → si no, `422` |
-| `nfc_uid` | texto | Obligatorio al crear · 1 a 32 caracteres · identificador de la tira NFC · el servidor lo guarda y lo devuelve **en mayúsculas** (`04a2…` y `04A2…` son la misma tira) · único en todo el sistema → `409` |
+| `nfc_uid` | texto | Obligatorio al crear · identificador de la tira NFC en **hexadecimal** (`0-9`, `A-F`), 1 a 32 caracteres, sin separadores (`04A23B1C5D8080`, no `04:A2:3B…`) → si no, `400` · sin espacios al borde · el servidor lo guarda y lo devuelve **en mayúsculas** (`04a2…` y `04A2…` son la misma tira) · único en todo el sistema → `409` |
 
 Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y`, o con más de 2 decimales (`12.345`), es `400` (formato); un número fuera del piso es `422` (regla de dominio).
 
@@ -224,7 +224,7 @@ Comprueba que el servicio está arriba. No requiere token.
 ```
 | Caso | Respuesta |
 |---|---|
-| Falta `floor_id` o no es entero | `400` |
+| Falta `floor_id` o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
 | El piso no existe, es de otra organización o (para `cliente`) es de un edificio no asignado | `404 { "message": "Piso no encontrado" }` |
 
 ### 10. `GET /api/v1/points/:id`
@@ -249,11 +249,16 @@ Comprueba que el servicio está arriba. No requiere token.
 | Caso | Respuesta |
 |---|---|
 | Falta un campo, tipo incorrecto (`"x": "doce"`) o campo desconocido | `400` |
+| `floor_id` falta o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
+| `code` falta, vacío o > 20 caracteres | `400 { "message": "code es obligatorio (1 a 20 caracteres)" }` |
+| `code` con caracteres no permitidos | `400 { "message": "code solo admite letras, números, espacios y - _ . /" }` |
+| `x` (o `y`) no es número o tiene más de 2 decimales | `400 { "message": "x debe ser un número con hasta 2 decimales" }` |
+| `nfc_uid` falta, vacío, > 32 caracteres o no es hexadecimal | `400 { "message": "nfc_uid es obligatorio (1 a 32 caracteres hexadecimales)" }` |
 | Rol `cliente` | `403` |
 | El piso no existe o es de otra organización | `404 { "message": "Piso no encontrado" }` |
 | `nfc_uid` ya registrado (en cualquier organización) | `409 { "message": "La tira NFC ya está asociada a otro punto" }` |
 | `code` ya existe en ese piso | `409 { "message": "Ya existe un punto con ese código en el piso" }` |
-| `x` o `y` fuera de las dimensiones del piso (ej. `x = 45` en un piso de 40 m) | `422 { "message": "Las coordenadas quedan fuera del piso (40 x 25 m)" }` |
+| `x` o `y` fuera de las dimensiones del piso (ej. `x = 45` en un piso de 40 m, o negativo) | `422 { "message": "Las coordenadas quedan fuera del piso (40 x 25 m)" }` (también si además hay un duplicado) |
 
 ### 12. `PATCH /api/v1/points/:id`
 ```json
@@ -265,11 +270,13 @@ Comprueba que el servicio está arriba. No requiere token.
 ```
 | Caso | Respuesta |
 |---|---|
-| Cuerpo vacío, campo desconocido o incluye `floor_id` | `400 { "message": "floor_id no se puede modificar" }` (para `floor_id`) |
+| Cuerpo vacío | `400 { "message": "Debe enviar al menos un campo: code, x, y o nfc_uid" }` |
+| Incluye `floor_id` (aunque sea el mismo) | `400 { "message": "floor_id no se puede modificar" }` |
+| Campo desconocido o campo inválido (mismas reglas que al crear) | `400` |
 | Rol `cliente` | `403` |
-| No existe o es de otra organización | `404` |
-| `nfc_uid` o `code` nuevos chocan con otro punto | `409` |
-| Coordenadas nuevas fuera del piso | `422` |
+| No existe o es de otra organización | `404 { "message": "Punto no encontrado" }` |
+| `nfc_uid` o `code` nuevos chocan con otro punto | `409` (mensajes de §6.11) |
+| Coordenadas nuevas fuera del piso | `422` (con las medidas del piso del punto) |
 
 > Para mover un punto a otro piso: borrarlo (`admin`) y crearlo de nuevo.
 
