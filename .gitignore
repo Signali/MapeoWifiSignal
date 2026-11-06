@@ -23,3 +23,10 @@ npm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Environment de Postman con la clave real (la plantilla .example.json sí se sube)
+postman/*.postman_environment.json
+
+# Postman (configuracion local de la app)
+.postman/
+postman/globals/

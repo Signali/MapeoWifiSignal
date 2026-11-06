@@ -1,0 +1,287 @@
+{
+  "info": {
+    "name": "SignalMap - Hito 2 (demo en vivo)",
+    "description": "Demo del Hito 2. Carpeta «0 · Antes de la demo»: login (preparación). Carpeta «Demo en vivo»: exactamente 4 peticiones sobre /points, en orden. Instructivo: postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "point_id",
+      "value": ""
+    },
+    {
+      "key": "floor_id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · Antes de la demo",
+      "item": [
+        {
+          "name": "Login admin (token a la variable de colección)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Trae token, expires_in y user con rol admin', () => {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.expires_in).to.be.a('number');",
+                  "  pm.expect(body.user.role).to.equal('admin');",
+                  "});",
+                  "pm.collectionVariables.set('token', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Preparación, NO es una de las 4 peticiones de la demo. Se corre antes de presentar: guarda el token en la variable `token` de la colección."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Demo en vivo",
+      "item": [
+        {
+          "name": "1 · POST /points → 201",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Limpieza previa: si una corrida anterior quedó cortada, P-25 sigue vivo y este POST daría 409.",
+                  "// Lo busca en el piso y lo borra, para poder repetir la demo.",
+                  "const base = pm.variables.get('base_url') + '/api/v1';",
+                  "const auth = { key: 'Authorization', value: 'Bearer ' + pm.collectionVariables.get('token') };",
+                  "pm.sendRequest({ url: base + '/points?floor_id=' + pm.collectionVariables.get('floor_id'), method: 'GET', header: [auth] }, (err, res) => {",
+                  "  if (err || res.code !== 200) return console.warn('Limpieza previa omitida (GET /points → ' + (err ? err.message : res.code) + '). ¿Falta el login?');",
+                  "  const left = res.json().find((p) => p.code === 'P-25');",
+                  "  if (left) pm.sendRequest({ url: base + '/points/' + left.id, method: 'DELETE', header: [auth] }, (e, r) => console.log('Limpieza previa: P-25 sobrante (id ' + left.id + ') → DELETE ' + (e ? e.message : r.code)));",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.test('Cuerpo = punto creado (code, x, y, nfc_uid en mayúsculas)', () => {",
+                  "  pm.expect(p.id).to.be.a('number');",
+                  "  pm.expect(p.floor_id).to.equal(Number(pm.collectionVariables.get('floor_id')));",
+                  "  pm.expect(p.code).to.equal('P-25');",
+                  "  pm.expect(p.x).to.equal(30);",
+                  "  pm.expect(p.y).to.equal(12.5);",
+                  "  pm.expect(p.nfc_uid).to.equal('04B11C22D3E480');",
+                  "});",
+                  "pm.test('Location apunta al punto creado', () => pm.expect(pm.response.headers.get('Location')).to.equal('/api/v1/points/' + p.id));",
+                  "pm.collectionVariables.set('point_id', String(p.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"floor_id\": {{floor_id}},\n  \"code\": \"P-25\",\n  \"x\": 30,\n  \"y\": 12.5,\n  \"nfc_uid\": \"04B11C22D3E480\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/points",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points"
+              ]
+            },
+            "description": "Contrato §6.11. Crea P-25 en el piso 1 (40 x 25 m). El id que devuelve pasa solo a las peticiones 2, 3 y 4 (`point_id`)."
+          }
+        },
+        {
+          "name": "2 · PATCH /points/:id → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Coordenadas actualizadas; el resto no cambia', () => {",
+                  "  pm.expect(p.id).to.equal(Number(pm.collectionVariables.get('point_id')));",
+                  "  pm.expect(p.x).to.equal(13);",
+                  "  pm.expect(p.y).to.equal(8.5);",
+                  "  pm.expect(p.code).to.equal('P-25');",
+                  "  pm.expect(p.nfc_uid).to.equal('04B11C22D3E480');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"x\": 13,\n  \"y\": 8.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/points/{{point_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                "{{point_id}}"
+              ]
+            },
+            "description": "Contrato §6.12. Actualiza solo lo enviado (PATCH parcial)."
+          }
+        },
+        {
+          "name": "3 · DELETE /points/:id → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.equal(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/points/{{point_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                "{{point_id}}"
+              ]
+            },
+            "description": "Contrato §6.13. Solo admin."
+          }
+        },
+        {
+          "name": "4 · GET /points/:id → 404 (el borrado fue real)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Mensaje del contrato', () => pm.expect(pm.response.json()).to.deep.equal({ message: 'Punto no encontrado' }));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/points/{{point_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                "{{point_id}}"
+              ]
+            },
+            "description": "Contrato §6.10. Mismo id que acaba de borrarse."
+          }
+        }
+      ]
+    }
+  ]
+}
