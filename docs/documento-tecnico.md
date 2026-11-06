@@ -14,7 +14,7 @@
 
 ## 1. Introducción y alcance
 
-El Hito 1 planteó el problema: las empresas que instalan o amplían su red WiFi no saben con certeza si la señal llega a cada puesto ni si el repetidor que agregan funciona. SignalMap lo resuelve con tiras NFC en puntos fijos del edificio, una app Android que mide la señal en esos puntos y una plataforma web que muestra el resultado antes y después de instalar el repetidor.
+El informe del Hito 1 (Alvarado y Díaz, 2026) planteó el problema: las empresas que instalan o amplían su red WiFi no saben con certeza si la señal llega a cada puesto ni si el repetidor que agregan funciona. SignalMap lo resuelve con tiras NFC en puntos fijos del edificio, una app Android que mide la señal en esos puntos y una plataforma web que muestra el resultado antes y después de instalar el repetidor.
 
 Este documento cubre **solo el servidor**: la API REST que esas dos aplicaciones van a usar, sus capas y la base de datos. La app y la web no se construyen en este hito.
 
@@ -133,12 +133,12 @@ El orden de las preguntas es deliberado: un punto fuera del piso y además dupli
 
 ### 3.3 Monolito o distribuido
 
-Se eligió **monolito en capas**. Para entender el costo de cada opción se consultó a Fowler (2015), que observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió después, cuando los límites entre servicios ya estaban claros. La decisión, sin embargo, se apoya en los datos de este proyecto:
+Se eligió **monolito en capas**. Para entender el costo de cada opción se consultó a Fowler (2015), quien observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió después, cuando los límites entre servicios ya estaban claros. La decisión, sin embargo, se apoya en los datos de este proyecto:
 
 | Criterio | Situación de SignalMap | Qué implica |
 |---|---|---|
 | Tamaño del equipo | 2 personas, un semestre | Varios servicios multiplican despliegue, configuración y depuración para las mismas dos personas |
-| Carga esperada | ~24 puntos por piso; el técnico mide un punto a la vez y Android limita a 4 escaneos WiFi cada 2 minutos (Hito 1, §8.2) | No hay una parte del sistema que necesite escalar por separado |
+| Carga esperada | ~24 puntos por piso; el técnico mide un punto a la vez y Android limita a 4 escaneos WiFi cada 2 minutos (Alvarado y Díaz, 2026, §8.2) | No hay una parte del sistema que necesite escalar por separado |
 | Costo de operación | Hoy: un proceso Node y una base. Hito 3: dos contenedores (API y PostgreSQL) | Un solo servicio que vigilar, con un solo `GET /health` |
 | Complejidad de despliegue | Se levanta en otro equipo siguiendo un README | Con servicios separados habría que coordinar versiones y una red entre ellos |
 
@@ -187,8 +187,8 @@ El contrato se escribió y se acordó entre los dos integrantes **antes de progr
 | Jerarquía | Rutas planas con filtro: `/points?floor_id=1`, no `/floors/1/points` | Cada recurso tiene una sola URL, y el `id` basta para encontrarlo |
 | Nombres | `snake_case` en cuerpo, respuesta y consulta | Un solo estilo en las tres partes, igual al de la base |
 | Identificadores | Enteros, tratados como **opacos** por el cliente | El cliente no calcula ni ordena por ellos |
-| Crear | `201 Created` + cabecera `Location` con la URL nueva + el objeto | Es lo que define HTTP para `201` (RFC 9110, §15.3.2) |
-| Actualizar | Solo `PATCH`, parcial (RFC 5789); no hay `PUT` | El técnico corrige una coordenada sin reenviar el punto entero |
+| Crear | `201 Created` + cabecera `Location` con la URL nueva + el objeto | Es lo que define HTTP para `201`: RFC 9110 (Fielding et al., 2022, §15.3.2) |
+| Actualizar | Solo `PATCH`, parcial: RFC 5789 (Dusseault y Snell, 2010); no hay `PUT` | El técnico corrige una coordenada sin reenviar el punto entero |
 | Borrar | `204 No Content`, sin cuerpo | No hay nada que devolver |
 | Listas | Arreglo simple, ordenado por `id`, sin paginación | ~24 puntos por piso. La paginación se decide antes del Hito 3, cuando la usen la app y la web |
 | Entrada estricta | Un campo o parámetro desconocido es `400` | Un error de tipeo en el cliente (`flor_id`) no pasa en silencio |
@@ -238,7 +238,7 @@ Todo error responde con su código HTTP y el mismo cuerpo: `{ "message": "Descri
 | Código | Cuándo | Ejemplo de mensaje |
 |---|---|---|
 | `400` | Formato: JSON mal formado, campo faltante o de otro tipo, campo desconocido, `PATCH` vacío, `id` que no es entero | `x debe ser un número con hasta 2 decimales` |
-| `401` | Sin token, token inválido o vencido; login fallido. Lleva `WWW-Authenticate: Bearer`, que HTTP exige en todo `401` (RFC 9110, §15.5.2; RFC 6750, §3) | `Token vencido` |
+| `401` | Sin token, token inválido o vencido; login fallido. Lleva `WWW-Authenticate: Bearer`, que HTTP exige en todo `401` (Fielding et al., 2022, §15.5.2; RFC 6750: Jones y Hardt, 2012, §3) | `Token vencido` |
 | `403` | El rol no tiene permiso | `No tiene permiso para esta acción` |
 | `404` | No existe, es de otra organización o es de un edificio no asignado al cliente | `Punto no encontrado` |
 | `409` | Duplicado (`nfc_uid`, `code` en el piso, nombre del edificio) o borrar un edificio que tiene pisos | `La tira NFC ya está asociada a otro punto` |
@@ -248,8 +248,8 @@ Todo error responde con su código HTTP y el mismo cuerpo: `{ "message": "Descri
 
 Tres decisiones de esta tabla:
 
-- **`404` y no `403` para lo ajeno.** Un recurso de otra organización responde lo mismo que uno inexistente, para no revelar que existe. HTTP lo permite expresamente (RFC 9110, §15.5.4). El `403` queda solo para «existe y lo ves, pero tu rol no puede modificarlo».
-- **`400` frente a `422`.** `"x": "doce"` es formato (`400`); `"x": 45` en un piso de 40 m es un número válido que rompe una regla del negocio (`422`, «Unprocessable Content» en RFC 9110, §15.5.21).
+- **`404` y no `403` para lo ajeno.** Un recurso de otra organización responde lo mismo que uno inexistente, para no revelar que existe. HTTP lo permite expresamente (Fielding et al., 2022, §15.5.4). El `403` queda solo para «existe y lo ves, pero tu rol no puede modificarlo».
+- **`400` frente a `422`.** `"x": "doce"` es formato (`400`); `"x": 45` en un piso de 40 m es un número válido que rompe una regla del negocio (`422`, «Unprocessable Content»; Fielding et al., 2022, §15.5.21).
 - **Orden fijo:** `401 → 403 → 400 → 404 → 422 → 409`. Un cliente sin permiso recibe `403` aunque su cuerpo esté mal formado: primero se sabe quién pide, después qué pide.
 
 ### 4.4 Permisos por rol
@@ -261,7 +261,7 @@ Tres decisiones de esta tabla:
 | Crear y editar puntos | sí | sí | `403` |
 | Borrar puntos | sí | `403` | `403` |
 
-El técnico crea y corrige puntos porque es quien está en terreno con las tiras (Hito 1, §2.1). Borrar es irreversible (no hay papelera), así que queda solo para el administrador. Los edificios asignados a un cliente **no van en el token**: se consultan en cada petición, así que un cambio de asignación aplica de inmediato.
+El técnico crea y corrige puntos porque es quien está en terreno con las tiras (Alvarado y Díaz, 2026, §2.1). Borrar es irreversible (no hay papelera), así que queda solo para el administrador. Los edificios asignados a un cliente **no van en el token**: se consultan en cada petición, así que un cambio de asignación aplica de inmediato.
 
 ## 5. Datos y persistencia
 
@@ -346,7 +346,7 @@ El código no tiene claves, hosts ni puertos escritos: todo llega por variables 
 | `JWT_EXPIRES_IN_ADMIN` · `_TECNICO` · `_CLIENTE` | Duración del token por rol (`8h`, `10h`, `2h`) | Entero + `s`/`m`/`h`/`d`, máximo 30 días |
 | `SEED_*_PASSWORD` | Claves de los 3 usuarios de prueba | Las usa solo `npm run seed` |
 
-`config.ts` valida todo con Zod antes de arrancar. Si falta una variable o rompe su regla, el servicio **no arranca** y dice cuál es, en vez de fallar más tarde con un error confuso. El mínimo de `JWT_SECRET` no es arbitrario: HS256 exige una clave de al menos 256 bits, es decir 32 bytes (RFC 7518, §3.2). El README indica generarla al azar con `node:crypto` (32 bytes aleatorios en base64url, 43 caracteres). El valor de ejemplo se rechaza porque es público: con él, cualquiera que lea el repositorio podría firmar tokens.
+`config.ts` valida todo con Zod antes de arrancar. Si falta una variable o rompe su regla, el servicio **no arranca** y dice cuál es, en vez de fallar más tarde con un error confuso. El mínimo de `JWT_SECRET` no es arbitrario: HS256 exige una clave de al menos 256 bits, es decir 32 bytes: RFC 7518 (Jones, 2015, §3.2). El README indica generarla al azar con `node:crypto` (32 bytes aleatorios en base64url, 43 caracteres). El valor de ejemplo se rechaza porque es público: con él, cualquiera que lea el repositorio podría firmar tokens.
 
 ### 6.2 Credenciales fuera del repositorio
 
@@ -362,13 +362,13 @@ El código no tiene claves, hosts ni puertos escritos: todo llega por variables 
 
 ### 6.4 JWT propio
 
-El token se firma y se verifica con `node:crypto` (HMAC-SHA256), sin librería: la pieza más sensible del servicio no suma dependencias. **El costo** es que la verificación es responsabilidad nuestra. Por eso se siguió lo que recomienda RFC 8725 (§3.1): aceptar solo el algoritmo que uno espera y ningún otro. El servicio compara la cabecera del token con la única que emite (`{"alg":"HS256","typ":"JWT"}`), y cualquier otra se rechaza sin interpretarla.
+El token se firma y se verifica con `node:crypto` (HMAC-SHA256), sin librería: la pieza más sensible del servicio no suma dependencias. **El costo** es que la verificación es responsabilidad nuestra. Por eso se siguió lo que recomienda RFC 8725 (Sheffer et al., 2020, §3.1): aceptar solo el algoritmo que uno espera y ningún otro. El servicio compara la cabecera del token con la única que emite (`{"alg":"HS256","typ":"JWT"}`), y cualquier otra se rechaza sin interpretarla.
 
 La verificación sigue un orden fijo: forma y cabecera → firma (comparada en tiempo constante, para no filtrar información por el tiempo de respuesta) → contenido → vencimiento. Cada ataque conocido tiene su test, y todos terminan en `401`, nunca en `500`:
 
 | Ataque probado | Resultado |
 |---|---|
-| `alg: "none"`, con y sin firma (RFC 8725, §2.1) | `401 Token inválido` |
+| `alg: "none"`, con y sin firma (Sheffer et al., 2020, §2.1) | `401 Token inválido` |
 | `alg: "RS256"` (confusión de algoritmo) y `HS512` firmado con el secreto real | `401 Token inválido` |
 | Cabecera con campos extra (`kid`) | `401 Token inválido` |
 | Firma alterada, con caracteres extra o fuera de base64url | `401 Token inválido` |
@@ -378,7 +378,7 @@ La verificación sigue un orden fijo: forma y cabecera → firma (comparada en t
 | Vencido **y** con la firma alterada | `401 Token inválido` (la firma se revisa primero: no se revela nada de un token falso) |
 | 15 tokens deformes (una, dos o cuatro partes; payload no JSON; sin `role` o sin `exp`; `sub` numérico; campos extra…) | `401 Token inválido` |
 
-El token lleva solo `sub` (el id del usuario, como texto, según RFC 7519, §4.1.2), `org_id`, `role` y `exp`. Los edificios asignados al cliente no van en el token (sección 4.4).
+El token lleva solo `sub` (el id del usuario, como texto, según RFC 7519: Jones et al., 2015, §4.1.2), `org_id`, `role` y `exp`. Los edificios asignados al cliente no van en el token (sección 4.4).
 
 ### 6.5 Otras defensas y lo que queda fuera
 
@@ -473,7 +473,65 @@ Lo que se dejó pendiente a conciencia, con su efecto y su plan:
 | Login previo a la demostración | Si la colección de Postman se evalúa como «exactamente 4 peticiones», el login sería una quinta | Por confirmar con el profesor; cambiarlo es mover una carpeta de la colección |
 
 ## Referencias
-*Pendiente: solo fuentes citadas y verificadas.*
+
+Alvarado, M. y Díaz, G. (2026). *SignalMap. Hito 1: propuesta de producto y arquitectura* [Informe de curso, Universidad Mayor]. https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf
+
+Dusseault, L. y Snell, J. (2010). *PATCH method for HTTP* (RFC 5789). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc5789.html
+
+Fielding, R., Nottingham, M. y Reschke, J. (Eds.). (2022). *HTTP semantics* (RFC 9110). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc9110.html
+
+Fowler, M. (2015, 3 de junio). *Monolith first*. martinfowler.com. https://martinfowler.com/bliki/MonolithFirst.html
+
+Jest. (s. f.-a). *ECMAScript modules* (versión 30.5). Recuperado el 6 de noviembre de 2026, de https://jestjs.io/docs/ecmascript-modules
+
+Jest. (s. f.-b). *Getting started* (versión 30.5). Recuperado el 6 de noviembre de 2026, de https://jestjs.io/docs/getting-started
+
+Jones, M. (2015). *JSON Web Algorithms (JWA)* (RFC 7518). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc7518.html
+
+Jones, M., Bradley, J. y Sakimura, N. (2015). *JSON Web Token (JWT)* (RFC 7519). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc7519.html
+
+Jones, M. y Hardt, D. (2012). *The OAuth 2.0 authorization framework: Bearer token usage* (RFC 6750). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc6750.html
+
+Sheffer, Y., Hardt, D. y Jones, M. (2020). *JSON Web Token best current practices* (RFC 8725). Internet Engineering Task Force. https://www.rfc-editor.org/rfc/rfc8725.html
+
+Vitest. (s. f.). *Features* (versión 5.1.0). Recuperado el 6 de noviembre de 2026, de https://vitest.dev/guide/features
+
+---
 
 ## Anexos
-*Pendiente.* A: contrato de la API · B: modelo de datos y script · C: instalación.
+
+Los anexos resumen los archivos del repositorio y enlazan a la versión completa, que es la que vale.
+
+### Anexo A. Contrato de la API
+
+Archivo: [`docs/api-contract.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/docs/api-contract.md). Acordado entre los dos integrantes el 2026-11-04, antes de programar. Cada cambio posterior se acordó con el compañero en el Pull Request de su recurso.
+
+| Parte del contrato | Contenido |
+|---|---|
+| §1 Convenciones · §2 Errores · §3 Roles | Lo que resume la sección 4 de este documento |
+| §4 Recursos | Cada campo de edificio, piso y punto con su tipo, sus reglas y su normalización |
+| §5 Tabla de endpoints | Los 13 endpoints (también en la sección 4.2) |
+| §6 Detalle y ejemplos | Por endpoint: petición, respuesta de éxito y **cada caso de error con su mensaje exacto** |
+| §7 Respuestas comunes | `401`, `403`, `413`, `415`, `404` de ruta y `500`, iguales en todas las rutas protegidas |
+| §8 Fuera del contrato | Lo previsto para los próximos hitos |
+
+### Anexo B. Modelo de datos y script de la base
+
+| Archivo | Contenido |
+|---|---|
+| [`db/er-diagram.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/db/er-diagram.md) | Diagrama entidad-relación con tipos y restricciones, comportamiento al borrar, reglas de emails y qué garantiza la base frente al servicio |
+| [`db/schema.sql`](https://github.com/Signali/MapeoWifiSignal/blob/main/db/schema.sql) | Crea las 7 tablas desde cero, en una sola transacción |
+| [`db/seed.sql`](https://github.com/Signali/MapeoWifiSignal/blob/main/db/seed.sql) | Datos de ejemplo, sin usuarios ni claves |
+| [`db/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/db/README.md) | Cómo crear el rol, las bases y las tablas, y cómo verificarlo |
+
+### Anexo C. Instalación y demostración
+
+Pasos completos: [`README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/README.md) (raíz) y [`backend/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/backend/README.md).
+
+1. Instalar Node.js 26 o superior y PostgreSQL 17 o superior.
+2. Crear el rol `signalmap_user` y las bases `signalmap` y `signalmap_test`, y cargar `db/schema.sql` en las dos.
+3. Copiar `.env.example` a `.env` y completar las claves propias (`DB_PASSWORD`, un `JWT_SECRET` generado y las `SEED_*_PASSWORD`).
+4. En `backend/`: `npm install`, `npm run seed` y `npm start`. Comprobar `http://localhost:3000/health`.
+5. Tests: `npm run typecheck` y `npm test`.
+
+**Demostración:** la colección de Postman ([`postman/`](https://github.com/Signali/MapeoWifiSignal/tree/main/postman)) tiene un login previo y las 4 peticiones de la demo en orden (`POST` → `201`, `PATCH` → `200`, `DELETE` → `204`, `GET` → `404`), con los tests de cada respuesta. Cómo importarla y usarla: [`postman/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/postman/README.md).
