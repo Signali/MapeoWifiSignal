@@ -76,7 +76,77 @@ El Hito 1 fijó la arquitectura y el plan; al construir el servidor se ajustaron
 ---
 
 ## 3. Arquitectura: monolito en capas
-*Pendiente.* Capas con su regla, recorrido de `POST /points` por las capas y decisión monolito o distribuido (equipo de 2, carga, costo de operación, despliegue y cuándo se revisaría).
+
+Un solo servicio (Node.js + Express + TypeScript, unas 1.000 líneas en `backend/src/`) y una sola base PostgreSQL. Por dentro, cada petición atraviesa capas con una responsabilidad cada una; ninguna capa salta a otra que no le corresponde.
+
+### 3.1 Las capas y su regla
+
+| Capa (`backend/src/`) | Hace | No puede | Cómo se comprobó |
+|---|---|---|---|
+| `routes/` | Asocia verbo y ruta con la cadena de middlewares y el controlador | Tener lógica | Revisión: cada archivo es una lista de rutas |
+| `middlewares/` | Token (`authenticate`), rol (`requireRole`), formato (`validate` con Zod), traducción de errores a HTTP | Reglas de negocio | Revisión de código |
+| `schemas/` | Forma de la entrada y normalización (`code` a mayúsculas, `nfc_uid` hexadecimal) | Consultar la base | No importa nada de `repositories/` |
+| `controllers/` | Lee la petición ya validada, llama a un servicio y elige el código de éxito | Lógica de negocio · acceso a datos | Ningún controlador importa `repositories/` |
+| `services/` | Reglas de negocio: qué puede ver cada rol, punto dentro del piso, «no existe» | Conocer HTTP · escribir SQL | Ningún servicio importa `express` ni usa `res` · lanzan `AppError(tipo, mensaje)`, sin códigos HTTP |
+| `repositories/` | SQL parametrizado; traduce un duplicado de la base a conflicto | Decidir permisos | **Todo el SQL del servicio está aquí**: fuera de esta carpeta no hay ninguna consulta |
+
+Las comprobaciones de la última columna que no dicen «revisión» se hicieron con búsquedas sobre el código (resultado: cero casos), no por lectura.
+
+Dos piezas cruzan todas las capas: `errors.ts` define seis tipos de error de negocio (`validation`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `domain_rule`) y `middlewares/error-handler.ts` es el **único lugar** que los convierte en código HTTP (`400`, `401`, `403`, `404`, `409`, `422`). Por eso ningún error puede salir con `200`.
+
+### 3.2 Una petición de punta a punta: `POST /api/v1/points`
+
+Es la primera petición de la demostración. Cada capa responde una pregunta y, si la respuesta es «no», corta con su código:
+
+```mermaid
+sequenceDiagram
+  participant C as Cliente
+  participant R as routes + middlewares
+  participant Ct as controller
+  participant S as service
+  participant Rp as repository
+  participant DB as PostgreSQL
+  C->>R: POST /api/v1/points + Bearer
+  Note over R: ¿token válido? → 401<br/>¿rol admin o tecnico? → 403<br/>¿cuerpo con el formato? → 400
+  R->>Ct: cuerpo validado y normalizado
+  Ct->>S: create(usuario, punto)
+  S->>Rp: ¿el piso existe y lo ve este usuario?
+  Rp->>DB: SELECT (filtrado por organización)
+  Note over S: no lo ve → 404<br/>x, y fuera del piso → 422
+  S->>Rp: create(punto)
+  Rp->>DB: INSERT … RETURNING
+  Note over Rp: code o nfc_uid repetido → 409
+  Rp-->>Ct: punto creado
+  Ct-->>C: 201 + Location: /api/v1/points/25
+```
+
+El controlador de esa petición (`controllers/points.ts`, sin las anotaciones de tipo) tiene dos líneas y ninguna decisión:
+
+```ts
+export async function create(req, res) {
+  const point = await pointsService.create(req.user!, req.body);
+  res.status(201).location(`${req.baseUrl}/${point.id}`).json(point);
+}
+```
+
+El orden de las preguntas es deliberado: un punto fuera del piso y además duplicado responde `422`, porque el servicio valida antes de escribir. El contrato fija ese orden (`401 → 403 → 400 → 404 → 422 → 409`).
+
+### 3.3 Monolito o distribuido
+
+Se eligió **monolito en capas**. Para entender el costo de cada opción se consultó a Fowler (2015), que observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió después, cuando los límites entre servicios ya estaban claros. La decisión, sin embargo, se apoya en los datos de este proyecto:
+
+| Criterio | Situación de SignalMap | Qué implica |
+|---|---|---|
+| Tamaño del equipo | 2 personas, un semestre | Varios servicios multiplican despliegue, configuración y depuración para las mismas dos personas |
+| Carga esperada | ~24 puntos por piso; el técnico mide un punto a la vez y Android limita a 4 escaneos WiFi cada 2 minutos (Hito 1, §8.2) | No hay una parte del sistema que necesite escalar por separado |
+| Costo de operación | Hoy: un proceso Node y una base. Hito 3: dos contenedores (API y PostgreSQL) | Un solo servicio que vigilar, con un solo `GET /health` |
+| Complejidad de despliegue | Se levanta en otro equipo siguiendo un README | Con servicios separados habría que coordinar versiones y una red entre ellos |
+
+Hay un quinto argumento propio del dominio: los datos son una jerarquía con integridad referencial (organización → edificio → piso → punto, y en el Hito 3 campaña → medición). Repartirlos entre servicios con bases distintas obligaría a garantizar esa integridad por código, que es justo lo que se eligió PostgreSQL para no hacer.
+
+**Costo asumido:** todo escala junto y un error grave puede tumbar el servicio entero. Se acepta porque la carga es baja.
+
+**Cuándo se revisaría:** si el análisis del Hito 3 (mapa de calor, trilateración) consumiera tanta CPU que retrasara el registro de mediciones, o si se sumaran muchas organizaciones con carga simultánea. En ese caso, lo primero que se separaría es el módulo de análisis, porque solo lee datos.
 
 ## 4. Diseño de la API REST
 *Pendiente.* Convenciones, tabla de los 13 endpoints, códigos de error y permisos por rol.
