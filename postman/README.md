@@ -7,7 +7,7 @@ Entregable de la rúbrica (Hito 2, Paso 9): las peticiones de la demostración, 
 | `signalmap-hito2.postman_collection.json` | La colección (Collection v2.1) |
 | `signalmap-local.postman_environment.example.json` | Plantilla del environment: `base_url`, `admin_email` y `admin_password` **vacía** |
 
-> **Estado:** la colección está probada con el Postman CLI contra el servicio real, pero **falta la prueba manual en la app de escritorio** (importar, configurar y correr las 4 peticiones siguiendo este README). **Esa prueba es necesaria para pasar a la parte final del Hito 2** (ensayo de portabilidad en Pc-Casa, documento y pitch). Al hacerla, corregir aquí cualquier paso que no coincida y borrar esta nota.
+> **Estado:** la colección está probada con el Postman CLI y, a mano, en la app de escritorio (Pc-Portatil, 2026-11-06): login y las 4 peticiones dieron `201`, `200`, `204` y `404`.
 
 La colección tiene dos carpetas:
 
@@ -94,6 +94,8 @@ Si una corrida quedó cortada entre el `POST` y el `DELETE`, queda `P-25` vivo. 
 | Petición 1 con `409` | Quedó un `P-25` o la tira NFC repetida | Volver a enviar: el script borra el sobrante. Si persiste, `npm run seed` |
 | Petición 2 o 3 con `404`, o la 4 pasa "sin querer" | `point_id` es el de la corrida anterior (ya borrado), o está vacío (primera vez; con vacío la 4 da `400` "floor_id es obligatorio") | Enviar la 1 y seguir el orden |
 | Todo da `404 Ruta no encontrada` | `base_url` mal (falta el puerto) | Revisar el environment |
+| `405 Not Allowed` con HTML de `openresty`, o la Console muestra una URL rara (`...%0A...`, otro dominio) | Se pegó texto de varias filas en una celda del environment: la petición no llega a nuestra API | Borrar el environment y reimportar la plantilla; completar solo `admin_password` a mano en *Current value* |
+| Login `401` aunque la clave "se ve igual" | Se copió otra línea del `.env` o la copia quedó cortada | Comparar el largo: la cantidad de puntos de `admin_password` debe igualar los caracteres de `SEED_ADMIN_PASSWORD` |
 
 ## Ensayo en otro equipo (Pc-Casa)
 
