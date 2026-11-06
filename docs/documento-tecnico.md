@@ -264,7 +264,72 @@ Tres decisiones de esta tabla:
 El técnico crea y corrige puntos porque es quien está en terreno con las tiras (Hito 1, §2.1). Borrar es irreversible (no hay papelera), así que queda solo para el administrador. Los edificios asignados a un cliente **no van en el token**: se consultan en cada petición, así que un cambio de asignación aplica de inmediato.
 
 ## 5. Datos y persistencia
-*Pendiente.* Modelo de 7 tablas, borrado, qué garantiza la base y qué el servicio.
+
+Los datos viven en PostgreSQL 17, no en memoria ni en archivos: si el servicio se reinicia, todo sigue ahí. El acceso es con el driver `pg` y SQL escrito a mano, sin ORM (la comparación está en la sección 7).
+
+### 5.1 Modelo
+
+```mermaid
+erDiagram
+  organizations ||--o{ users : tiene
+  organizations ||--o{ buildings : posee
+  organizations |o--o{ email_domains : "dueña (corporativo)"
+  email_domains ||--o{ users : "dominio del email"
+  buildings ||--o{ floors : tiene
+  floors ||--o{ points : tiene
+  users ||--o{ user_buildings : ""
+  buildings ||--o{ user_buildings : ""
+```
+
+| Tabla | Guarda | Clave única además del `id` |
+|---|---|---|
+| `organizations` | La empresa cliente; raíz del aislamiento | — |
+| `email_domains` | Cada dominio una sola vez, `corporativo` (con organización dueña) o `personal` (sin dueña) | `domain` |
+| `users` | Email partido (`email_local` + dominio), hash bcrypt y rol | `(email_local, email_domain_id)` |
+| `buildings` | Edificios de la organización | `(org_id, name)` |
+| `floors` | Pisos con sus medidas en metros (`width_m`, `height_m`) | `(building_id, name)` |
+| `points` | Puntos de medición: `code`, `x`, `y` en metros, `nfc_uid` | `(floor_id, code)` · `nfc_uid` en todo el sistema |
+| `user_buildings` | Qué edificios ve cada cliente | `(user_id, building_id)` |
+
+Solo `users`, `buildings` y `email_domains` tienen `org_id`. Pisos y puntos llegan a su organización por la cadena de claves foráneas hasta `buildings`, así que no hay forma de que un punto quede en una organización distinta de la de su edificio. El diagrama completo, con tipos y restricciones, está en el Anexo B.
+
+### 5.2 Qué garantiza la base y qué el servicio
+
+La regla general: **la base garantiza todo lo que puede comprobar sola**, para que ningún camino (la API, el seed o un error de programación) deje datos inválidos. El servicio se encarga de lo que necesita leer otra tabla o conocer a quien pregunta.
+
+| Regla | Quién | Cómo |
+|---|---|---|
+| Nombre de edificio único por organización · `code` único por piso · `nfc_uid` único | Base | `UNIQUE` → el repositorio lo traduce a `409` |
+| `nfc_uid` siempre en mayúsculas | Los dos | El servicio convierte la entrada; la base lo exige con `CHECK (nfc_uid = upper(nfc_uid))` |
+| Medidas del piso `> 0`, coordenadas `>= 0`, rol válido | Base | `CHECK` |
+| Email en minúsculas; dominio corporativo con dueña, personal sin | Base | `CHECK` |
+| `x <= width_m` e `y <= height_m` del piso | Servicio | Depende de otra tabla, y un `CHECK` no puede leerla → `422` |
+| `x`, `y` con más de 2 decimales | API (Zod) | `numeric(7,2)` redondearía en silencio antes de cualquier `CHECK` → `400` |
+| Ver solo lo de la propia organización y, el cliente, solo lo asignado | Repositorio | Filtro por `org_id` y `JOIN` con `user_buildings` en cada consulta → `404` |
+
+Los cambios y borrados filtran por `id` **y** organización en la misma sentencia, y miran cuántas filas tocaron: si fueron cero, el servicio responde `404`. La pertenencia se comprueba en la misma sentencia que escribe, no en una lectura previa, así que no queda una ventana entre comprobar y escribir. (Para el `422` el servicio sí lee antes las medidas del piso, pero los pisos no se modifican por la API.)
+
+### 5.3 Borrar
+
+Toda la jerarquía usa `ON DELETE RESTRICT`: no se borra un edificio que tiene pisos ni un piso con puntos. Por la API, borrar un edificio con pisos responde `409`: sin cascada, así borrar un edificio nunca se lleva sus pisos y puntos sin aviso. La única excepción es `user_buildings`, con `CASCADE`: es solo un vínculo de asignación y no debe impedir borrar un edificio vacío.
+
+### 5.4 Números exactos
+
+Coordenadas y medidas son `numeric(7,2)`: exactas al centímetro y hasta 99.999,99 m. El driver `pg` entrega `numeric` como texto (`"12.50"`), pero la API debe responder números (`12.5`). La conversión está en **un solo lugar** (un `setTypeParser` en `repositories/db.ts`) y un test recorre **todas** las columnas `numeric` del esquema, leídas de `information_schema`, para comprobar que llegan como número. Una columna `numeric` nueva queda cubierta sin tocar el test.
+
+### 5.5 Consultas seguras
+
+Los valores siempre viajan como parámetros (`$1`, `$2`…), nunca pegados al texto del SQL, así que un valor no puede cambiar la consulta (inyección SQL). Los únicos fragmentos que se insertan en el texto son constantes del propio código (la lista de columnas y el filtro de organización). Las columnas se nombran una por una: ninguna consulta usa `SELECT *` ni devuelve `org_id`.
+
+### 5.6 Crear la base desde cero
+
+| Archivo | Qué hace |
+|---|---|
+| `db/schema.sql` | Crea las 7 tablas en una sola transacción: o se crean todas o ninguna. Si ya existen, falla sin tocar nada. No crea la base ni el rol, así lo puede ejecutar tal cual la imagen oficial de PostgreSQL al iniciar (Hito 3) |
+| `db/seed.sql` | Datos de ejemplo sin usuarios ni claves: 1 organización, 2 edificios, 1 piso de 40 × 25 m y 24 puntos (`P-07` es siempre el id 7) |
+| `npm run seed` | Vacía las tablas, carga `seed.sql` y crea los 3 usuarios de prueba con las claves del `.env`, hasheadas con bcrypt. Todo en una transacción. Se niega a correr con `NODE_ENV=production` |
+
+Los pasos para crear el rol y las bases están en `db/README.md` y en el Anexo C.
 
 ## 6. Configuración, credenciales y seguridad
 *Pendiente.* Variables de entorno, manejo de secretos, JWT y portabilidad.
