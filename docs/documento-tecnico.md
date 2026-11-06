@@ -332,7 +332,72 @@ Los valores siempre viajan como parámetros (`$1`, `$2`…), nunca pegados al te
 Los pasos para crear el rol y las bases están en `db/README.md` y en el Anexo C.
 
 ## 6. Configuración, credenciales y seguridad
-*Pendiente.* Variables de entorno, manejo de secretos, JWT y portabilidad.
+
+### 6.1 Toda la configuración sale del entorno
+
+El código no tiene claves, hosts ni puertos escritos: todo llega por variables de entorno. En desarrollo se leen de un `.env` en la raíz; si no existe (como pasará en Docker), se toman del entorno del proceso. `.env.example` lista todas las variables con valores de ejemplo:
+
+| Variable | Para qué | Regla al arrancar |
+|---|---|---|
+| `NODE_ENV`, `PORT` | Modo y puerto del servicio | `NODE_ENV` es `development`, `test` o `production` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a PostgreSQL | Obligatorias |
+| `DB_NAME_TEST` | Base aparte para los tests, que la vacían | Distinta de `DB_NAME` |
+| `JWT_SECRET` | Firma de los tokens | 32 caracteres o más, y distinta del valor de ejemplo |
+| `JWT_EXPIRES_IN_ADMIN` · `_TECNICO` · `_CLIENTE` | Duración del token por rol (`8h`, `10h`, `2h`) | Entero + `s`/`m`/`h`/`d`, máximo 30 días |
+| `SEED_*_PASSWORD` | Claves de los 3 usuarios de prueba | Las usa solo `npm run seed` |
+
+`config.ts` valida todo con Zod antes de arrancar. Si falta una variable o rompe su regla, el servicio **no arranca** y dice cuál es, en vez de fallar más tarde con un error confuso. El mínimo de `JWT_SECRET` no es arbitrario: HS256 exige una clave de al menos 256 bits, es decir 32 bytes (RFC 7518, §3.2). El README indica generarla al azar con `node:crypto` (32 bytes aleatorios en base64url, 43 caracteres). El valor de ejemplo se rechaza porque es público: con él, cualquiera que lea el repositorio podría firmar tokens.
+
+### 6.2 Credenciales fuera del repositorio
+
+- `.gitignore` excluye `.env` y cualquier `.env.*` salvo la plantilla, más `*.pem`, `*.key` y el environment de Postman con la clave real.
+- **Comprobación sobre el historial de git** (todas las ramas): el único archivo `.env…` que se subió alguna vez es `.env.example`.
+- Cada equipo crea su `.env` y genera su propio `JWT_SECRET`; las claves no se comparten por chat ni por correo.
+- **Regla del equipo:** si una credencial llega a un commit, se **rota** (se cambia por una nueva), no basta con borrar el archivo, porque el historial de git queda visible.
+- Las contraseñas se guardan solo como hash bcrypt (costo 10). El seed las toma del `.env` al crear los usuarios: ni las claves ni sus hashes están en el repositorio.
+
+### 6.3 Login
+
+`POST /auth/login` responde el mismo `401 "Credenciales inválidas"` si el email no existe y si la clave es incorrecta. Además, cuando el email no existe igual se ejecuta bcrypt contra un hash ficticio. Sin eso, la respuesta rápida delataría qué emails están registrados (es el hash que se calcula al arrancar, sección 3.4). Un test comprueba que bcrypt se ejecuta en los dos casos.
+
+### 6.4 JWT propio
+
+El token se firma y se verifica con `node:crypto` (HMAC-SHA256), sin librería: la pieza más sensible del servicio no suma dependencias. **El costo** es que la verificación es responsabilidad nuestra. Por eso se siguió lo que recomienda RFC 8725 (§3.1): aceptar solo el algoritmo que uno espera y ningún otro. El servicio compara la cabecera del token con la única que emite (`{"alg":"HS256","typ":"JWT"}`), y cualquier otra se rechaza sin interpretarla.
+
+La verificación sigue un orden fijo: forma y cabecera → firma (comparada en tiempo constante, para no filtrar información por el tiempo de respuesta) → contenido → vencimiento. Cada ataque conocido tiene su test, y todos terminan en `401`, nunca en `500`:
+
+| Ataque probado | Resultado |
+|---|---|
+| `alg: "none"`, con y sin firma (RFC 8725, §2.1) | `401 Token inválido` |
+| `alg: "RS256"` (confusión de algoritmo) y `HS512` firmado con el secreto real | `401 Token inválido` |
+| Cabecera con campos extra (`kid`) | `401 Token inválido` |
+| Firma alterada, con caracteres extra o fuera de base64url | `401 Token inválido` |
+| Payload cambiado (`cliente` → `admin`) con la firma original | `401 Token inválido` |
+| Firmado con otro secreto | `401 Token inválido` |
+| Vencido, o con `exp` igual a ahora | `401 Token vencido` |
+| Vencido **y** con la firma alterada | `401 Token inválido` (la firma se revisa primero: no se revela nada de un token falso) |
+| 15 tokens deformes (una, dos o cuatro partes; payload no JSON; sin `role` o sin `exp`; `sub` numérico; campos extra…) | `401 Token inválido` |
+
+El token lleva solo `sub` (el id del usuario, como texto, según RFC 7519, §4.1.2), `org_id`, `role` y `exp`. Los edificios asignados al cliente no van en el token (sección 4.4).
+
+### 6.5 Otras defensas y lo que queda fuera
+
+| Defensa | Dónde |
+|---|---|
+| Cuerpo de más de 100 kB → `413` | `express.json()` |
+| Error inesperado → `500` genérico; el detalle va al log, nunca a la respuesta | `middlewares/error-handler.ts` |
+| Recurso ajeno → `404`, sin revelar que existe | Repositorios (sección 4.3) |
+| Entrada estricta: campos y parámetros desconocidos → `400` | Schemas de Zod |
+
+Quedan fuera de este hito, con su plan en la sección 8: límite de intentos de login, cabeceras de seguridad (`helmet`), revocar un token antes de que venza y renovarlo sin volver a hacer login. También una limitación conocida de bcrypt: solo considera los primeros 72 bytes de la clave.
+
+### 6.6 Portabilidad
+
+El servicio se levanta en otro equipo siguiendo solo el README: crear el rol y las bases (`db/README.md`), copiar `.env.example` a `.env` con claves propias, `npm install`, `npm run seed` y `npm start`. Escucha en `0.0.0.0` y expone `GET /health`, que es lo que necesitará el contenedor del Hito 3.
+
+*Pendiente: resultado del ensayo en el equipo de Gabriel (en curso).*
+
+Para producción (Hito 3), el plan está escrito en `backend/README.md`: pasar `JWT_SECRET` como secreto de Docker (un archivo en memoria, que no aparece en `docker inspect`) y rotarlo ante cualquier sospecha, lo que invalida todos los tokens emitidos.
 
 ## 7. Decisiones de tecnología
 *Pendiente.* Fichas: Express, `pg` sin ORM, JWT propio, PostgreSQL nativo, Vitest.
