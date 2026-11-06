@@ -10,6 +10,7 @@
     "start": "node src/server.ts",
     "dev": "node --watch src/server.ts",
     "seed": "node scripts/seed.ts",
+    "startup-time": "node scripts/startup-time.ts",
     "typecheck": "tsc",
     "test": "vitest run"
   },

@@ -142,6 +142,7 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 | `npm start` | Inicia el servicio |
 | `npm run dev` | Inicia y se reinicia al guardar un archivo |
 | `npm run seed` | Resetea la base `DB_NAME` y carga `db/seed.sql` + los 3 usuarios |
+| `npm run startup-time` | Mide 10 arranques del servicio (hasta que `/health` responde `200`) y muestra mínimo, mediana y máximo. Con el servicio detenido; `/health` no consulta la base |
 | `npm run typecheck` | Revisa los tipos con `tsc` (no genera archivos) |
 | `npm test` | Resiembra `DB_NAME_TEST` y corre los tests (Vitest). Requiere esa base con las tablas creadas |
 
