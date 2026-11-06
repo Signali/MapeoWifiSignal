@@ -148,8 +148,120 @@ Hay un quinto argumento propio del dominio: los datos son una jerarquía con int
 
 **Cuándo se revisaría:** si el análisis del Hito 3 (mapa de calor, trilateración) consumiera tanta CPU que retrasara el registro de mediciones, o si se sumaran muchas organizaciones con carga simultánea. En ese caso, lo primero que se separaría es el módulo de análisis, porque solo lee datos.
 
+### 3.4 Tiempo de arranque
+
+Se midió cuánto tarda el servicio desde que se lanza el proceso (`node src/server.ts`) hasta que `GET /health` responde `200`, consultando cada 2 ms. Cada serie son 10 arranques seguidos en Pc-Portatil (Intel Core i5-13420H, 24 GB de RAM, Windows 11, Node 26.13.0). `/health` no consulta la base, así que el número mide cuándo el servicio acepta peticiones, no la conexión a PostgreSQL. Se repite con `npm run startup-time` (en `backend/`, con el servicio detenido).
+
+| Serie (10 arranques) | Mínimo | Mediana | Máximo |
+|---|---|---|---|
+| 1 | 725 ms | 753 ms | 5.147 ms (primer arranque, en frío) |
+| 2 (`npm run startup-time`) | 785 ms | 961 ms | 1.053 ms |
+| 3 | 799 ms | 932 ms | 1.027 ms |
+| 4 (`npm run startup-time`) | 747 ms | 1.044 ms | 1.428 ms |
+| Referencia: Node vacío (`node -e ""`) | 48 ms | 56 ms | 69 ms |
+
+**El servicio queda listo en algo menos de un segundo** (mediana entre 0,75 y 1,04 s). La diferencia entre series es del momento en que se midió, no del método: las series 2 a 4 se corrieron seguidas, alternando dos formas de consultar `/health`, y dieron valores parecidos entre sí. La serie 1 se hizo antes, en otro momento del día. El primer arranque de la serie 1 tardó 5,1 s, el patrón de un arranque en frío (archivos todavía no cargados en memoria), que no se midió por separado.
+
+De dónde salen los ~0,75 s (carga de cada pieza por separado, 3 corridas):
+
+| Pieza | Tiempo |
+|---|---|
+| Express | ~170 ms |
+| Zod | ~155 ms |
+| `pg` | ~55 ms |
+| El resto de `src/`: configuración, rutas y el hash ficticio de bcrypt del login (~100 ms, costo 10) | ~235 ms |
+| Node en sí | ~56 ms |
+
+El hash ficticio se calcula una vez al arrancar para que un login con un email inexistente tarde lo mismo que uno con clave incorrecta (sección 6). Es un costo de arranque aceptado a cambio de no revelar qué emails existen.
+
 ## 4. Diseño de la API REST
-*Pendiente.* Convenciones, tabla de los 13 endpoints, códigos de error y permisos por rol.
+
+El contrato se escribió y se acordó entre los dos integrantes **antes de programar** (`docs/api-contract.md`, cerrado el 2026-11-04). Esta sección resume sus decisiones; el detalle de cada endpoint, con todos sus casos de error y mensajes, está en el Anexo A.
+
+### 4.1 Convenciones
+
+| Convención | Regla | Por qué |
+|---|---|---|
+| Recursos | Sustantivos en plural (`/buildings`, `/points`); el verbo HTTP dice la acción | Interfaz orientada a recursos: la misma forma para todo |
+| Versión | Prefijo `/api/v1` | Un cambio incompatible (por ejemplo, IDs a UUID) sale como `v2` sin romper a la app |
+| Jerarquía | Rutas planas con filtro: `/points?floor_id=1`, no `/floors/1/points` | Cada recurso tiene una sola URL, y el `id` basta para encontrarlo |
+| Nombres | `snake_case` en cuerpo, respuesta y consulta | Un solo estilo en las tres partes, igual al de la base |
+| Identificadores | Enteros, tratados como **opacos** por el cliente | El cliente no calcula ni ordena por ellos |
+| Crear | `201 Created` + cabecera `Location` con la URL nueva + el objeto | Es lo que define HTTP para `201` (RFC 9110, §15.3.2) |
+| Actualizar | Solo `PATCH`, parcial (RFC 5789); no hay `PUT` | El técnico corrige una coordenada sin reenviar el punto entero |
+| Borrar | `204 No Content`, sin cuerpo | No hay nada que devolver |
+| Listas | Arreglo simple, ordenado por `id`, sin paginación | ~24 puntos por piso. La paginación se decide antes del Hito 3, cuando la usen la app y la web |
+| Entrada estricta | Un campo o parámetro desconocido es `400` | Un error de tipeo en el cliente (`flor_id`) no pasa en silencio |
+| Aislamiento | Toda consulta se filtra por la organización del token; el cliente nunca envía `org_id` | Un usuario no puede pedir datos de otra organización aunque adivine un `id` |
+
+### 4.2 Endpoints
+
+| # | Verbo | Ruta | Roles | Parámetros | Éxito | Errores |
+|---|---|---|---|---|---|---|
+| 1 | `GET` | `/health` | público | — | `200` | — |
+| 2 | `POST` | `/api/v1/auth/login` | público | cuerpo: `email`, `password` | `200` | `400` `401` |
+| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `401` |
+| 4 | `GET` | `/api/v1/buildings/:id` | todos | ruta: `id` | `200` | `400` `401` `404` |
+| 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` | `400` `401` `403` `409` |
+| 6 | `PATCH` | `/api/v1/buildings/:id` | `admin` | ruta: `id` · cuerpo: `name` | `200` | `400` `401` `403` `404` `409` |
+| 7 | `DELETE` | `/api/v1/buildings/:id` | `admin` | ruta: `id` | `204` | `400` `401` `403` `404` `409` |
+| 8 | `GET` | `/api/v1/floors` | todos | consulta: `building_id` | `200` | `400` `401` `404` |
+| 9 | `GET` | `/api/v1/points` | todos | consulta: `floor_id` | `200` | `400` `401` `404` |
+| 10 | `GET` | `/api/v1/points/:id` | todos | ruta: `id` | `200` | `400` `401` `404` |
+| 11 | `POST` | `/api/v1/points` | `admin` `tecnico` | cuerpo: `floor_id`, `code`, `x`, `y`, `nfc_uid` | `201` | `400` `401` `403` `404` `409` `422` |
+| 12 | `PATCH` | `/api/v1/points/:id` | `admin` `tecnico` | ruta: `id` · cuerpo: al menos uno de `code`, `x`, `y`, `nfc_uid` | `200` | `400` `401` `403` `404` `409` `422` |
+| 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` `401` `403` `404` |
+
+Ejemplo, la petición 11 de la tabla (la primera de la demostración):
+
+```http
+POST /api/v1/points
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{ "floor_id": 1, "code": "P-25", "x": 30.0, "y": 12.5, "nfc_uid": "04B11C22D3E480" }
+```
+
+```http
+HTTP/1.1 201 Created
+Location: /api/v1/points/25
+
+{ "id": 25, "floor_id": 1, "code": "P-25", "x": 30.0, "y": 12.5, "nfc_uid": "04B11C22D3E480" }
+```
+
+La entrada se **normaliza** antes de guardarla: `" p-07 "` y `"Ｐ－０７"` se guardan como `"P-07"`, y `04a2…` como `04A2…`. Así dos valores que se ven distintos pero son el mismo chocan como duplicado (`409`) en vez de entrar dos veces.
+
+### 4.3 Errores
+
+Todo error responde con su código HTTP y el mismo cuerpo: `{ "message": "Descripción clara del problema" }`. **Ninguna respuesta de error usa `200`.**
+
+| Código | Cuándo | Ejemplo de mensaje |
+|---|---|---|
+| `400` | Formato: JSON mal formado, campo faltante o de otro tipo, campo desconocido, `PATCH` vacío, `id` que no es entero | `x debe ser un número con hasta 2 decimales` |
+| `401` | Sin token, token inválido o vencido; login fallido. Lleva `WWW-Authenticate: Bearer`, que HTTP exige en todo `401` (RFC 9110, §15.5.2; RFC 6750, §3) | `Token vencido` |
+| `403` | El rol no tiene permiso | `No tiene permiso para esta acción` |
+| `404` | No existe, es de otra organización o es de un edificio no asignado al cliente | `Punto no encontrado` |
+| `409` | Duplicado (`nfc_uid`, `code` en el piso, nombre del edificio) o borrar un edificio que tiene pisos | `La tira NFC ya está asociada a otro punto` |
+| `413` · `415` | Cuerpo mayor a 100 kB · codificación no soportada | `Cuerpo demasiado grande` |
+| `422` | Formato correcto, pero rompe una regla de dominio: coordenadas fuera del piso | `Las coordenadas quedan fuera del piso (40 x 25 m)` |
+| `500` | Error inesperado; el detalle queda en el log, nunca en la respuesta | `Error interno del servidor` |
+
+Tres decisiones de esta tabla:
+
+- **`404` y no `403` para lo ajeno.** Un recurso de otra organización responde lo mismo que uno inexistente, para no revelar que existe. HTTP lo permite expresamente (RFC 9110, §15.5.4). El `403` queda solo para «existe y lo ves, pero tu rol no puede modificarlo».
+- **`400` frente a `422`.** `"x": "doce"` es formato (`400`); `"x": 45` en un piso de 40 m es un número válido que rompe una regla del negocio (`422`, «Unprocessable Content» en RFC 9110, §15.5.21).
+- **Orden fijo:** `401 → 403 → 400 → 404 → 422 → 409`. Un cliente sin permiso recibe `403` aunque su cuerpo esté mal formado: primero se sabe quién pide, después qué pide.
+
+### 4.4 Permisos por rol
+
+| Acción | `admin` | `tecnico` | `cliente` |
+|---|:-:|:-:|:-:|
+| Leer edificios, pisos y puntos | todos los de su organización | todos los de su organización | solo sus edificios asignados (otros: `404`) |
+| Crear, editar y borrar edificios | sí | `403` | `403` |
+| Crear y editar puntos | sí | sí | `403` |
+| Borrar puntos | sí | `403` | `403` |
+
+El técnico crea y corrige puntos porque es quien está en terreno con las tiras (Hito 1, §2.1). Borrar es irreversible (no hay papelera), así que queda solo para el administrador. Los edificios asignados a un cliente **no van en el token**: se consultan en cada petición, así que un cambio de asignación aplica de inmediato.
 
 ## 5. Datos y persistencia
 *Pendiente.* Modelo de 7 tablas, borrado, qué garantiza la base y qué el servicio.
