@@ -400,7 +400,47 @@ El servicio se levanta en otro equipo siguiendo solo el README: crear el rol y l
 Para producción (Hito 3), el plan está escrito en `backend/README.md`: pasar `JWT_SECRET` como secreto de Docker (un archivo en memoria, que no aparece en `docker inspect`) y rotarlo ante cualquier sospecha, lo que invalida todos los tokens emitidos.
 
 ## 7. Decisiones de tecnología
-*Pendiente.* Fichas: Express, `pg` sin ORM, JWT propio, PostgreSQL nativo, Vitest.
+
+Los criterios son los mismos para todas: un equipo de 2 personas y un semestre, el mismo lenguaje que tendrá la web (TypeScript), capas que se puedan defender, que **los dos integrantes** puedan explicar cada parte del código y una carga baja (~24 puntos por piso).
+
+### 7.1 Framework: Express
+
+El Hito 1 comparó Express con Spring Boot. Al empezar el Hito 2 se amplió la comparación, sin cambiar la decisión:
+
+| Opción | Qué ofrece | Por qué no en este proyecto |
+|---|---|---|
+| **Express 5 (elegido)** | Rutas y middlewares, sin estructura impuesta. Muy documentado; se integra directo con Zod y Supertest | — |
+| Fastify | Más rápido, validación propia con JSON Schema | Su ventaja de velocidad no se nota con esta carga, y suma un sistema de plugins por aprender |
+| NestJS | Estructura impuesta: módulos, decoradores, inyección de dependencias | Para 2 personas y 2 recursos, la ceremonia cuesta más de lo que ordena |
+| Hono | Muy liviano y portable entre entornos | Su fuerte son las funciones en el borde de la red (*edge*), que no usamos |
+| Spring Boot | Estructura y seguridad maduras | Otro lenguaje: no comparte tipos con la web en TypeScript |
+
+**Costo asumido:** Express no impone capas, así que la separación es una disciplina nuestra. Se sostiene con reglas comprobables (sección 3.1), no con la herramienta. **Se revisaría** si el equipo o el proyecto crecieran; el candidato sería NestJS.
+
+### 7.2 El resto del stack
+
+| Decisión | Alternativas | Por qué | Costo asumido |
+|---|---|---|---|
+| **TypeScript ejecutado directo** por Node 26, sin compilar; `tsc` solo revisa tipos (`npm run typecheck`) | Compilar con `tsc` a `dist/` | Sin paso de compilación: lo que corre es exactamente lo que está en el repo | Solo sintaxis que Node sabe borrar (sin `enum` ni `namespace`) y dependencia de Node 26. Pasar a `tsc → dist/` en el Hito 3 está preparado en `tsconfig.json` |
+| **Zod**, un schema por endpoint | Validar a mano en cada controlador | Formato, mensajes y normalización en un solo lugar, y con los tipos de TypeScript derivados del schema | Una dependencia más, que carga en ~155 ms al arrancar (sección 3.4) |
+| **`pg` con SQL escrito a mano**, sin ORM | Prisma (ORM) · Knex o Kysely (constructores de consultas) | Las consultas quedan visibles en `repositories/`, que es la evidencia de las capas. Prisma esconde el SQL y pide su propio esquema, duplicando `db/schema.sql`. Knex o Kysely serían una dependencia más para 2 recursos | Mapear filas a objetos y declarar los tipos a mano |
+| **PostgreSQL 17 nativo** en cada PC | Docker Desktop · base en la nube (Neon, Supabase) | Docker Desktop en Windows necesita WSL2, que en Pc-Portatil no está instalado (y la virtualización figura desactivada): un riesgo para la demo en vivo. La nube depende de internet en la sala, y su cadena de conexión sería una credencial real | Instalar PostgreSQL en cada equipo. Docker llega en el Hito 3 y el servicio ya está preparado (sección 6.6) |
+| **JWT propio** con `node:crypto` | `jsonwebtoken` u otra librería | Cero dependencias en la pieza más sensible | La verificación es nuestra; por eso cada ataque tiene su test (sección 6.4) |
+| **`bcryptjs`** (bcrypt en JavaScript puro) | `bcrypt` nativo | No compila nada nativo al instalar, así que se instala igual en cualquier PC y en Docker | ~100 ms por hash con costo 10 (medido, sección 3.4) |
+
+### 7.3 Tests: Vitest
+
+Vitest se eligió al armar el esqueleto del servicio, sin compararlo en ese momento con su alternativa principal, Jest. La comparación se hizo al escribir este documento, con el criterio que más pesa en este proyecto: **los tests deben correr el código lo más parecido posible al servicio, y sin configuración extra**. El servicio es TypeScript con módulos ESM ejecutado directo por Node, sin compilar.
+
+| | Vitest (elegido) | Jest |
+|---|---|---|
+| TypeScript | Sin configuración (Vitest, s. f.) | Necesita Babel o `ts-jest`; con Babel, además, no revisa tipos (Jest, s. f.-b) |
+| Módulos ESM | Sin configuración (Vitest, s. f.) | Soporte **experimental**: hay que lanzar Node con `--experimental-vm-modules` (Jest, s. f.-a) |
+| Configuración en este proyecto | `vitest.config.ts` de 7 líneas, que solo resiembra la base de tests | Un transformador más, y una bandera de Node que en Windows pide otra herramienta (`cross-env`) |
+
+La comparación confirmó la elección, con un matiz: ninguno de los dos corre el código exactamente como Node. Vitest también transforma el TypeScript por su cuenta, así que aceptaría sintaxis que `npm start` rechaza (un `enum`, por ejemplo). Esa diferencia se cubre con `npm run typecheck`, que corre en el CI y marca esa sintaxis (`erasableSyntaxOnly` en `tsconfig.json`). Con Jest habría la misma diferencia, más un transformador y una bandera experimental que mantener.
+
+La mayoría de los tests son de integración, con Supertest: hacen una petición HTTP real al servicio, que trabaja contra una base PostgreSQL de prueba.
 
 ## 8. Calidad, riesgos y deuda técnica
 *Pendiente.* Pruebas, CI, revisiones, y lo que queda pendiente con su plan.
