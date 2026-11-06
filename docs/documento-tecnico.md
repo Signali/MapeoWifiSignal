@@ -443,7 +443,34 @@ La comparación confirmó la elección, con un matiz: ninguno de los dos corre e
 La mayoría de los tests son de integración, con Supertest: hacen una petición HTTP real al servicio, que trabaja contra una base PostgreSQL de prueba.
 
 ## 8. Calidad, riesgos y deuda técnica
-*Pendiente.* Pruebas, CI, revisiones, y lo que queda pendiente con su plan.
+
+### 8.1 Cómo se comprueba que funciona
+
+| Práctica | Qué hace | Resultado |
+|---|---|---|
+| **Un test por respuesta del contrato** | Para cada endpoint, el caso feliz y cada error que el contrato declara (`400`, `401`, `403`, `404`, `409`, `422`), con tokens de los 3 roles, una segunda organización y un cliente sin asignaciones | **391 tests.** En el CI pasan los 391; en Windows, 388 (los 3 del apagado ordenado solo corren en Linux: en Windows, una señal enviada por código termina el proceso sin pasar por su manejador, así que ahí se prueba a mano con `Ctrl+C`) |
+| **Integración continua** (GitHub Actions) | En cada Pull Request corre `npm run typecheck` y los tests contra un PostgreSQL 17 real | `main` está protegida: nada entra sin el CI en verde y sin pasar por un Pull Request, tampoco para el administrador |
+| **Mutaciones a mano** | Se rompe a propósito una regla crítica (quitar el filtro de organización, invertir el orden `403`/`400`, saltear una normalización…), se corre la suite y se restaura el archivo | **86 de 86 detectadas**: 25 en edificios, 61 en puntos. Si un test no falla con la regla rota, el test no sirve |
+| **Revisión de código y de seguridad** al cerrar cada recurso | Revisión automatizada (`/code-review`, `/security-review`) y decisión del equipo sobre cada hallazgo | Seguridad: **0 hallazgos** de confianza alta en autenticación, edificios y puntos. Código: 26 hallazgos; 16 se corrigieron y los otros 10 se resolvieron con el equipo, se documentaron o se descartaron, cada uno con su motivo |
+| **Ninguna entrada provoca un `500`** | Tokens deformes, JSON roto, escapes inválidos en la URL, cuerpos enormes | Todos responden `4xx` con su mensaje (secciones 4.3 y 6.4) |
+
+Las mutaciones encontraron huecos reales en los tests. Por ejemplo, el orden `403` antes de `400` solo se probaba en `POST`: con la regla rota en `PATCH` y `DELETE` la suite seguía en verde. Se agregaron esos dos tests.
+
+### 8.2 Riesgos y deuda técnica
+
+Lo que se dejó pendiente a conciencia, con su efecto y su plan:
+
+| Pendiente | Efecto hoy | Plan |
+|---|---|---|
+| Ensayo de portabilidad en otro equipo | Si falta un paso en el README, aparece en la demo en vivo | En curso en el equipo de Gabriel; lo que falte se corrige en el README antes de presentar |
+| Sin límite de intentos de login | Una clave débil se podría adivinar por fuerza bruta | Auditoría de cierre del Hito 2 o Hito 3 |
+| Sin cabeceras de seguridad (`helmet`) | Menor protección si un navegador consume la API | Hito 3, junto con la web |
+| Token sin revocación ni renovación | Un token robado sirve hasta su vencimiento (2 a 10 h según el rol) | Renovación en el Hito 3; ante sospecha, rotar `JWT_SECRET` (sección 6.6) |
+| Sin CORS | La web, que corre en otro origen, no podría llamar a la API | Hito 3, cuando exista la web (la app Android no lo necesita) |
+| Listas sin paginación | Ninguno con ~24 puntos por piso | Decidir el formato **antes** de que la app y la web dependan de él: cambiarlo después sería `v2` |
+| PostGIS diferida | Ninguno: las coordenadas son metros en un plano y la única regla espacial es una comparación | Hito 3, solo si se escribe la consulta espacial que la necesite (sección 2.3) |
+| Docker diferido | La base se instala a mano en cada equipo | Hito 3; el servicio ya está preparado (sección 6.6) |
+| Login previo a la demostración | Si la colección de Postman se evalúa como «exactamente 4 peticiones», el login sería una quinta | Por confirmar con el profesor; cambiarlo es mover una carpeta de la colección |
 
 ## Referencias
 *Pendiente: solo fuentes citadas y verificadas.*
