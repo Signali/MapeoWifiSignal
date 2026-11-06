@@ -15,4 +15,5 @@ Cualquier otro error (un fallo de la base, un bug) llega al cliente como `500` g
 | Archivo | Qué hace |
 |---|---|
 | `token.ts` | `signToken` / `verifyToken`: JWT HS256 con `node:crypto`. Lo usan el login (firma) y `middlewares/auth.ts` (verifica) |
+| `buildings.ts` | CRUD de edificios. Decide el **alcance de lectura** (`readScope`): `admin` y `tecnico` ven toda su organización; un `cliente`, solo sus edificios asignados (`user_buildings`, consultado en cada petición). El repositorio aplica ese alcance en la misma consulta. No existe, es de otra organización o no está asignado → el mismo `404 "Edificio no encontrado"`. Las escrituras van siempre filtradas por la organización del token |
 | `auth.ts` | `login(email, password)`: normaliza el email, compara con bcrypt (siempre, también si el email no existe), elige la duración del token según el rol y responde `{ token, expires_in, user }`. El costo de bcrypt (`BCRYPT_ROUNDS`) está en `src/password.ts`, compartido con el seed |
