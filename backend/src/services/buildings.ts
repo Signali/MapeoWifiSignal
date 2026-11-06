@@ -4,7 +4,8 @@ import type { TokenUser } from './token.ts';
 
 // Contrato §3: admin y tecnico leen todos los edificios de su organización; un cliente,
 // solo los que tiene asignados (consultados en cada petición, no van en el token).
-function readScope(user: TokenUser): buildings.ReadScope {
+// Pisos y puntos usan el mismo alcance: se ven si se ve su edificio.
+export function readScope(user: TokenUser): buildings.ReadScope {
   return { orgId: user.orgId, assignedTo: user.role === 'cliente' ? user.id : null };
 }
 

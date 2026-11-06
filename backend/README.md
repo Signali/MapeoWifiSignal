@@ -2,7 +2,7 @@
 
 Servicio del lado del servidor (Hito 2). Stack decidido en el Hito 1: Node.js + Express + TypeScript, con PostgreSQL.
 
-> **Estado:** esqueleto, base común y autenticación listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod, apagado ordenado, login con JWT y middleware de token y rol, con sus tests). **Edificios con CRUD completo** (primer recurso, molde de los demás). Puntos pendiente.
+> **Estado:** esqueleto, base común y autenticación listos (`/health`, configuración desde el entorno, pool de `pg`, seed, errores centralizados, validación con Zod, apagado ordenado, login con JWT y middleware de token y rol, con sus tests). **Edificios y puntos con CRUD completo** (los dos recursos del Hito 2) y **lectura de pisos** (`GET /floors?building_id=`).
 
 ## TypeScript sin paso de build
 
@@ -118,6 +118,22 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 - Un edificio de otra organización, inexistente o no asignado al `cliente` responde el **mismo** `404`: no se revela que existe.
 - `UNIQUE (org_id, name)` distingue mayúsculas en la base, pero como la API normaliza el nombre, `"torre NORTE"` choca con `"Torre Norte"` (`409`).
 - Tests: `tests/buildings.test.ts` (una respuesta del contrato por caso, con los tokens de los 3 roles, más una segunda organización, un cliente sin asignaciones y una asignación cruzada creados por el propio test y borrados al final).
+
+## Puntos (segundo recurso) y pisos (solo lectura)
+
+`/api/v1/points` con `GET ?floor_id=`, `GET /:id`, `POST`, `PATCH` y `DELETE`, y `GET /api/v1/floors?building_id=` (contrato §5, filas 8 a 13). Mismo molde que edificios:
+
+| Capa | Archivo | Qué hace |
+|---|---|---|
+| Ruta | `routes/points.ts`, `routes/floors.ts` | Leen todos los roles. `POST`/`PATCH`: `requireRole('admin', 'tecnico')`; `DELETE`: `requireRole('admin')`. Siempre antes de `validate` |
+| Schema | `schemas/points.ts`, `schemas/floors.ts` | `code`: NFKC, espacios, **mayúsculas**, solo letras, números, espacio y `- _ . /`, 1 a 20 · `nfc_uid`: **hexadecimal**, 1 a 32, a mayúsculas · `x`/`y`: número con hasta 2 decimales · `floor_id`: entero, obligatorio al crear y prohibido en `PATCH` · `PATCH` con al menos un campo · `?floor_id=` y `?building_id=` con `textId`, y `floor_id` del cuerpo con `bodyId` (`schemas/common.ts`). El primer paso de normalización (`squish`: NFKC, trim, espacios) y el rechazo de rellenos invisibles son comunes con `name` de edificios |
+| Controller | `controllers/points.ts`, `controllers/floors.ts` | `200`, `201` + `Location`, `204`. `idOf` / `queryIdOf` (`controllers/params.ts`) leen los números ya validados |
+| Service | `services/points.ts`, `services/floors.ts` | Mismo alcance que edificios (`readScope`): un piso o punto se ve si se ve su edificio. Lee el piso (o el piso del punto) y responde `404` o `422` (`0 ≤ x ≤ width_m`, `0 ≤ y ≤ height_m`) **antes** de escribir |
+| Repositorio | `repositories/points.ts`, `repositories/floors.ts` | `JOIN` con `buildings` y el filtro `VISIBLE` de edificios en lectura; `org_id` del edificio en `UPDATE`/`DELETE`. `code` repetido en el piso y `nfc_uid` repetido → `409` vía `query()` |
+
+- Orden de las respuestas: `401 → 403 → 400 → 404 → 422 → 409`. Si un punto queda fuera del piso y además está repetido, gana el `422` (se valida antes de escribir).
+- Los pisos no se crean ni se editan por la API, así que leer sus medidas y después escribir no abre una carrera.
+- Tests: `tests/points.test.ts`, con los mismos datos propios que edificios (otra organización, cliente sin asignaciones, asignación cruzada) más un edificio de la organización 1 **no asignado** al cliente, con piso y punto.
 
 ## Scripts
 

@@ -13,6 +13,8 @@ export const pool = new pg.Pool(config.db);
 const CONFLICTS: Record<string, string> = {
   buildings_org_name_key: 'Ya existe un edificio con ese nombre',
   floors_building_id_fkey: 'No se puede borrar: el edificio tiene pisos asociados',
+  points_floor_code_key: 'Ya existe un punto con ese código en el piso',
+  points_nfc_uid_key: 'La tira NFC ya está asociada a otro punto',
 };
 
 // pool.query + traducción de conflictos. Una constraint fuera del mapa sigue siendo

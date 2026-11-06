@@ -8,8 +8,8 @@ export type ReadScope = { orgId: number; assignedTo: number | null };
 
 // Filtro de lectura sobre `b`, con $1 = orgId y $2 = assignedTo. El org_id se exige
 // siempre, también con asignación: una asignación a un edificio de otra organización
-// no lo hace visible.
-const VISIBLE = `b.org_id = $1
+// no lo hace visible. Pisos y puntos lo reutilizan con un JOIN a buildings b.
+export const VISIBLE = `b.org_id = $1
   AND ($2::integer IS NULL
        OR EXISTS (SELECT 1 FROM user_buildings ub WHERE ub.building_id = b.id AND ub.user_id = $2))`;
 
