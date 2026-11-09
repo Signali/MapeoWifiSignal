@@ -10,7 +10,7 @@ declare module 'express-serve-static-core' {
   }
 }
 
-// Exactamente "Bearer <token>"; el esquema no distingue mayúsculas (RFC 7235 §2.1).
+// Exactamente "Bearer <token>"; el esquema no distingue mayúsculas (RFC 9110 §11.1).
 const BEARER = /^Bearer (\S+)$/i;
 
 // 401 si falta el token o no es válido. Va antes de requireRole y de validate

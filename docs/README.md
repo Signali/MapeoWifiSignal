@@ -8,5 +8,7 @@ Documentación entregable del proyecto.
 
 ## Archivos
 - [`api-contract.md`](api-contract.md) — contrato de la API (tabla de endpoints, ejemplos y errores). Acordado entre los integrantes (2026-11-04).
+- [`documento-tecnico.md`](documento-tecnico.md) — fuente del documento técnico (Markdown). El PDF se genera desde acá.
+- [`build-pdf.mjs`](build-pdf.mjs) — genera el PDF: `node docs/build-pdf.mjs` (o `node docs/build-pdf.mjs otra-ruta.pdf`). No usa dependencias del repo, pero necesita Edge o Chrome instalado e **internet**: marked y mermaid se cargan de jsDelivr, con versión fija, y las fuentes (Bricolage Grotesque, IBM Plex Sans y JetBrains Mono) de Google Fonts.
 
-> **Estado:** contrato acordado; documento técnico (PDF) pendiente.
+> **Estado:** contrato acordado y documento técnico escrito. El PDF (`SignalMap-Hito2-Documento-Tecnico.pdf`) se sube con la entrega.
