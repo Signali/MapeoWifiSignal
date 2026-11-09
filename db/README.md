@@ -11,11 +11,14 @@ Modelo de datos y scripts de la base de datos (PostgreSQL 17).
 ## Requisitos
 
 - **PostgreSQL 17** o superior, con las herramientas de línea de comandos (`psql`).
-- En Windows, `psql` está en `C:\Program Files\PostgreSQL\17\bin`. Agregar esa carpeta al PATH o escribir la ruta completa.
+- En Windows, `psql` está en `C:\Program Files\PostgreSQL\17\bin` (el número cambia según la versión instalada). **El instalador no la agrega al PATH:** agregarla en *Variables de entorno* → `Path` del usuario → *Nuevo*, y abrir una terminal nueva. O escribir la ruta completa.
+- En Windows, al entrar a `psql` aparece una advertencia de que la página de códigos de la consola (850) difiere de la de Windows (1252). Es esperable y no afecta a estos pasos.
 
 ## Crear la base desde cero
 
 ### 1. Rol y bases (una sola vez, como superusuario `postgres`)
+
+Abrir `psql` con `psql -U postgres`: pide la clave de `postgres` elegida al instalar PostgreSQL. **Al escribir una clave en `psql` no se ve nada** (ni asteriscos); es normal, se escribe y se presiona Enter. Luego, en el prompt `postgres=#`:
 
 ```sql
 CREATE ROLE signalmap_user LOGIN;
@@ -29,7 +32,14 @@ CREATE DATABASE signalmap_test OWNER signalmap_user;
 
 ### 2. Tablas (como `signalmap_user`)
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio. Cada comando pide la clave de `signalmap_user`.
+
+**En Windows, antes de estos comandos**, indicar que el archivo está en UTF-8 (vale para esa terminal):
+
+- PowerShell: `$env:PGCLIENTENCODING = "UTF8"`
+- cmd: `set PGCLIENTENCODING=UTF8`
+
+Sin esto, `psql` lee `schema.sql` como WIN1252 y se detiene en la sexta tabla con `carácter con secuencia de bytes 0x8d en codificación «WIN1252» no tiene equivalente en la codificación «UTF8»`. No queda ninguna tabla creada (ver «Todo o nada» abajo), así que basta con fijar la variable y repetir.
 
 ```bash
 psql -h localhost -U signalmap_user -d signalmap      -v ON_ERROR_STOP=1 -f db/schema.sql

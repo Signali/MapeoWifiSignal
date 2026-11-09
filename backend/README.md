@@ -37,6 +37,7 @@ Fuera de `src/`: `scripts/seed.ts` (herramienta de desarrollo, no parte del serv
 ### Requisitos
 - **Node.js 26** o superior (`node -v`). La versión está fijada en `.nvmrc` y en `engines` de `package.json`.
 - **PostgreSQL 17** o superior, con el rol y las dos bases creadas y las tablas cargadas: seguir [`db/README.md`](../db/README.md) (pasos 1 y 2).
+- **Windows PowerShell:** si `npm` responde «No se puede cargar el archivo ...\npm.ps1 porque la ejecución de scripts está deshabilitada en este sistema», correr una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (solo afecta a tu usuario). Alternativa sin cambiar nada: escribir `npm.cmd` en lugar de `npm`, o usar cmd o Git Bash.
 
 ### Pasos (desde la raíz del repositorio)
 1. Copiar la plantilla de configuración y completar las claves **propias** de este equipo:
