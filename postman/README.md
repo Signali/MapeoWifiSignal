@@ -95,6 +95,7 @@ Si una corrida quedó cortada entre el `POST` y el `DELETE`, queda `P-25` vivo. 
 | Petición 2 o 3 con `404`, o la 4 pasa "sin querer" | `point_id` es el de la corrida anterior (ya borrado), o está vacío (primera vez; con vacío la 4 da `400` "floor_id es obligatorio") | Enviar la 1 y seguir el orden |
 | Todo da `404 Ruta no encontrada` | `base_url` mal (falta el puerto) | Revisar el environment |
 | `405 Not Allowed` con HTML de `openresty`, o la Console muestra una URL rara (`...%0A...`, otro dominio) | Se pegó texto de varias filas en una celda del environment: la petición no llega a nuestra API | Borrar el environment y reimportar la plantilla; completar solo `admin_password` a mano en *Current value* |
+| El environment importado muestra una sola fila `key` en vez de `base_url`, `admin_email` y `admin_password` | El import salió mal (se pegó la ruta o el texto en el cuadro de Import en vez de usar **Files**) | Borrar ese environment y reimportar la plantilla con **Import → Files**. Plan B: crear a mano las tres variables, cada valor en su celda y sin saltos de línea |
 | Login `401` aunque la clave "se ve igual" | Se copió otra línea del `.env` o la copia quedó cortada | Comparar el largo: la cantidad de puntos de `admin_password` debe igualar los caracteres de `SEED_ADMIN_PASSWORD` |
 
 ## Ensayo en otro equipo (Pc-Casa)

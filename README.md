@@ -35,7 +35,7 @@ El `.env` guarda las claves y la configuración de **tu** equipo. No viaja por g
    | `JWT_SECRET` | Un secreto propio de **al menos 32 caracteres**. Generarlo con `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"` y pegar el resultado. El servicio no arranca con el valor de ejemplo |
    | `SEED_ADMIN_PASSWORD`, `SEED_TECNICO_PASSWORD`, `SEED_CLIENTE_PASSWORD` | Claves que elijas para los tres usuarios de prueba (`admin@demo.cl`, `tecnico@demo.cl`, `cliente@demo.cl`). Son las que se usan para el login, también en Postman |
 
-3. Guardar sin comillas ni espacios alrededor del `=` (`DB_PASSWORD=miClave`). Si falta o está mal una variable, el servicio no arranca y dice cuál es.
+3. Guardar sin comillas ni espacios alrededor del `=` (`DB_PASSWORD=miClave`). Si falta o está mal una variable, el servicio no arranca y dice cuál es. Si abrís el archivo desde PowerShell 5.1 con `Get-Content`, los acentos de `.env.example` se ven rotos (el archivo está bien): usar `Get-Content .env.example -Encoding UTF8` o abrirlo con un editor.
 4. Si cambiás una clave `SEED_*` después de haber corrido el seed, volver a correr `npm run seed`: la base guarda el hash de la clave que había en ese momento.
 
 Nunca subir el `.env` ni escribir claves reales en `.env.example`, en el README ni en un commit.

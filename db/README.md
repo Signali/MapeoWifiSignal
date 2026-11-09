@@ -18,7 +18,7 @@ Modelo de datos y scripts de la base de datos (PostgreSQL 17).
 
 ### 1. Rol y bases (una sola vez, como superusuario `postgres`)
 
-Abrir `psql` con `psql -U postgres`: pide la clave de `postgres` elegida al instalar PostgreSQL. **Al escribir una clave en `psql` no se ve nada** (ni asteriscos); es normal, se escribe y se presiona Enter. Luego, en el prompt `postgres=#`:
+Abrir `psql` con `psql -U postgres` (si `psql` no se reconoce, escribir la ruta completa: `& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres`): pide la clave de `postgres` elegida al instalar PostgreSQL. **Al escribir una clave en `psql` no se ve nada** (ni asteriscos); es normal, se escribe y se presiona Enter. Luego, en el prompt `postgres=#`:
 
 ```sql
 CREATE ROLE signalmap_user LOGIN;
@@ -39,7 +39,7 @@ Desde la raíz del repositorio. Cada comando pide la clave de `signalmap_user`.
 - PowerShell: `$env:PGCLIENTENCODING = "UTF8"`
 - cmd: `set PGCLIENTENCODING=UTF8`
 
-Sin esto, `psql` lee `schema.sql` como WIN1252 y se detiene en la sexta tabla con `carácter con secuencia de bytes 0x8d en codificación «WIN1252» no tiene equivalente en la codificación «UTF8»`. No queda ninguna tabla creada (ver «Todo o nada» abajo), así que basta con fijar la variable y repetir.
+Esa variable (y `PGPASSWORD`, si la usás para no teclear la clave) vale solo para la terminal donde se escribe: si corrés cada comando en una terminal distinta, repetirla en cada una. Sin esto, `psql` lee `schema.sql` como WIN1252 y se detiene en la sexta tabla con `carácter con secuencia de bytes 0x8d en codificación «WIN1252» no tiene equivalente en la codificación «UTF8»`. No queda ninguna tabla creada (ver «Todo o nada» abajo), así que basta con fijar la variable y repetir.
 
 ```bash
 psql -h localhost -U signalmap_user -d signalmap      -v ON_ERROR_STOP=1 -f db/schema.sql
