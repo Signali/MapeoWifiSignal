@@ -554,10 +554,6 @@ Y ninguna entrada del cliente provoca un `500`: tokens deformes, JSON roto, esca
 
 ### 8.2 Lo que falta, a conciencia
 
-**Antes de presentar:**
-
-- **El login previo a la demostración.** Si la colección de Postman se evalúa como «exactamente 4 peticiones», el login sería una quinta. Está por confirmar con el profesor, y cambiarlo es mover una carpeta de la colección.
-
 **En el Hito 3, cuando haga falta:**
 
 - **Límite de intentos de login**, porque hoy una clave débil se podría adivinar por fuerza bruta.
@@ -666,7 +662,7 @@ Pasos completos: [`README.md`](https://github.com/Signali/MapeoWifiSignal/blob/m
 4. En `backend/`: `npm install`, `npm run seed` y `npm start`. Comprobar `http://localhost:3000/health`.
 5. Tests: `npm run typecheck` y `npm test`.
 
-**Demostración:** la colección de Postman ([`postman/`](https://github.com/Signali/MapeoWifiSignal/tree/main/postman)) tiene un login previo y las 4 peticiones de la demo en orden (`POST` → `201`, `PATCH` → `200`, `DELETE` → `204`, `GET` → `404`), con los tests de cada respuesta. Cómo importarla y usarla: [`postman/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/postman/README.md).
+**Demostración:** la colección de Postman ([`postman/`](https://github.com/Signali/MapeoWifiSignal/tree/main/postman)) tiene un login previo y las 4 peticiones de la demo en orden (`POST` → `201`, `PATCH` → `200`, `DELETE` → `204`, `GET` → `404`), con los tests de cada respuesta. El login es preparación: se hace antes de presentar y, según confirmó el profesor, no cuenta entre las 4 peticiones. Cómo importarla y usarla: [`postman/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/postman/README.md).
 
 ### Anexo D. Variables de entorno
 
