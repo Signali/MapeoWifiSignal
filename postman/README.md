@@ -103,7 +103,7 @@ Seguir **solo** `backend/README.md` y esta carpeta, sin ayuda:
 
 1. `git switch main` + `git pull`. Node 26, PostgreSQL 17 y Postman (o su CLI) instalados.
 2. Rol y bases según `db/README.md`; `cp .env.example .env` y completar claves propias, **generar** `JWT_SECRET` (el de ejemplo no arranca).
-3. `cd backend && npm install && npm run seed && npm start`; `/health` → `ok`.
+3. `cd backend && npm install && npm run seed && npm start`; `/health` → `ok`. En Windows PowerShell 5.1 (`&&` no existe ahí), correrlos uno por uno.
 4. `npm test` en verde.
 5. Importar los dos archivos, completar `admin_password`, login previo y las 4 peticiones: 201 → 200 → 204 → 404.
 6. Repetir las 4 una segunda vez, **empezando de nuevo por la 1**. Anotar qué pasos del README faltaban o no se entendían.

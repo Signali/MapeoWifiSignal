@@ -13,6 +13,7 @@ La rúbrica de cada hito es la referencia obligatoria de todo entregable.
   |---|---|
   | **Pc-Casa** | `Brain-Environment` |
   | **Pc-Portatil** | `Proyects_Brains` |
+  | **PC-Gabriel** | `PC-Gabriel-Vault` |
 
 - **Ruta:** cambia según el PC. Búscala por el nombre `<vault>\SignalMap\Rúbricas` (con el vault del equipo en uso) o usa `/add-dir` con la carpeta del vault. No escribas rutas absolutas del usuario en este archivo.
 - **Hito en curso: Hito 2.** Archivo: `Hito 2 - Rúbrica.md`.
@@ -27,7 +28,7 @@ Reglas:
 ## Decisiones tomadas (Hito 2)
 - **TypeScript (2026-11-04):** Node 26 ejecuta los `.ts` directo (type stripping); `tsc` solo revisa tipos (`npm run typecheck`, con `erasableSyntaxOnly`). Costo asumido: sin `enum`/`namespace`/parameter properties y dependencia de la versión de Node. Preparado para migrar a `tsc → dist/` en el Hito 3 si hiciera falta (`rewriteRelativeImportExtensions`). Detalle en `backend/README.md`.
 - **Calidad (2026-11-04):** objetivo profesional, no el mínimo de la rúbrica (sin sumar funcionalidades). **CI en GitHub Actions** (typecheck + tests contra PostgreSQL 17, sin dependencias nuevas) + **`/code-review` y `/security-review` al cerrar cada recurso** + auditoría completa al final del hito. Fuera por ahora: ESLint/Prettier y `helmet`/límite de intentos (se reconsideran en la auditoría final).
-- **Ramas + Pull Requests y CI (confirmado 2026-11-05):** todo cambio entra a `main` por PR desde una rama. `main` está protegida en GitHub: PR obligatorio, check `test` del CI en verde y rama al día con `main`; las reglas aplican **también al admin**; sin force-push ni borrado. **0 aprobaciones obligatorias** (las aprobaciones son por cuenta de GitHub y los dos PCs usan la misma), pero en **cada PR** se deja un comentario mencionando al compañero (`Gabo-collab`) con qué cambia y cómo se probó, y se le pide revisión. Se une con **Squash and merge**. CI: `.github/workflows/ci.yml`, runner fijado en `ubuntu-26.04`; si `config.ts` o el seed exigen una variable nueva, agregarla al `env:` del workflow y a `.env.example` en el mismo PR. Detalle en `backend/README.md`.
+- **Ramas + Pull Requests y CI (confirmado 2026-11-05):** todo cambio entra a `main` por PR desde una rama. `main` está protegida en GitHub: PR obligatorio, check `test` del CI en verde y rama al día con `main`; las reglas aplican **también al admin**; sin force-push ni borrado. **0 aprobaciones obligatorias** (se decidió cuando Pc-Casa y Pc-Portatil usaban la misma cuenta de GitHub; desde 2026-11-06 cada integrante trabaja con la suya: Maximiliano `Signali`, Gabriel `Gabo-collab` desde PC-Gabriel), pero en **cada PR** se deja un comentario mencionando al compañero (`@Gabo-collab` o `@Signali`, según quién lo abra) con qué cambia y cómo se probó, y se le pide revisión; se espera su respuesta antes de unir, salvo que diga que no hace falta. Se une con **Squash and merge**. CI: `.github/workflows/ci.yml`, runner fijado en `ubuntu-26.04`; si `config.ts` o el seed exigen una variable nueva, agregarla al `env:` del workflow y a `.env.example` en el mismo PR. Detalle en `backend/README.md`.
 - **Seed (2026-11-04):** `npm run seed` **resetea** (`TRUNCATE ... RESTART IDENTITY`) y recarga; IDs fijos (P-07 = id 7). Se niega con `NODE_ENV=production`. Los tests resiembran `signalmap_test` solos (`globalSetup`).
 - **Alcance:** el Hito 2 es solo back-end y API REST. La app Android no se evalúa en este hito (por confirmar con el compañero).
 - **Recursos con CRUD completo:** edificios y puntos.
@@ -81,6 +82,7 @@ Reglas:
   - **Tests (revisado 2026-11-04):** de integración con Vitest + Supertest contra `signalmap_test`, **uno por cada respuesta del contrato** (caso feliz y errores `400`/`401`/`403`/`404`/`409`/`422`). Reemplaza la decisión original "pocos, solo casos de error", por el criterio de calidad profesional.
   - **Postman (demo en vivo):** exactamente **4 peticiones** sobre `/points`, en este orden: `POST /points` → `201` · `PATCH /points/:id` → `200` · `DELETE /points/:id` → `204` · `GET /points/:id` → `404` (error y prueba de que el borrado fue real). El login (admin) se hace antes de la demo y el token queda en una variable de la colección; **por confirmar** que la rúbrica lo acepte. El `403` con rol `cliente` se cubre en los tests, no en la demo. El CRUD de edificios se muestra fuera de las 4 peticiones (pgAdmin o documento).
   - **Ensayo de portabilidad en Pc-Casa:** al terminar el primer recurso (edificios), siguiendo solo el README; repetir en la semana 4.
+  - **Ensayo de portabilidad en PC-Gabriel (2026-11-06):** equipo nuevo (Windows 11, PostgreSQL 17, Node 26), siguiendo solo los README: seed, `/health`, `typecheck` y `npm test` en verde, y Postman con `201`/`200`/`204`/`404`. Hicieron falta pasos que los README no traían (codificación UTF-8 de `psql`, PATH de PostgreSQL, política de ejecución de PowerShell); se agregaron en el PR `docs/portabilidad-windows`.
 - **No adelantar trabajo del Hito 3** (mapa de calor, comparación antes/después, trilateración, recomendación, reporte PDF) salvo pedido explícito.
 - Detalle y supuestos pendientes: vault, `SignalMap\Propuesta Back-End\Propuesta Back-End.md`.
 
@@ -100,11 +102,11 @@ Reglas:
 - No escribas rutas absolutas del usuario ni datos personales en archivos que se suben.
 - El repo puede ser visible para el profesor y otras personas: asume que todo lo que se sube es público.
 
-## Trabajo en dos computadores
-- Los equipos se llaman **Pc-Casa** y **Pc-Portatil** (ver tabla de vaults arriba). En las notas del vault y al reportar avances, aclarar en cuál se hizo el trabajo.
+## Trabajo en varios computadores
+- Los equipos se llaman **Pc-Casa** y **Pc-Portatil** (Maximiliano) y **PC-Gabriel** (Gabriel) (ver tabla de vaults arriba). En las notas del vault y al reportar avances, aclarar en cuál se hizo el trabajo.
 - Al empezar: `git switch main` + `git pull`, y crear una rama para el trabajo. Al terminar: `git commit` + `git push` de la rama y PR a `main` (push directo a `main` está bloqueado). Commits pequeños y frecuentes.
 - Evita editar el mismo archivo en ambos equipos sin sincronizar; cada trabajo en paralelo va en su propia rama.
-- GitHub CLI (`gh`) para PRs y runs del CI. En Pc-Portatil está en `%LOCALAPPDATA%\Programs\gh\bin`; en Pc-Casa, pendiente de instalar.
+- GitHub CLI (`gh`) para PRs y runs del CI. En Pc-Portatil está en `%LOCALAPPDATA%\Programs\gh\bin`; en PC-Gabriel, en `C:\Program Files\GitHub CLI`; en Pc-Casa, pendiente de instalar. Cada integrante usa su propia cuenta (verificar con `gh auth status`).
 - Los archivos ignorados (`.env`, configuración local) no viajan por git: se recrean en cada equipo desde `.env.example`.
 - El vault de Obsidian está fuera de git y se sincroniza aparte.
 

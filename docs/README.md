@@ -7,6 +7,6 @@ Documentación entregable del proyecto.
 - **Tabla de la API**: rutas, verbos, parámetros, cuerpo de ejemplo y códigos de estado de éxito y de error. También va dentro del documento.
 
 ## Archivos
-- [`api-contract.md`](api-contract.md) — contrato de la API (tabla de endpoints, ejemplos y errores). **Borrador por acordar.**
+- [`api-contract.md`](api-contract.md) — contrato de la API (tabla de endpoints, ejemplos y errores). Acordado entre los integrantes (2026-11-04).
 
-> **Estado:** contrato en borrador; documento técnico (PDF) pendiente.
+> **Estado:** contrato acordado; documento técnico (PDF) pendiente.
