@@ -1,7 +1,8 @@
 // `node docs/build-pdf.mjs [salida.pdf]`: genera docs/SignalMap-Hito2-Documento-Tecnico.pdf (u otra
 // ruta, si se indica) desde
 // docs/documento-tecnico.md, con Edge o Chrome en modo headless. Sin dependencias del repo:
-// Markdown (marked) y diagramas (mermaid) se cargan del CDN, con versión fija, al generar.
+// Markdown (marked) y diagramas (mermaid) se cargan del CDN, con versión fija, al generar; las
+// fuentes (Bricolage Grotesque, IBM Plex Sans y JetBrains Mono), de Google Fonts.
 // El navegador se maneja por el protocolo de DevTools para numerar las páginas sin que el
 // pie muestre la ruta local del archivo.
 import { spawn } from 'node:child_process';
@@ -26,83 +27,101 @@ const BROWSERS = [
 
 const CSS = `
 @page { size: A4; margin: 18mm 17mm 20mm; }
-:root { --navy: #1e3a6b; --navy-2: #33507e; --gold: #e9b200; --ink: #1f2937; --muted: #6b7280; --line: #dbe2ec; --soft: #f4f6fa; }
+@page :first { margin: 0; }
+:root { --kuroi: #131521; --astral: #342E4E; --champlain: #435570; --pool: #709491; --pool-texto: #4F7470; --surf: #C4D4BA; --ink: #131521; --muted: #5A6272; --line: #DDE5D8; --soft: #F2F5EF; --zebra: #F7F9F5; }
 * { box-sizing: border-box; }
-body { margin: 0; font: 9.6pt/1.5 Inter, system-ui, sans-serif; color: var(--ink); background: #fff; }
-.cover { height: 254mm; padding: 26mm 18mm; border-radius: 3mm; background: var(--navy); color: #fff; break-after: page; display: flex; flex-direction: column; }
-.cover .uni { font-weight: 600; font-size: 12pt; }
-.cover .brand { font: 700 54pt/1 'Playfair Display', serif; margin: 46mm 0 4mm; }
-.cover .brand span { color: var(--gold); }
-.cover .bar { width: 16mm; height: 1.2mm; background: var(--gold); margin-top: 40mm; }
-.cover .sub { font: 500 10pt 'JetBrains Mono', monospace; letter-spacing: .18em; text-transform: uppercase; color: #a9c4ee; }
-.cover .meta { margin-top: auto; padding: 6mm 7mm; background: var(--navy-2); border-radius: 3mm; color: #e5edf9; font-size: 9.5pt; }
+body { margin: 0; font: 9.5pt/1.48 'IBM Plex Sans', system-ui, sans-serif; color: var(--ink); background: #fff; }
+.cover { height: 296.5mm; background: var(--kuroi); color: #fff; break-after: page; display: flex; flex-direction: column; overflow: hidden; }
+.cover svg { display: block; width: 210mm; height: 131.25mm; flex: none; }
+.cover .texto { flex: 1; display: flex; flex-direction: column; padding: 13mm 18mm 16mm; }
+.cover .uni { font-weight: 500; font-size: 11pt; color: var(--surf); }
+.cover .brand { font: 800 74pt/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.025em; margin: 5mm 0 4mm -1mm; }
+.cover .sub { font-size: 14.5pt; font-weight: 500; line-height: 1.3; }
+.cover .meta { margin-top: auto; font-size: 9.5pt; color: #fff; }
 .cover .meta p { margin: 0 0 2mm; }
-.cover .meta code { background: none; color: #a9c4ee; padding: 0; }
-.cover .meta strong { color: var(--gold); }
-.cover a { color: #a9c4ee; }
-h2 { font: 700 17pt/1.2 'Playfair Display', serif; color: var(--navy); margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: .5mm solid var(--navy); break-after: avoid; }
+.cover .meta code { background: none; color: var(--surf); padding: 0; }
+.cover .meta strong { color: var(--surf); font-weight: 600; }
+.cover a { color: var(--surf); }
+h2 { font: 700 21pt/1.12 'Bricolage Grotesque', sans-serif; letter-spacing: -.012em; color: var(--astral); margin: 0 0 4.5mm; padding-bottom: 2.2mm; border-bottom: .9mm solid var(--surf); break-after: avoid; }
 h2.section { break-before: page; }
-h3 { font: 700 11.5pt/1.3 'Playfair Display', serif; color: var(--navy); margin: 6mm 0 2mm; break-after: avoid; }
-.num { color: var(--gold); font-family: Inter, sans-serif; font-size: .78em; margin-right: 2mm; }
+h3 { font: 700 12.5pt/1.25 'Bricolage Grotesque', sans-serif; color: var(--astral); margin: 6mm 0 2mm; break-after: avoid; }
+.num { color: var(--pool-texto); margin-right: 2mm; }
 p, li { margin: 0 0 2.4mm; }
 ul, ol { padding-left: 5mm; margin: 0 0 3mm; }
-strong { color: #111827; }
-a { color: var(--navy); overflow-wrap: anywhere; }
-code { font: 8.4pt 'JetBrains Mono', monospace; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; background: var(--soft); padding: .2mm 1mm; border-radius: .8mm; }
-pre { background: var(--soft); border-left: .8mm solid var(--gold); padding: 3mm 4mm; border-radius: 1mm; overflow: hidden; white-space: pre-wrap; break-inside: avoid; }
-pre code { background: none; padding: 0; font-size: 8pt; }
+li::marker { color: var(--pool); }
+strong { color: var(--ink); font-weight: 600; }
+a { color: var(--champlain); overflow-wrap: anywhere; }
+code { font: 8.3pt 'JetBrains Mono', monospace; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; color: var(--astral); background: var(--soft); padding: .2mm 1mm; border-radius: .8mm; }
+pre { background: var(--soft); border-left: 1mm solid var(--pool); padding: 2.5mm 4mm; line-height: 1.36; overflow: hidden; white-space: pre-wrap; break-inside: avoid; }
+pre code { background: none; padding: 0; font-size: 8pt; color: var(--ink); }
 table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.3pt; line-height: 1.38; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
-th { background: var(--navy); color: #fff; text-align: left; font-weight: 600; padding: 1.6mm 2mm; }
+th { background: var(--astral); color: #fff; text-align: left; font-weight: 600; padding: 1.6mm 2mm; }
 td { padding: 1.4mm 2mm; border-bottom: .25mm solid var(--line); vertical-align: top; }
-tbody tr:nth-child(even) td { background: #f8fafc; }
+tbody tr:nth-child(even) td { background: var(--zebra); }
 td code, th code { font-size: 7.6pt; }
-th code { background: rgba(255,255,255,.16); color: #fff; }
-.mermaid .node rect, .mermaid .node path, .mermaid .node polygon, .mermaid rect.actor { fill: #eef2f8 !important; stroke: #1e3a6b !important; }
-.mermaid .plot rect { fill: #1e3a6b !important; }
+th code { background: rgba(255,255,255,.18); color: #fff; }
+.mermaid .node rect, .mermaid .node path, .mermaid .node polygon, .mermaid rect.actor { fill: #F2F5EF !important; stroke: #435570 !important; }
 .mermaid .edgeLabel, .mermaid .edgeLabel rect, .mermaid .labelBkg { background: #fff !important; fill: #fff !important; }
-.mermaid .note { fill: #fff8e1 !important; stroke: #e9b200 !important; }
+.mermaid .edgeLabel p, .mermaid .edgeLabel span { background: #fff !important; }
+p:has(+ pre), p:has(+ .mermaid), p:has(+ .stack), p:has(+ .bars), p:has(+ table) { break-after: avoid; }
+.mermaid .note { fill: #F2F5EF !important; stroke: #709491 !important; }
 hr { display: none; }
 .mermaid { display: flex; justify-content: center; margin: 3mm 0 5mm; break-inside: avoid; }
-.mermaid svg { max-width: 100%; height: auto; }
+.mermaid svg { max-width: 100%; max-height: 82mm; height: auto; }
 .ref { padding-left: 8mm; text-indent: -8mm; font-size: 8.8pt; }
 .bars { margin: 3mm 0 5mm; break-inside: avoid; }
-.bars p { font-weight: 600; color: var(--navy); margin: 0 0 2mm; }
+.bars p { font-weight: 600; color: var(--champlain); margin: 0 0 2mm; }
 .bars div { display: grid; grid-template-columns: 22mm 1fr 20mm; align-items: center; gap: 3mm; margin: 0 0 1.6mm; }
-.bars i { display: block; height: 4.5mm; background: var(--navy); border-radius: .8mm; }
+.bars i { display: block; height: 4.5mm; background: var(--champlain); }
 .bars b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .stack { margin: 3mm 0 5mm; break-inside: avoid; }
-.stack div { display: flex; height: 15mm; border-radius: 1mm; overflow: hidden; }
+.stack div { display: flex; height: 15mm; overflow: hidden; }
 .stack i { display: flex; flex-direction: column; justify-content: center; padding: 0 1.5mm; color: #fff; font-style: normal; font-size: 7.8pt; line-height: 1.25; overflow: hidden; white-space: nowrap; }
-.stack small { opacity: .85; }
-.stack .s1 { background: #6b7280; } .stack .s2 { background: var(--navy); } .stack .s3 { background: #33507e; } .stack .s4 { background: #b58a00; } .stack .s5 { background: var(--gold); color: #1f2937; }
+.stack b { font-weight: 600; }
+.stack .s1 { background: var(--kuroi); } .stack .s2 { background: var(--astral); } .stack .s3 { background: var(--champlain); } .stack .s4 { background: var(--pool); color: var(--ink); } .stack .s5 { background: var(--surf); color: var(--ink); }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; margin: 3mm 0 6mm; break-inside: avoid; }
-.kpis div { border-top: .8mm solid var(--gold); padding-top: 2.5mm; }
-.kpis b { display: block; font: 700 20pt/1.1 Inter, sans-serif; color: var(--navy); font-variant-numeric: lining-nums; }
+.kpis div { border-top: 1mm solid var(--pool); padding-top: 2.5mm; }
+.kpis b { display: block; font: 700 21pt/1.1 'Bricolage Grotesque', sans-serif; color: var(--astral); font-variant-numeric: lining-nums; }
+.kpis span { display: block; font-size: 8.4pt; color: var(--muted); margin-top: 1mm; line-height: 1.35; }
 .hitos { margin: 3mm 0 5mm; break-inside: avoid; font-size: 8.8pt; }
 .hitos div { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 9mm; }
 .hitos span { padding: 2mm 0; border-bottom: .25mm solid var(--line); position: relative; }
-.hitos div:not(.h) span:not(:last-child)::after { content: '→'; position: absolute; right: -6.5mm; top: 2mm; color: var(--gold); font-weight: 700; }
-.hitos .h span { font-weight: 700; color: var(--navy); border-bottom: .6mm solid var(--navy); }
+.hitos div:not(.h) span:not(:last-child)::after { content: '→'; position: absolute; right: -6.5mm; top: 2mm; color: var(--pool-texto); font-weight: 700; }
+.hitos .h span { font-weight: 700; color: var(--champlain); border-bottom: .6mm solid var(--champlain); }
 .hitos .vacio { color: var(--muted); font-style: italic; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; margin: 3mm 0 5mm; break-inside: avoid; }
-.split p { font-weight: 700; color: var(--navy); margin: 0 0 1.5mm; padding-bottom: 1.5mm; border-bottom: .6mm solid var(--gold); }
+.split p { font-weight: 700; color: var(--champlain); margin: 0 0 1.5mm; padding-bottom: 1.5mm; border-bottom: .6mm solid var(--pool); }
 .split ul { margin: 0; padding-left: 4mm; font-size: 9pt; }
-.kpis span { display: block; font-size: 8.4pt; color: var(--muted); margin-top: 1mm; line-height: 1.35; }
 .toc { break-after: page; }
-.toc-title { font: 700 17pt/1.2 'Playfair Display', serif; color: var(--navy); padding-bottom: 2mm; border-bottom: .5mm solid var(--navy); margin-bottom: 4mm; }
+.toc-title { font: 700 21pt/1.12 'Bricolage Grotesque', sans-serif; letter-spacing: -.012em; color: var(--astral); padding-bottom: 2.2mm; border-bottom: .9mm solid var(--surf); margin-bottom: 4mm; }
 .toc ol { list-style: none; padding: 0; margin: 0; }
 .toc li { display: flex; align-items: baseline; gap: 2mm; margin: 0 0 .7mm; line-height: 1.35; }
 .toc li.h2 { font-weight: 600; margin-top: 2mm; }
-.toc li.h3 { padding-left: 7mm; font-size: 8.8pt; color: #374151; }
-.toc .dots { flex: 1; border-bottom: .3mm dotted #9ca3af; transform: translateY(-1mm); }
+.toc li.h3 { padding-left: 7mm; font-size: 8.8pt; color: var(--muted); }
+.toc .dots { flex: 1; border-bottom: .3mm dotted #9AA3A0; transform: translateY(-1mm); }
 .toc .pg { font-variant-numeric: tabular-nums; min-width: 6mm; text-align: right; }
 `;
 
+// Portada: el plano real del piso 3 (db/seed.sql: 40 × 25 m, 24 tiras recorridas en zigzag) con el
+// P-25 de la historia (30; 12,5). Los anillos son decoración, no mediciones.
+const COVER_SVG = (() => {
+  const route = [6, 12.5, 19, 25.5, 32, 38.5].flatMap((x, i) => (i % 2 ? [20, 14, 8, 2] : [2, 8, 14, 20]).map((y) => [x, y]));
+  const rings = [[34, '#342E4E'], [25, '#435570'], [17, '#709491'], [9.5, '#C4D4BA']]
+    .map(([r, color]) => `<circle cx='30' cy='12.5' r='${r}' fill='${color}'/>`).join('');
+  const path = route.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' ');
+  const dots = route.map(([x, y]) => `<circle cx='${x}' cy='${y}' r='.42' fill='#fff' stroke='#131521' stroke-width='.09'/>`).join('');
+  return `<svg viewBox='0 0 40 25' preserveAspectRatio='xMidYMid slice' role='img' aria-label='Plano del piso 3 con sus 24 tiras NFC y el punto P-25'>`
+    + `<rect width='40' height='25' fill='#131521'/>${rings}`
+    + `<path d='${path}' fill='none' stroke='#131521' stroke-opacity='.45' stroke-width='.09' stroke-dasharray='.35 .3'/>${dots}`
+    + `<circle cx='30' cy='12.5' r='.95' fill='none' stroke='#131521' stroke-width='.16'/><circle cx='30' cy='12.5' r='.5' fill='#131521'/>`
+    + `<text x='28.7' y='12.92' text-anchor='end' font-family='IBM Plex Sans' font-weight='600' font-size='1.05' fill='#131521'>P-25</text></svg>`;
+})();
+
 const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <title>SignalMap · Hito 2 · Documento técnico</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>${CSS}</style>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
@@ -110,7 +129,7 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
 (async () => {
   // Antes de crear cualquier diagrama: si no, Mermaid los dibuja solo al cargar la página
   // con su configuración por defecto, y mermaid.run() después los saltea.
-  mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { primaryColor: '#eef2f8', primaryBorderColor: '#1e3a6b', primaryTextColor: '#1f2937', lineColor: '#1e3a6b', fontFamily: 'Inter, sans-serif', fontSize: '13px', clusterBkg: '#f8fafc', clusterBorder: '#1e3a6b', xyChart: { plotColorPalette: '#1e3a6b', backgroundColor: '#ffffff' } }, flowchart: { useMaxWidth: false }, xyChart: { useMaxWidth: false, width: 560, height: 260 } });
+  mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { primaryColor: '#F2F5EF', primaryBorderColor: '#435570', primaryTextColor: '#131521', lineColor: '#342E4E', fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '13px', clusterBkg: '#F7F9F5', clusterBorder: '#435570', noteBkgColor: '#F2F5EF', noteBorderColor: '#709491', edgeLabelBackground: '#ffffff', tertiaryColor: '#ffffff' }, flowchart: { useMaxWidth: false } });
   const doc = document.getElementById('doc');
   doc.innerHTML = marked.parse(${JSON.stringify(markdown)});
   // Portada: todo lo anterior al primer h2 (título y datos del equipo).
@@ -122,9 +141,9 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
   const meta = document.createElement('div');
   meta.className = 'meta';
   meta.append(...cover.querySelectorAll('p'));
-  cover.innerHTML = '<div class="uni">Universidad Mayor</div><div class="bar"></div>'
-    + '<div class="brand">Signal<span>Map</span></div><div class="sub">' + sub + '</div>';
-  cover.append(meta);
+  cover.innerHTML = ${JSON.stringify(COVER_SVG)} + '<div class="texto"><div class="uni">Universidad Mayor</div>'
+    + '<div class="brand">SignalMap</div><div class="sub">' + sub + '</div></div>';
+  cover.querySelector('.texto').append(meta);
   doc.prepend(cover);
   // Índice: un renglón por h2/h3, con la página que da la primera pasada ("00" mientras tanto).
   const tocPages = ${JSON.stringify(tocPages)};
@@ -140,7 +159,7 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
     toc.lastChild.append(li);
   });
   cover.after(toc);
-  // Cada sección principal empieza en página nueva; el número va en dorado.
+  // Cada sección principal empieza en página nueva; el número va en otro color (.num).
   doc.querySelectorAll('h2, h3').forEach((h) => {
     const m = h.textContent.match(/^(\\d+(\\.\\d+)?)\\.?\\s+(.*)$/);
     if (m) h.innerHTML = '<span class="num">' + m[1] + '</span>' + h.innerHTML.replace(/^\\d+(\\.\\d+)?\\.?\\s+/, '');
@@ -156,7 +175,7 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
     div.textContent = code.textContent;
     code.parentElement.replaceWith(div);
   });
-  await Promise.all(['400 13px Inter', '600 13px Inter', '700 20px "Playfair Display"', '400 13px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
+  await Promise.all(['400 13px "IBM Plex Sans"', '600 13px "IBM Plex Sans"', '700 21px "Bricolage Grotesque"', '800 74px "Bricolage Grotesque"', '400 13px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
   await mermaid.run({ querySelector: '.mermaid' });
   await document.fonts.ready;
   document.body.dataset.ready = '1';
@@ -220,7 +239,7 @@ try {
   });
 
   const evaluate = async (expression) => (await send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
-  const footer = '<div style="width:100%;font:7.5pt Inter,sans-serif;color:#6b7280;padding:0 17mm;display:flex;justify-content:space-between">'
+  const footer = '<div style="width:100%;font:7.5pt IBM Plex Sans,sans-serif;color:#5A6272;padding:0 17mm;display:flex;justify-content:space-between">'
     + '<span>SignalMap · Hito 2 · Documento técnico</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>';
   const render = async (tocPages) => {
     writeFileSync(html, PAGE(markdown, tocPages));

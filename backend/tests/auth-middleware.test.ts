@@ -72,7 +72,7 @@ describe('authenticate: token válido', () => {
     expect(res.body).toEqual({ user: { id: 3, orgId: 1, role: 'cliente' } });
   });
 
-  test('esquema en minúsculas ("bearer") se acepta (RFC 7235)', async () => {
+  test('esquema en minúsculas ("bearer") se acepta (RFC 9110 §11.1)', async () => {
     const res = await request(testApp).get('/privada').set('Authorization', `bearer ${craft(HS256, claims())}`);
     expect(res.status).toBe(200);
   });

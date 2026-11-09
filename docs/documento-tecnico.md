@@ -6,20 +6,18 @@
 
 **Repositorio:** https://github.com/Signali/MapeoWifiSignal
 
-<!-- BORRADOR. Secciones marcadas «Pendiente» todavía no se escriben. -->
-
 ## Resumen
 
 SignalMap mide la señal WiFi en puntos fijos de un edificio, marcados con tiras NFC, para comprobar si un repetidor mejoró la cobertura. Este documento describe el servidor construido en el Hito 2: una API REST de 13 endpoints con CRUD completo de edificios y puntos de medición, lectura de pisos y autenticación con JWT para tres roles, sobre PostgreSQL 17.
 
 Cuatro decisiones lo definen:
 
-- **Monolito en capas** (sección 3). Un equipo de 2 personas y unos 24 puntos por piso no justifican servicios separados. Las reglas de cada capa se comprobaron sobre el código, no solo se declaran.
+- **Monolito en capas** (sección 3). Un equipo de 2 personas y unos 24 puntos por piso no justifican servicios separados. Las reglas de cada capa se comprobaron con búsquedas en el código.
 - **Contrato antes que código** (sección 4). La interfaz se acordó antes de programar. Cada error responde su código HTTP, nunca `200`, y un recurso de otra organización responde `404` para no revelar que existe.
 - **La base garantiza lo que puede comprobar sola** (sección 5): duplicados, rangos y formatos. El servicio se ocupa de lo que necesita leer otra tabla o saber quién pregunta.
 - **Credenciales fuera del repositorio y JWT propio** (sección 6): toda la configuración llega por variables de entorno, y la verificación del token se probó contra cada ataque conocido.
 
-**Cómo se comprobó** (sección 8): 391 tests, uno por cada respuesta del contrato, corren en cada Pull Request contra un PostgreSQL 17 real. Las 86 fallas introducidas a propósito en reglas críticas fueron detectadas por los tests. El servicio queda listo para recibir peticiones en menos de un segundo (sección 3.4).
+**Cómo se comprobó** (sección 8): 391 tests, uno por cada respuesta del contrato, corren en cada Pull Request contra un PostgreSQL 17 real. Las 86 fallas introducidas a propósito en reglas críticas fueron detectadas por los tests. El servicio queda listo para recibir peticiones en un tiempo de entre 0,4 y 1 s, según el estado del equipo (sección 3.4). Una prueba de carga mostró que la lista de puntos sostiene unas 880 peticiones por segundo sin errores y que el límite es el login, con unas 6 por segundo (sección 8.3). El uso de inteligencia artificial está declarado, con las partes en que se usó y cómo se verificó (sección 8.4).
 
 **Respecto del Hito 1** (sección 2) se mantienen el stack y la arquitectura. Cambian el modelo de datos, el formato de errores y la renovación del token. La ingesta de mediciones, la app y PostGIS pasan al Hito 3.
 
@@ -77,6 +75,13 @@ La arquitectura y el stack siguen igual: un solo back-end para la app y la web, 
 | JWT, sin detalle | HS256 con `node:crypto`, sin librería | Cero dependencias en la pieza más sensible (sección 6.4) |
 | `GET /points/by-tag/:nfcUid` y `POST /measurements` | Rutas bajo `/api/v1`, en `snake_case`; esas dos todavía no existen | Las usa la app al medir, que es del Hito 3 |
 
+<p style="break-after: avoid"><b>Qué impacto tuvieron estos cambios:</b></p>
+
+- **Para quien consume la API.** Hay menos que aprender: el código HTTP da la clase de error y `message` lo explica. A cambio, si una aplicación necesita distinguir dos errores con el mismo código, hoy solo puede leer el texto; por eso queda abierto sumar el campo `code`.
+- **Para la app del Hito 3.** Al vencer el token recibe un `401` y el usuario vuelve a iniciar sesión, porque no hay renovación. La tira NFC se envía en hexadecimal y sin separadores: `04:A2:…` responde `400`.
+- **Para los datos.** Un punto fuera del piso se rechaza antes de guardarse (`422`), y `p-25` y `P-25` cuentan como el mismo código. Como el piso todavía no tiene plano, ese tema vuelve a plantearse en el Hito 3.
+- **Para el Hito 3.** Recibe lo que este hito no construyó: las rutas de medición, la app y la web, y la renovación del token. Esas rutas tienen que acordarse en el contrato antes de programarlas.
+
 ### 2.3 Lo que se posterga, y cuándo vuelve
 
 - **Ingesta de mediciones y app con NFC y WiFi**, que el Hito 1 ubicaba en este hito. Vuelven en el Hito 3, con su contrato acordado antes de programar, como se hizo ahora.
@@ -88,7 +93,7 @@ La arquitectura y el stack siguen igual: un solo back-end para la app y la web, 
 
 ## 3. Arquitectura: el viaje de una petición
 
-La mejor forma de entender cómo está construido el servidor es seguir una petición real. En el piso 3 de la Torre Norte (40 × 25 m, con 24 tiras ya instaladas) el técnico pega una tira nueva junto a la sala de reuniones y la registra como el punto P-25: 30 m desde el borde izquierdo del plano y 12,5 m desde el borde superior. Hoy lo hace desde Postman; en el Hito 3 lo hará la app. Lo que viaja es esto:
+En el piso 3 de la Torre Norte (40 × 25 m, con 24 tiras ya instaladas) el técnico pega una tira nueva junto a la sala de reuniones y la registra como el punto P-25: 30 m desde el borde izquierdo del plano y 12,5 m desde el borde superior. Hoy lo hace desde Postman; en el Hito 3 lo hará la app. Lo que viaja es esto:
 
 ```http
 POST /api/v1/points
@@ -98,7 +103,7 @@ Content-Type: application/json
 { "floor_id": 1, "code": "p-25", "x": 30, "y": 12.5, "nfc_uid": "04b11c22d3e480" }
 ```
 
-El código y la tira van en minúscula a propósito: así los escribió el técnico. Veamos qué hace el servidor con eso.
+El código y la tira van en minúscula a propósito: así los escribió el técnico.
 
 ### 3.1 Seis preguntas antes de guardar un punto
 
@@ -128,9 +133,9 @@ sequenceDiagram
 
 Con el P-25 todas las respuestas son «sí»: el token es válido, el técnico puede crear puntos, el cuerpo tiene forma y, de paso, `p-25` se normaliza a `P-25` y la tira a mayúsculas. El piso existe y es de su organización, 30 ≤ 40 y 12,5 ≤ 25, y no hay otro P-25. Pero si el técnico se hubiera equivocado y escrito `"x": 45`, la pregunta 5 cortaría con `422 "Las coordenadas quedan fuera del piso (40 x 25 m)"`, sin llegar a la base.
 
-El orden no es casual: primero se sabe **quién** pide y después **qué** pide. Por eso un cliente que manda un cuerpo mal formado recibe `403` y no `400`: no tiene sentido explicarle el formato de algo que igual no puede hacer.
+Primero se comprueba **quién** pide y después **qué** pide. Por eso un cliente que manda un cuerpo mal formado recibe `403` y no `400`: no tiene sentido explicarle el formato de algo que igual no puede hacer.
 
-Lo más llamativo es lo poco que hace el controlador. Esta es su función entera (`controllers/points.ts`, sin las anotaciones de tipo):
+El controlador hace muy poco. Esta es su función entera (`controllers/points.ts`, sin las anotaciones de tipo):
 
 ```ts
 export async function create(req, res) {
@@ -152,7 +157,7 @@ Tener carpetas con nombres de capas no prueba nada. La prueba es que cada capa r
 | `services/` | Reglas de negocio: qué ve cada rol, el punto dentro del piso | Conocer HTTP o escribir SQL |
 | `repositories/` | SQL con parámetros | Decidir permisos |
 
-Esas prohibiciones se comprobaron buscando en el código, no leyéndolo. Estas son las búsquedas que se corrieron (resumidas) y lo que encontraron:
+Esas prohibiciones se comprobaron con búsquedas en el código. Estas son las que se corrieron (resumidas) y lo que encontraron:
 
 ```console
 # desde backend/src
@@ -190,20 +195,22 @@ flowchart LR
 
 ### 3.4 ¿Cuánto tarda en arrancar?
 
-El servicio queda listo para recibir peticiones en **algo menos de un segundo**. Se midió desde que se lanza el proceso hasta que `GET /health` responde `200`, en cuatro series de 10 arranques en Pc-Portatil (Intel Core i5-13420H, 24 GB de RAM, Windows 11, Node 26.13.0). Cualquiera puede repetirlo con `npm run startup-time` en `backend/`.
+El servicio queda listo para recibir peticiones en **entre 0,4 y 1 s**, según el estado del equipo. Se midió desde que se lanza el proceso hasta que `GET /health` responde `200`, en series de 10 arranques en Pc-Portatil (Intel Core i5-13420H, 24 GB de RAM, Windows 11, Node 26.13.0). Cualquiera puede repetirlo con `npm run startup-time` en `backend/`.
 
 <div class="bars" aria-label="Mediana de 10 arranques por serie">
-  <p>Mediana de 10 arranques</p>
+  <p>Mediana de 10 arranques (enchufado y a batería: la serie central de tres)</p>
   <div><span>Serie 1</span><i style="width:68.5%"></i><b>753 ms</b></div>
   <div><span>Serie 2</span><i style="width:87.4%"></i><b>961 ms</b></div>
   <div><span>Serie 3</span><i style="width:84.7%"></i><b>932 ms</b></div>
   <div><span>Serie 4</span><i style="width:94.9%"></i><b>1.044 ms</b></div>
+  <div><span>A batería</span><i style="width:51.8%"></i><b>570 ms</b></div>
+  <div><span>Enchufado</span><i style="width:35.2%"></i><b>387 ms</b></div>
   <div><span>Solo Node</span><i style="width:5.1%"></i><b>56 ms</b></div>
 </div>
 
-La variación entre series depende del momento en que se midió, no del método: las series 2 a 4 se corrieron seguidas y alternando dos formas de consultar `/health`, y dieron valores parecidos. `/health` no consulta la base, así que el número no incluye la conexión a PostgreSQL.
+La variación no viene del método. Las series 1 a 4 son del 6 de noviembre y no se registró si el equipo estaba enchufado; las series 2 a 4 se corrieron seguidas y alternando dos formas de consultar `/health`, y dieron valores parecidos. El 9 de noviembre se repitió con tres series por estado: enchufado dio medianas de 387 y 388 ms, y a batería, de 560 a 592 ms. La energía explica una parte, pero ni a batería se volvió a llegar a las cifras del 6 de noviembre, y el resto de la diferencia no se pudo explicar. `/health` no consulta la base, así que el número no incluye la conexión a PostgreSQL.
 
-¿En qué se va ese tiempo? Cargando cada pieza por separado (3 corridas) se explican unos 0,67 s; el resto, hasta que `/health` responde, no se desglosó:
+¿En qué se va ese tiempo? El desglose es del 6 de noviembre, así que corresponde a esos tiempos más lentos. Cargando cada pieza por separado (3 corridas) se explican unos 0,67 s; el resto, hasta que `/health` responde, no se desglosó:
 
 <div class="stack" aria-label="Desglose del arranque">
   <div>
@@ -215,7 +222,7 @@ La variación entre series depende del momento en que se midió, no del método:
   </div>
 </div>
 
-El tramo más largo, «resto de `src/`», incluye unos 100 ms del hash ficticio de bcrypt que usa el login (sección 6.3).
+El tramo más largo, «resto de `src/`», incluye el hash ficticio de bcrypt que usa el login (sección 6.3). Ese día costaba unos 100 ms; el 9 de noviembre, con 10 procesos nuevos, la mediana fue de 60 ms enchufado y 92 ms a batería.
 
 ## 4. Diseño de la API REST: la vida de un punto
 
@@ -238,10 +245,10 @@ GET /api/v1/points/25
 - **Crear devuelve dónde quedó lo creado.** El `POST` respondió `201` con la cabecera `Location: /api/v1/points/25`, que es lo que define HTTP para ese código: RFC 9110 (Fielding et al., 2022, §15.3.2).
 - **Corregir no obliga a reenviar todo.** El técnico mandó solo `x` e `y`: se actualiza únicamente con `PATCH`, que es una modificación parcial según RFC 5789 (Dusseault y Snell, 2010). No hay `PUT`.
 - **Borrar no devuelve nada** (`204`), y el `404` del final demuestra que el borrado fue real.
-- **Todo se escribe igual.** `snake_case` en cuerpo, respuesta y parámetros (`floor_id`, `nfc_uid`), y la versión va en la ruta (`/api/v1`): un cambio incompatible, como pasar los ids a UUID, saldría como `v2` sin romper a la app.
+- **Nombres en `snake_case` y versión en la ruta.** `snake_case` en cuerpo, respuesta y parámetros (`floor_id`, `nfc_uid`), y la versión va en la ruta (`/api/v1`): un cambio incompatible, como pasar los ids a UUID, saldría como `v2` sin romper a la app.
 - **Los ids son opacos.** Son enteros, pero el cliente no calcula ni ordena por ellos.
-- **Nada pasa en silencio.** Un campo que la ruta no conoce (un `flor_id` mal escrito) es un error, no se ignora.
-- **Cada uno ve lo suyo.** Toda consulta se filtra por la organización del token; quien llama nunca envía su `org_id`, así que no puede pedir datos ajenos aunque adivine un id.
+- **Un campo desconocido es un error.** Si la ruta no lo conoce (un `flor_id` mal escrito), responde `400`.
+- **Cada consulta se filtra por organización.** Toda consulta se filtra por la organización del token; quien llama nunca envía su `org_id`, así que no puede pedir datos ajenos aunque adivine un id.
 
 Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, porque hay unos 24 puntos por piso. La paginación se decide antes de que la app y la web dependan del formato (sección 8.2).
 
@@ -253,17 +260,36 @@ Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, por
 | 2 | `POST` | `/api/v1/auth/login` | público | cuerpo: `email`, `password` | `200` | `400` `401` |
 | 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `401` |
 | 4 | `GET` | `/api/v1/buildings/:id` | todos | ruta: `id` | `200` | `400` `401` `404` |
-| 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` | `400` `401` `403` `409` |
+| 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` + `Location` | `400` `401` `403` `409` |
 | 6 | `PATCH` | `/api/v1/buildings/:id` | `admin` | ruta: `id` · cuerpo: `name` | `200` | `400` `401` `403` `404` `409` |
 | 7 | `DELETE` | `/api/v1/buildings/:id` | `admin` | ruta: `id` | `204` | `400` `401` `403` `404` `409` |
-| 8 | `GET` | `/api/v1/floors` | todos | consulta: `building_id` | `200` | `400` `401` `404` |
-| 9 | `GET` | `/api/v1/points` | todos | consulta: `floor_id` | `200` | `400` `401` `404` |
+| 8 | `GET` | `/api/v1/floors` | todos | consulta: `building_id` (obligatorio) | `200` | `400` `401` `404` |
+| 9 | `GET` | `/api/v1/points` | todos | consulta: `floor_id` (obligatorio) | `200` | `400` `401` `404` |
 | 10 | `GET` | `/api/v1/points/:id` | todos | ruta: `id` | `200` | `400` `401` `404` |
-| 11 | `POST` | `/api/v1/points` | `admin` `tecnico` | cuerpo: `floor_id`, `code`, `x`, `y`, `nfc_uid` | `201` | `400` `401` `403` `404` `409` `422` |
+| 11 | `POST` | `/api/v1/points` | `admin` `tecnico` | cuerpo: `floor_id`, `code`, `x`, `y`, `nfc_uid` | `201` + `Location` | `400` `401` `403` `404` `409` `422` |
 | 12 | `PATCH` | `/api/v1/points/:id` | `admin` `tecnico` | ruta: `id` · cuerpo: al menos uno de `code`, `x`, `y`, `nfc_uid` | `200` | `400` `401` `403` `404` `409` `422` |
 | 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` `401` `403` `404` |
 
-Los cuerpos de ejemplo de cada endpoint y todos sus casos de error están en el contrato (Anexo A).
+Cinco endpoints reciben cuerpo; este es un ejemplo de cada uno:
+
+```http
+POST /api/v1/auth/login
+{ "email": "admin@demo.cl", "password": "<clave del .env>" }
+
+POST /api/v1/buildings
+{ "name": "  bodega   sur " }
+
+PATCH /api/v1/buildings/1
+{ "name": "Torre Norte (remodelada)" }
+
+POST /api/v1/points
+{ "floor_id": 1, "code": "P-25", "x": 30, "y": 12.5, "nfc_uid": "04B11C22D3E480" }
+
+PATCH /api/v1/points/25
+{ "x": 13, "y": 8.5 }
+```
+
+Las respuestas de ejemplo de cada endpoint y todos sus casos de error están en el contrato (Anexo A).
 
 ### 4.3 ¿Y si algo sale mal?
 
@@ -293,7 +319,7 @@ POST /api/v1/points   { ..., "x": 45, ... }
 
 Todos los errores tienen el mismo cuerpo, `{ "message": "..." }`, y **ninguno responde `200`**. Detrás de esas respuestas hay tres decisiones:
 
-- **Lo ajeno no existe.** El punto de otra empresa responde exactamente lo mismo que uno que nunca existió. Así no se revela que existe, algo que HTTP permite expresamente (Fielding et al., 2022, §15.5.4). El `403` queda solo para «lo ves, pero tu rol no puede tocarlo».
+- **Lo ajeno responde `404`.** El punto de otra empresa responde exactamente lo mismo que uno que nunca existió. Así no se revela que existe, algo que HTTP permite expresamente (Fielding et al., 2022, §15.5.4). El `403` queda solo para «lo ves, pero tu rol no puede tocarlo».
 - **`400` no es lo mismo que `422`.** `"doce"` no es un número: es un error de formato. `45` sí es un número válido, pero rompe una regla del negocio: «Unprocessable Content» (Fielding et al., 2022, §15.5.21).
 - **Todo `401` dice cómo autenticarse**, con la cabecera `WWW-Authenticate: Bearer`, que HTTP exige (Fielding et al., 2022, §15.5.2; RFC 6750: Jones y Hardt, 2012, §3).
 
@@ -408,7 +434,7 @@ Error: Configuración inválida (revisar .env contra .env.example):
   → at JWT_SECRET
 ```
 
-Ese mínimo no es arbitrario: HS256 exige una clave de al menos 256 bits, es decir 32 bytes: RFC 7518 (Jones, 2015, §3.2). El README indica generarla al azar (32 bytes aleatorios en base64url, 43 caracteres). El valor de ejemplo también se rechaza, porque es público: con él, cualquiera que lea el repositorio podría firmar tokens.
+El mínimo viene de RFC 7518 (Jones, 2015, §3.2): HS256 exige una clave de al menos 256 bits, es decir 32 bytes. El README indica generarla al azar (32 bytes aleatorios en base64url, 43 caracteres). El valor de ejemplo también se rechaza, porque es público: con él, cualquiera que lea el repositorio podría firmar tokens.
 
 ### 6.2 Credenciales fuera del repositorio
 
@@ -423,7 +449,7 @@ El único archivo que pasó por el historial es la plantilla. Cada equipo crea s
 
 ### 6.3 Login
 
-`POST /auth/login` responde el mismo `401 "Credenciales inválidas"` si el email no existe y si la clave es incorrecta. Pero un mensaje igual no alcanza: si el email no existe y el servidor contesta al instante, la rapidez lo delata. Por eso, cuando el email no existe, igual se ejecuta bcrypt contra un hash ficticio. Ese hash se calcula una vez al arrancar, por unos 100 ms (sección 3.4), y un test comprueba que bcrypt corre en los dos casos.
+`POST /auth/login` responde el mismo `401 "Credenciales inválidas"` si el email no existe y si la clave es incorrecta. Pero un mensaje igual no alcanza: si el email no existe y el servidor contesta al instante, la rapidez lo delata. Por eso, cuando el email no existe, igual se ejecuta bcrypt contra un hash ficticio. Ese hash se calcula una vez al arrancar, entre 60 y 100 ms según el estado del equipo (sección 3.4), y un test comprueba que bcrypt corre en los dos casos.
 
 ### 6.4 JWT propio
 
@@ -490,19 +516,19 @@ El Hito 1 comparó Express con Spring Boot. Al empezar el Hito 2 se amplió la c
 | Hono | Muy liviano y portable entre entornos | Su fuerte son las funciones en el borde de la red (*edge*), que no usamos |
 | Spring Boot | Estructura y seguridad maduras | Otro lenguaje: no comparte tipos con la web en TypeScript |
 
-El costo asumido es que Express no impone capas, así que la separación es una disciplina nuestra. Se sostiene con reglas que se comprueban en el código (sección 3.2), no con la herramienta. Si el equipo o el proyecto crecieran, el candidato para revisar la decisión sería NestJS.
+El costo asumido es que Express no impone capas, así que la separación es una disciplina nuestra. Se sostiene con reglas que se comprueban en el código (sección 3.2). Si el equipo o el proyecto crecieran, el candidato para revisar la decisión sería NestJS.
 
 ### 7.2 El resto del stack, decisión por decisión
 
 **TypeScript sin compilar**, en vez de compilar a `dist/`. Node 26 ejecuta los `.ts` directamente y `tsc` solo revisa tipos (`npm run typecheck`), así que lo que corre es exactamente lo que está en el repositorio. El costo: solo se puede usar sintaxis que Node sabe borrar (nada de `enum` ni `namespace`) y el proyecto depende de Node 26. Pasar a compilar en el Hito 3 está preparado en `tsconfig.json`.
 
-**Zod**, en vez de validar a mano en cada controlador. Un schema por endpoint concentra el formato, los mensajes y la normalización (el `p-25` → `P-25` de la sección 3), y de ese schema salen los tipos de TypeScript. Cuesta una dependencia más, que tarda ~155 ms en cargar al arrancar.
+**Zod**, en vez de validar a mano en cada controlador. Un schema por endpoint concentra el formato, los mensajes y la normalización (el `p-25` → `P-25` de la sección 3), y de ese schema salen los tipos de TypeScript. Cuesta una dependencia más, que tardó ~155 ms en cargar en el desglose de la sección 3.4.
 
 **`pg` con SQL escrito a mano**, en vez de Prisma (un ORM) o Knex y Kysely (constructores de consultas). Las consultas quedan visibles en `repositories/`, que es justamente la evidencia de las capas (sección 5.5). Prisma esconde el SQL y pide su propio esquema, que duplicaría `db/schema.sql`; Knex o Kysely serían una dependencia más para 2 recursos. El costo es mapear filas a objetos y declarar los tipos a mano.
 
 **PostgreSQL 17 instalado en cada PC**, en vez de Docker Desktop o una base en la nube (Neon, Supabase). Docker Desktop en Windows necesita WSL2, que en Pc-Portatil no está instalado (y la virtualización figura desactivada): un riesgo para la demostración en vivo. La nube depende de internet en la sala, y su cadena de conexión sería una credencial real. El costo es instalar PostgreSQL en cada equipo; Docker llega en el Hito 3.
 
-**`bcryptjs`**, bcrypt escrito en JavaScript, en vez de `bcrypt` nativo. No compila nada al instalarse, así que funciona igual en cualquier PC y en Docker. Cuesta ~100 ms por hash con costo 10, medido en la sección 3.4.
+**`bcryptjs`**, bcrypt escrito en JavaScript, en vez de `bcrypt` nativo. No compila nada al instalarse, así que funciona igual en cualquier PC y en Docker. Cuesta entre 60 y 100 ms por hash con costo 10, según el estado del equipo (sección 3.4).
 
 El **JWT propio**, frente a una librería como `jsonwebtoken`, se justifica en la sección 6.4.
 
@@ -539,7 +565,7 @@ La comparación confirmó la elección, con un matiz: ninguno de los dos corre e
   <div><b>391</b><span>tests, uno por cada respuesta del contrato</span></div>
   <div><b>86 / 86</b><span>fallas introducidas a propósito, detectadas</span></div>
   <div><b>0</b><span>hallazgos de seguridad de confianza alta</span></div>
-  <div><b>&lt; 1 s</b><span>en quedar listo para recibir peticiones</span></div>
+  <div><b>0,4 a 1 s</b><span>en quedar listo para recibir peticiones, según el estado del equipo</span></div>
 </div>
 
 **Un test por respuesta del contrato.** Cada endpoint tiene su caso feliz y uno por cada error que declara (`400`, `401`, `403`, `404`, `409`, `422`), probado con tokens de los 3 roles, con una segunda organización y con un cliente sin asignaciones. La mayoría son tests de integración con Supertest: hacen una petición HTTP real al servicio, que trabaja contra una base PostgreSQL de prueba. En el CI pasan los 391. En Windows pasan 388, porque los 3 del apagado ordenado solo corren en Linux: ahí una señal enviada por código termina el proceso sin pasar por su manejador, así que en Windows se prueba a mano con `Ctrl+C`.
@@ -579,11 +605,11 @@ La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Pa
 
 **Las lecturas aguantan.** `GET /points?floor_id=1` (24 puntos) rindió unas 880 peticiones por segundo con 10, 50 y 200 conexiones: el caudal no baja, solo se alarga la espera (mediana de 10, 59 y 227 ms). En las 121.660 peticiones de lectura hubo **cero errores y ninguna respuesta distinta de `2xx`**. El servicio no fija el tamaño del pool de `pg`, así que usa el valor por defecto de la librería (10 conexiones). Un técnico que mide un punto a la vez queda muy por debajo de esas cifras.
 
-**El login es el límite.** `POST /auth/login` rindió **6 por segundo** con 10 conexiones (1,7 s de espera) y 5 con 50 (9,8 s, con un tiempo de espera agotado). La causa es que `bcryptjs` calcula el hash en JavaScript, en el único hilo de Node, y mientras lo hace el servicio no atiende nada más: con solo 3 logins simultáneos, `GET /health` pasó de 2 ms a entre 150 y 190 ms. Un login suelto tardó unos 180 ms en total; el hash solo cuesta unos 100 ms (sección 3.4). No se cambió nada por esto. Con la carga prevista no se nota, pero es un límite conocido: mitigarlo (por ejemplo, con un límite de intentos o un hash que no bloquee el hilo) queda como posibilidad para el Hito 3, sin decidir.
+**El login es el límite.** `POST /auth/login` rindió **6 por segundo** con 10 conexiones (1,7 s de espera) y 5 con 50 (9,8 s, con un tiempo de espera agotado). La causa es que `bcryptjs` calcula el hash en JavaScript, en el único hilo de Node, y mientras lo hace el servicio no atiende nada más: con solo 3 logins simultáneos, `GET /health` pasó de 2 ms a entre 150 y 190 ms. Un login suelto tardó unos 180 ms en esa prueba. Al repetirlo con 30 intentos seguidos con un email inexistente (consulta y bcrypt, sin firmar un token), la mediana fue de 58 ms enchufado y 86 ms a batería, así que las cifras de esta sección pueden variar con el estado del equipo, como el arranque (sección 3.4). No se cambió nada por esto. Con la carga prevista no se nota, pero es un límite conocido: mitigarlo (por ejemplo, con un límite de intentos o un hash que no bloquee el hilo) queda como posibilidad para el Hito 3, sin decidir.
 
 ### 8.4 Uso de inteligencia artificial
 
-El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para el borrador de las diapositivas de la presentación.
+El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para el borrador de las diapositivas de la presentación. La identidad visual de este documento (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
 
 **En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisa; en los README, la colección de Postman y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
 
@@ -592,6 +618,7 @@ El curso pide declarar qué se usó, en qué parte y cómo se verificó el resul
 - Los 391 tests y el CI en cada Pull Request, las 86 mutaciones y la revisión de código y de seguridad al cerrar cada recurso (sección 8.1).
 - Las cifras del documento se midieron o se contrastaron con el código: conteos de endpoints, tablas, tests y líneas, tiempos de arranque (3.4) y de carga (8.3). Las referencias se abrieron en su fuente original y se citan solo las verificadas.
 - Cada cambio entra por un Pull Request con aviso al compañero para su revisión.
+- La redacción del documento se revisó con los patrones de escritura típica de IA de la skill `humanizer` (blader/humanizer, basada en la guía «Signs of AI writing» de Wikipedia), que se usó como lista de control, sin instalarla. Cada cambio lo aprobó un integrante y pasa por la revisión del compañero en el Pull Request.
 - El asistente también se equivocó y se corrigió con esta lectura. Por ejemplo, se retiró la frase «arranca en segundos», que no estaba medida, y se corrigió la afirmación de que Vitest corre «por el mismo camino que el servicio», que era falsa.
 - Lo que ningún integrante pueda explicar no se entrega: se prepara una lista de preguntas probables, con su respuesta y su evidencia en el código, y los dos integrantes estudian todas las partes.
 

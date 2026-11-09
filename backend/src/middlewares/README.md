@@ -52,7 +52,7 @@ router.get('/points/:id', authenticate, validate({ params: idParams }), controll
   | Otro esquema (`Basic`), `Bearer` sin token, espacios de más, firma mala, cabecera del JWT distinta de la nuestra, payload deforme | `Token inválido` |
   | Firma correcta pero `exp` ya pasó | `Token vencido` |
 
-  El esquema `Bearer` no distingue mayúsculas (RFC 7235 §2.1). La firma se revisa antes que el vencimiento: un token vencido y alterado es "inválido".
+  El esquema `Bearer` no distingue mayúsculas (RFC 9110 §11.1). La firma se revisa antes que el vencimiento: un token vencido y alterado es "inválido".
 - **`requireRole(...roles)`**: `403 "No tiene permiso para esta acción"` si `req.user.role` no está en la lista. Va siempre **después** de `authenticate` (si no, es un bug y responde `500`).
 - Las rutas públicas (`/health`, `POST /auth/login`) no llevan `authenticate`.
 - El token no lleva los edificios asignados del `cliente`: el servicio de cada recurso los consulta en cada petición (contrato §3).
