@@ -80,14 +80,14 @@ La arquitectura y el stack siguen igual: un solo back-end para la app y la web, 
 - **Para quien consume la API.** Hay menos que aprender: el código HTTP da la clase de error y `message` lo explica. A cambio, si una aplicación necesita distinguir dos errores con el mismo código, hoy solo puede leer el texto; por eso queda abierto sumar el campo `code`.
 - **Para la app del Hito 3.** Al vencer el token recibe un `401` y el usuario vuelve a iniciar sesión, porque no hay renovación. La tira NFC se envía en hexadecimal y sin separadores: `04:A2:…` responde `400`.
 - **Para los datos.** Un punto fuera del piso se rechaza antes de guardarse (`422`), y `p-25` y `P-25` cuentan como el mismo código. Como el piso todavía no tiene plano, ese tema vuelve a plantearse en el Hito 3.
-- **Para el Hito 3.** Recibe lo que este hito no construyó: las rutas de medición, la app y la web, y la renovación del token. Esas rutas tienen que acordarse en el contrato antes de programarlas.
+- **Para el Hito 3.** Recibe lo que este hito no construyó: las rutas de medición, la app y la web, y la renovación del token.
 
 ### 2.3 Lo que se posterga, y cuándo vuelve
 
 - **Ingesta de mediciones y app con NFC y WiFi**, que el Hito 1 ubicaba en este hito. Vuelven en el Hito 3, con su contrato acordado antes de programar, como se hizo ahora.
-- **PostGIS**, que el Hito 1 declaraba «para implementar en el Hito 2». Ninguna consulta de este hito la necesita (el mismo Hito 1 reconocía que no es imprescindible con ~24 puntos por piso). Se instala en el Hito 3 solo si se escribe la consulta espacial que la exige; si no aparece, se documenta que no hacía falta.
+- **PostGIS**, que el Hito 1 declaraba «para implementar en el Hito 2». Ninguna consulta de este hito la necesita (el mismo Hito 1 reconocía que no es imprescindible con ~24 puntos por piso). Pasa al Hito 3, y solo si una consulta espacial la exige.
 - **El volumen de planos en Docker.** Este hito no tiene planos ni Docker, pero el servicio ya está preparado: toda su configuración llega por variables de entorno, escucha en `0.0.0.0` y tiene `GET /health`.
-- **La gestión de usuarios por el administrador** (`/admin/users`, en el mapa del producto). Los 3 usuarios de prueba salen del seed; se decide al planificar el Hito 3.
+- **La gestión de usuarios por el administrador** (`/admin/users`, en el mapa del producto). En este hito no existe: los 3 usuarios de prueba salen del seed.
 
 ---
 
@@ -250,7 +250,7 @@ GET /api/v1/points/25
 - **Un campo desconocido es un error.** Si la ruta no lo conoce (un `flor_id` mal escrito), responde `400`.
 - **Cada consulta se filtra por organización.** Toda consulta se filtra por la organización del token; quien llama nunca envía su `org_id`, así que no puede pedir datos ajenos aunque adivine un id.
 
-Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, porque hay unos 24 puntos por piso. La paginación se decide antes de que la app y la web dependan del formato (sección 8.2).
+Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, porque hay unos 24 puntos por piso. La paginación queda para el Hito 3 (sección 8.2).
 
 ### 4.2 Los 13 endpoints
 
@@ -580,13 +580,13 @@ Y ninguna entrada del cliente provoca un `500`: tokens deformes, JSON roto, esca
 
 ### 8.2 Lo que falta, a conciencia
 
-**En el Hito 3, cuando haga falta:**
+**Pasa al Hito 3:**
 
 - **Límite de intentos de login**, porque hoy una clave débil se podría adivinar por fuerza bruta.
 - **Cabeceras de seguridad** (`helmet`) y **CORS**, junto con la web: sin CORS, la web, que corre en otro origen, no podría llamar a la API (la app Android no lo necesita).
 - **Renovar el token.** Hoy, uno robado sirve hasta que vence (2 a 10 h según el rol); ante una sospecha, se rota `JWT_SECRET` (sección 6.6).
-- **Paginación**, a decidir **antes** de que la app y la web dependan del formato: cambiarlo después sería `v2`.
-- **PostGIS**, solo si se escribe la consulta espacial que la necesite (sección 2.3), y **Docker**, para el que el servicio ya está preparado (sección 6.6).
+- **Paginación.** Las listas no la tienen (sección 4.1). Agregarla cuando la app y la web ya usen el formato actual sería un cambio incompatible (`v2`), así que se define al empezar el Hito 3.
+- **PostGIS**, solo si una consulta espacial la necesita (sección 2.3), y **Docker**, para el que el servicio ya está preparado (sección 6.6).
 
 **Documentado, sin efecto hoy:** bcrypt solo considera los primeros 72 bytes de una clave, algo que no afecta a claves normales.
 
@@ -605,22 +605,22 @@ La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Pa
 
 **Las lecturas aguantan.** `GET /points?floor_id=1` (24 puntos) rindió unas 880 peticiones por segundo con 10, 50 y 200 conexiones: el caudal no baja, solo se alarga la espera (mediana de 10, 59 y 227 ms). En las 121.660 peticiones de lectura hubo **cero errores y ninguna respuesta distinta de `2xx`**. El servicio no fija el tamaño del pool de `pg`, así que usa el valor por defecto de la librería (10 conexiones). Un técnico que mide un punto a la vez queda muy por debajo de esas cifras.
 
-**El login es el límite.** `POST /auth/login` rindió **6 por segundo** con 10 conexiones (1,7 s de espera) y 5 con 50 (9,8 s, con un tiempo de espera agotado). La causa es que `bcryptjs` calcula el hash en JavaScript, en el único hilo de Node, y mientras lo hace el servicio no atiende nada más: con solo 3 logins simultáneos, `GET /health` pasó de 2 ms a entre 150 y 190 ms. Un login suelto tardó unos 180 ms en esa prueba. Al repetirlo con 30 intentos seguidos con un email inexistente (consulta y bcrypt, sin firmar un token), la mediana fue de 58 ms enchufado y 86 ms a batería, así que las cifras de esta sección pueden variar con el estado del equipo, como el arranque (sección 3.4). No se cambió nada por esto. Con la carga prevista no se nota, pero es un límite conocido: mitigarlo (por ejemplo, con un límite de intentos o un hash que no bloquee el hilo) queda como posibilidad para el Hito 3, sin decidir.
+**El login es el límite.** `POST /auth/login` rindió **6 por segundo** con 10 conexiones (1,7 s de espera) y 5 con 50 (9,8 s, con un tiempo de espera agotado). La causa es que `bcryptjs` calcula el hash en JavaScript, en el único hilo de Node, y mientras lo hace el servicio no atiende nada más: con solo 3 logins simultáneos, `GET /health` pasó de 2 ms a entre 150 y 190 ms. Un login suelto tardó unos 180 ms en esa prueba. Al repetirlo con 30 intentos seguidos con un email inexistente (consulta y bcrypt, sin firmar un token), la mediana fue de 58 ms enchufado y 86 ms a batería, así que las cifras de esta sección pueden variar con el estado del equipo, como el arranque (sección 3.4). No se cambió nada por esto, porque con la carga prevista no se nota. Es un límite conocido, y en el Hito 3 se puede mitigar con un límite de intentos o con un hash que no bloquee el hilo.
 
 ### 8.4 Uso de inteligencia artificial
 
 El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para un primer borrador de las diapositivas; la presentación final es un archivo HTML hecho con Claude Code. La identidad visual de este documento y de la presentación (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
 
-**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisa; en los README, la colección de Postman, la presentación y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
+**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisó; en los README, la colección de Postman, la presentación y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
 
 <p style="break-after: avoid"><b>Cómo se verificó:</b></p>
 
 - Los 391 tests y el CI en cada Pull Request, las 86 mutaciones y la revisión de código y de seguridad al cerrar cada recurso (sección 8.1).
 - Las cifras del documento se midieron o se contrastaron con el código: conteos de endpoints, tablas, tests y líneas, tiempos de arranque (3.4) y de carga (8.3). Las referencias se abrieron en su fuente original y se citan solo las verificadas.
 - Cada cambio entra por un Pull Request con aviso al compañero para su revisión.
-- La redacción del documento se revisó con los patrones de escritura típica de IA de la skill `humanizer` (blader/humanizer, basada en la guía «Signs of AI writing» de Wikipedia), que se usó como lista de control, sin instalarla. Cada cambio lo aprobó un integrante y pasa por la revisión del compañero en el Pull Request.
+- La redacción del documento se revisó con los patrones de escritura típica de IA de la skill `humanizer` (blader/humanizer, basada en la guía «Signs of AI writing» de Wikipedia), que se usó como lista de control, sin instalarla. Cada cambio lo aprobó un integrante y pasó por la revisión del compañero en el Pull Request.
 - El asistente también se equivocó y se corrigió con esta lectura. Por ejemplo, se retiró la frase «arranca en segundos», que no estaba medida, y se corrigió la afirmación de que Vitest corre «por el mismo camino que el servicio», que era falsa.
-- Lo que ningún integrante pueda explicar no se entrega: se prepara una lista de preguntas probables, con su respuesta y su evidencia en el código, y los dos integrantes estudian todas las partes.
+- Lo que un integrante no pueda explicar no se entrega. Para eso hay una lista de preguntas probables, cada una con su respuesta y su evidencia en el código, que estudian los dos integrantes.
 
 ## Referencias
 
@@ -689,7 +689,7 @@ Pasos completos: [`README.md`](https://github.com/Signali/MapeoWifiSignal/blob/m
 4. En `backend/`: `npm install`, `npm run seed` y `npm start`. Comprobar `http://localhost:3000/health`.
 5. Tests: `npm run typecheck` y `npm test`.
 
-**Demostración:** la colección de Postman ([`postman/`](https://github.com/Signali/MapeoWifiSignal/tree/main/postman)) tiene un login previo y las 4 peticiones de la demo en orden (`POST` → `201`, `PATCH` → `200`, `DELETE` → `204`, `GET` → `404`), con los tests de cada respuesta. El login es preparación: se hace antes de presentar y, según confirmó el profesor, no cuenta entre las 4 peticiones. Cómo importarla y usarla: [`postman/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/postman/README.md).
+**Demostración:** la colección de Postman ([`postman/`](https://github.com/Signali/MapeoWifiSignal/tree/main/postman)) tiene un login previo y las 4 peticiones de la demo en orden (`POST` → `201`, `PATCH` → `200`, `DELETE` → `204`, `GET` → `404`), con los tests de cada respuesta. El login es preparación y no cuenta entre las 4 peticiones: se hace antes de presentar. Cómo importarla y usarla: [`postman/README.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/postman/README.md).
 
 ### Anexo D. Variables de entorno
 
