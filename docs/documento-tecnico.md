@@ -258,7 +258,7 @@ Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, por
 |---|---|---|---|---|---|---|
 | 1 | `GET` | `/health` | público | — | `200` | — |
 | 2 | `POST` | `/api/v1/auth/login` | público | cuerpo: `email`, `password` | `200` | `400` `401` |
-| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `401` |
+| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `400` `401` |
 | 4 | `GET` | `/api/v1/buildings/:id` | todos | ruta: `id` | `200` | `400` `401` `404` |
 | 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` + `Location` | `400` `401` `403` `409` |
 | 6 | `PATCH` | `/api/v1/buildings/:id` | `admin` | ruta: `id` · cuerpo: `name` | `200` | `400` `401` `403` `404` `409` |
@@ -401,7 +401,7 @@ const { rows } = await query<Point>(
 );
 ```
 
-Los valores viajan siempre como parámetros (`$1`, `$2`…), nunca pegados al texto del SQL, así que ningún valor puede cambiar la consulta (inyección SQL). En todo el código, lo único que se inserta en el texto de una consulta son constantes del propio código, como la lista de columnas o el filtro de organización. Las columnas se nombran una por una: ninguna consulta usa `SELECT *` ni devuelve `org_id`.
+Los valores viajan siempre como parámetros (`$1`, `$2`…), nunca pegados al texto del SQL, así que ningún valor puede cambiar la consulta (inyección SQL). En todo el código, lo único que se inserta en el texto de una consulta son constantes del propio código, como la lista de columnas o el filtro de organización. Las columnas se nombran una por una: ninguna consulta usa `SELECT *`, y ninguna respuesta de la API incluye `org_id`.
 
 ### 5.6 Crear la base desde cero
 
@@ -609,9 +609,9 @@ La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Pa
 
 ### 8.4 Uso de inteligencia artificial
 
-El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para el borrador de las diapositivas de la presentación. La identidad visual de este documento (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
+El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para un primer borrador de las diapositivas; la presentación final es un archivo HTML hecho con Claude Code. La identidad visual de este documento y de la presentación (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
 
-**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisa; en los README, la colección de Postman y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
+**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisa; en los README, la colección de Postman, la presentación y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
 
 <p style="break-after: avoid"><b>Cómo se verificó:</b></p>
 

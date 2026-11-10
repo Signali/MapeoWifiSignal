@@ -96,7 +96,7 @@ Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y`, o con m�
 |---|---|---|---|---|---|---|
 | 1 | `GET` | `/health` | público | — | `200` | — |
 | 2 | `POST` | `/api/v1/auth/login` | público | cuerpo: `email`, `password` | `200` | `400` · `401` |
-| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `401` |
+| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `400` · `401` |
 | 4 | `GET` | `/api/v1/buildings/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
 | 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` + `Location` | `400` · `401` · `403` · `409` |
 | 6 | `PATCH` | `/api/v1/buildings/:id` | `admin` | ruta: `id` · cuerpo: `name` | `200` | `400` · `401` · `403` · `404` · `409` |
@@ -147,7 +147,7 @@ Comprueba que el servicio está arriba. No requiere token.
   { "id": 2, "name": "Oficinas Centro" }
 ]
 ```
-`admin` y `tecnico` reciben todos los edificios de su organización; `cliente`, solo los que tiene asignados. Sin edificios → `200 []`.
+`admin` y `tecnico` reciben todos los edificios de su organización; `cliente`, solo los que tiene asignados. Sin edificios → `200 []`. No recibe parámetros de consulta: uno desconocido (`?x=1`) → `400`.
 
 ### 4. `GET /api/v1/buildings/:id`
 ```json
