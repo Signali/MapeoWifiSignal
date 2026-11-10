@@ -1,6 +1,6 @@
 # Contrato de la API — SignalMap (Hitos 2 y 3)
 
-> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10, **pendiente del OK del compañero**; no se programa antes.
+> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), **pendiente del OK del compañero**; no se programa antes.
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales
@@ -38,10 +38,10 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | `409 Conflict` | Duplicado (`nfc_uid`, `code` en el piso, `name` del edificio en la organización) · borrar un edificio que tiene pisos · borrar un punto que tiene mediciones · `client_uuid` ya usado en otra organización · anular una medición ya anulada |
 | `413 Content Too Large` | Cuerpo de la petición mayor a 100 kB |
 | `415 Unsupported Media Type` | Charset o codificación del cuerpo no soportados (ej. `charset=latin1`) |
-| `422 Unprocessable Content` | Formato correcto, pero viola una regla de dominio: coordenadas fuera del piso |
+| `422 Unprocessable Content` | Formato correcto, pero viola una regla de dominio: coordenadas fuera del piso · fecha de medición fuera de rango |
 | `500 Internal Server Error` | Error inesperado. Mensaje genérico, sin detalles internos |
 
-**Orden de verificación:** `401` → `403` → `400` → `404` → `422` → `409`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`. Un punto fuera del piso **y** con `code` repetido recibe `422`: las coordenadas se validan antes de escribir. En `POST /measurements`, un `client_uuid` ya registrado se resuelve después del `400` y antes del `404` (§6.15).
+**Orden de verificación:** `401` → `403` → `400` → `404` → `422` → `409`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`. Un punto fuera del piso **y** con `code` repetido recibe `422`: las coordenadas se validan antes de escribir. En `POST /measurements`, un `client_uuid` ya registrado se resuelve después del `400` y antes del `404` (§6.15): un reenvío desde la cola de la app recibe la medición guardada aunque su fecha ya haya salido del rango.
 
 ## 3. Roles y permisos
 
@@ -104,7 +104,7 @@ Cada organización tiene **un SSID** (`wifi_ssid`, 1 a 32 caracteres): el nombre
 | `phase` | texto | Obligatorio · `"antes"` o `"despues"` (sin tilde) → si no, `400` |
 | `client_uuid` | texto | Obligatorio · UUID (`8-4-4-4-12` hexadecimal) generado por la app; el servidor lo guarda en minúsculas · único en todo el sistema: reenviar el mismo **no duplica** (§6.15) |
 | `readings` | arreglo | Obligatorio al crear · 1 a 100 lecturas → si no, `400` · se validan **todas**, pero el servidor **guarda solo las del SSID de la organización** (comparación exacta, distingue mayúsculas): las de otras redes se descartan sin error (minimización de datos) |
-| `measured_at` | fecha ISO 8601 (UTC) | La pone el servidor al recibirla (el reloj del teléfono no es confiable) |
+| `measured_at` | fecha ISO 8601 | **Opcional** al crear: el momento en que el teléfono hizo el escaneo, con zona horaria (`2026-11-12T12:04:05-03:00` o `…Z`) → si no, `400` · entre los últimos 30 días y 5 minutos en el futuro (margen por relojes desfasados) → si no, `422` · sin él, el servidor usa la hora en que la recibe. La respuesta la devuelve siempre en UTC (`…Z`). Existe porque la app guarda las mediciones tomadas **sin conexión** y las envía cuando vuelve la red: la fecha debe ser la del escaneo, no la del envío. La hora de recepción también se guarda (trazabilidad), pero la API no la devuelve |
 | `category` | texto | La calcula el servidor con la lectura más fuerte guardada: `"buena"` (> −65 dBm) · `"regular"` (−65 a −70 dBm, ambos incluidos) · `"debil"` (< −70 dBm) · `"sin_senal"` (no se captó la red de la organización) |
 | `best_rssi_dbm` | entero o `null` | La lectura más fuerte guardada; `null` si `sin_senal` |
 | `voided` | objeto o `null` | `null` si la medición vale; si fue anulada: `{ "reason": "...", "at": "<fecha>" }` (quién la anuló se guarda, pero la API no lo devuelve) |
@@ -144,7 +144,7 @@ Una medición anulada deja de contar: en el plano vuelve a verse la anterior vá
 | 12 | `PATCH` | `/api/v1/points/:id` | `admin`, `tecnico` | ruta: `id` · cuerpo: `code`, `x`, `y`, `nfc_uid` (al menos uno) | `200` | `400` · `401` · `403` · `404` · `409` · `422` |
 | 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` · `401` · `403` · `404` · `409` |
 | 14 | `GET` | `/api/v1/points/by-tag/:nfc_uid` | todos | ruta: `nfc_uid` | `200` | `400` · `401` · `404` |
-| 15 | `POST` | `/api/v1/measurements` | `admin`, `tecnico` | cuerpo: `point_id`, `phase`, `client_uuid`, `readings` | `201` + `Location` (o `200` si el `client_uuid` ya existe) | `400` · `401` · `403` · `404` · `409` |
+| 15 | `POST` | `/api/v1/measurements` | `admin`, `tecnico` | cuerpo: `point_id`, `phase`, `client_uuid`, `readings`, `measured_at` (opcional) | `201` + `Location` (o `200` si el `client_uuid` ya existe) | `400` · `401` · `403` · `404` · `409` · `422` |
 | 16 | `GET` | `/api/v1/measurements` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
 | 17 | `GET` | `/api/v1/measurements/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
 | 18 | `DELETE` | `/api/v1/measurements/:id` | `admin` | ruta: `id` · consulta: `reason` (obligatorio) | `204` | `400` · `401` · `403` · `404` · `409` |
@@ -340,13 +340,14 @@ La usa la app al acercar el teléfono a una tira. El `nfc_uid` se acepta en min�
 ```
 | Caso | Respuesta |
 |---|---|
-| `nfc_uid` vacío, > 32 caracteres o no hexadecimal | `400 { "message": "nfc_uid debe tener de 1 a 32 caracteres hexadecimales" }` |
+| `nfc_uid` con más de 32 caracteres o no hexadecimal | `400 { "message": "nfc_uid debe tener de 1 a 32 caracteres hexadecimales" }` (sin UID, `/points/by-tag/` no llega a esta ruta: responde como `/points/:id`, `400 "El id debe ser un número entero"`) |
 | Ningún punto tiene esa tira, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Tira NFC no registrada" }` |
 
 ### 15. `POST /api/v1/measurements`
 ```json
 // Petición (la app manda todo lo que captó)
 { "point_id": 7, "phase": "antes", "client_uuid": "3f2b8c1e-9d4a-4e7b-a1c2-5d6e7f809a1b",
+  "measured_at": "2026-11-12T12:04:05-03:00",
   "readings": [
     { "bssid": "a4:2b:b0:11:22:33", "ssid": "Inmobiliaria Norte", "rssi_dbm": -74, "frequency_mhz": 5180 },
     { "bssid": "a4:2b:b0:11:22:34", "ssid": "Inmobiliaria Norte", "rssi_dbm": -79, "frequency_mhz": 2437 },
@@ -362,7 +363,9 @@ La usa la app al acercar el teléfono a una tira. El `nfc_uid` se acepta en min�
     { "bssid": "a4:2b:b0:11:22:34", "ssid": "Inmobiliaria Norte", "rssi_dbm": -79, "frequency_mhz": 2437 }
   ] }
 ```
-(La red «Vecino 5G» se validó y se descartó: no es la de la organización.) `readings` de la respuesta va ordenado de la señal más fuerte a la más débil.
+(La red «Vecino 5G» se validó y se descartó: no es la de la organización.) `readings` de la respuesta va ordenado de la señal más fuerte a la más débil. `measured_at` vuelve en UTC (`12:04:05-03:00` = `15:04:05Z`).
+
+**Sin conexión.** Si el envío falla por falta de red, la app guarda la medición en el teléfono (con su `client_uuid` y su `measured_at`) y la envía cuando vuelve la conexión, mientras la app está abierta. Si el primer envío sí llegó y solo se perdió la respuesta, el reenvío recibe `200` y no se duplica.
 
 | Caso | Respuesta |
 |---|---|
@@ -376,6 +379,8 @@ La usa la app al acercar el teléfono a una tira. El `nfc_uid` se acepta en min�
 | `rssi_dbm` no entero o fuera de rango | `400 { "message": "rssi_dbm debe ser un entero entre -120 y 0" }` |
 | `frequency_mhz` no entero o fuera de rango | `400 { "message": "frequency_mhz debe ser un entero entre 2400 y 7125" }` |
 | Un `bssid` repetido en la misma medición | `400 { "message": "Hay un bssid repetido en readings" }` |
+| `measured_at` no es texto o no es una fecha ISO 8601 con zona horaria | `400 { "message": "measured_at debe ser una fecha ISO 8601 con zona horaria" }` |
+| `measured_at` con más de 30 días o más de 5 minutos en el futuro | `422 { "message": "measured_at debe estar entre los últimos 30 días y ahora" }` |
 | Rol `cliente` | `403` |
 | El `client_uuid` ya se registró en la organización | `200` con la medición que ya estaba guardada (**no se crea otra**; el servidor no compara el cuerpo) |
 | El `client_uuid` ya se usó en otra organización | `409 { "message": "client_uuid ya fue usado" }` |
@@ -443,4 +448,4 @@ Anula la medición (no la borra).
 - Creación y edición de pisos y planos, y del SSID de la organización (hoy por datos de prueba).
 - Mapa de calor, trilateración, recomendación del repetidor y reporte PDF.
 - Renovación de token (refresh) y vencimiento según turno laboral.
-- Cola de mediciones sin conexión en la app.
+- Envío de la cola sin conexión con la app cerrada (en segundo plano): hoy la app envía las pendientes solo mientras está abierta.
