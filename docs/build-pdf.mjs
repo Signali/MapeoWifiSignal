@@ -3,8 +3,10 @@
 // docs/documento-tecnico.md, con Edge o Chrome en modo headless. Sin dependencias del repo:
 // Markdown (marked) y diagramas (mermaid) se cargan del CDN, con versión fija, al generar; las
 // fuentes (Bricolage Grotesque, IBM Plex Sans y JetBrains Mono), de Google Fonts.
-// El navegador se maneja por el protocolo de DevTools para numerar las páginas sin que el
-// pie muestre la ruta local del archivo.
+// El navegador se maneja por el protocolo de DevTools para escribir en el índice la página de
+// cada título. Formato del Anexo A del curso: carta, márgenes de 2,5 cm, cuerpo de 11 pt con
+// interlineado 1,15, páginas numeradas desde la introducción, y figuras y tablas con número y
+// título (estilo APA 7) que se citan desde el texto.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,13 +28,17 @@ const BROWSERS = [
 ];
 
 const CSS = `
-@page { size: A4; margin: 18mm 17mm 20mm; }
-@page :first { margin: 0; }
+@page { size: letter; margin: 25mm;
+  @bottom-left { content: 'SignalMap · Hito 2 · Documento técnico'; font: 8pt 'IBM Plex Sans', sans-serif; color: #5A6272; }
+  @bottom-right { content: counter(page); font: 8pt 'IBM Plex Sans', sans-serif; color: #5A6272; } }
+/* Tapa e índice: sin pie y sin contar, así la introducción es la página 1. */
+@page cover { margin: 0; counter-increment: page 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+@page front { counter-increment: page 0; @bottom-left { content: none; } @bottom-right { content: none; } }
 :root { --kuroi: #131521; --astral: #342E4E; --champlain: #435570; --pool: #709491; --pool-texto: #4F7470; --surf: #C4D4BA; --ink: #131521; --muted: #5A6272; --line: #DDE5D8; --soft: #F2F5EF; --zebra: #F7F9F5; }
 * { box-sizing: border-box; }
-body { margin: 0; font: 9.5pt/1.48 'IBM Plex Sans', system-ui, sans-serif; color: var(--ink); background: #fff; }
-.cover { height: 296.5mm; background: var(--kuroi); color: #fff; break-after: page; display: flex; flex-direction: column; overflow: hidden; }
-.cover svg { display: block; width: 210mm; height: 131.25mm; flex: none; }
+body { margin: 0; font: 11pt/1.15 'IBM Plex Sans', system-ui, sans-serif; color: var(--ink); background: #fff; }
+.cover { page: cover; height: 279mm; background: var(--kuroi); color: #fff; break-after: page; display: flex; flex-direction: column; overflow: hidden; }
+.cover svg { display: block; width: 215.9mm; height: 128mm; flex: none; }
 .cover .texto { flex: 1; display: flex; flex-direction: column; padding: 13mm 18mm 16mm; }
 .cover .uni { font-weight: 500; font-size: 11pt; color: var(--surf); }
 .cover .brand { font: 800 74pt/1 'Bricolage Grotesque', sans-serif; letter-spacing: -.025em; margin: 5mm 0 4mm -1mm; }
@@ -44,62 +50,66 @@ body { margin: 0; font: 9.5pt/1.48 'IBM Plex Sans', system-ui, sans-serif; color
 .cover a { color: var(--surf); }
 h2 { font: 700 21pt/1.12 'Bricolage Grotesque', sans-serif; letter-spacing: -.012em; color: var(--astral); margin: 0 0 4.5mm; padding-bottom: 2.2mm; border-bottom: .9mm solid var(--surf); break-after: avoid; }
 h2.section { break-before: page; }
-h3 { font: 700 12.5pt/1.25 'Bricolage Grotesque', sans-serif; color: var(--astral); margin: 6mm 0 2mm; break-after: avoid; }
+h3 { font: 700 13pt/1.25 'Bricolage Grotesque', sans-serif; color: var(--astral); margin: 6mm 0 2mm; break-after: avoid; }
 .num { color: var(--pool-texto); margin-right: 2mm; }
 p, li { margin: 0 0 2.4mm; }
 ul, ol { padding-left: 5mm; margin: 0 0 3mm; }
 li::marker { color: var(--pool); }
 strong { color: var(--ink); font-weight: 600; }
 a { color: var(--champlain); overflow-wrap: anywhere; }
-code { font: 8.3pt 'JetBrains Mono', monospace; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; color: var(--astral); background: var(--soft); padding: .2mm 1mm; border-radius: .8mm; }
+code { font: 9.5pt 'JetBrains Mono', monospace; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; color: var(--astral); background: var(--soft); padding: .2mm 1mm; border-radius: .8mm; }
 pre { background: var(--soft); border-left: 1mm solid var(--pool); padding: 2.5mm 4mm; line-height: 1.36; overflow: hidden; white-space: pre-wrap; break-inside: avoid; }
-pre code { background: none; padding: 0; font-size: 8pt; color: var(--ink); }
-table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.3pt; line-height: 1.38; }
+pre code { background: none; padding: 0; font-size: 9pt; color: var(--ink); }
+table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; line-height: 1.3; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
 th { background: var(--astral); color: #fff; text-align: left; font-weight: 600; padding: 1.6mm 2mm; }
 td { padding: 1.4mm 2mm; border-bottom: .25mm solid var(--line); vertical-align: top; }
 tbody tr:nth-child(even) td { background: var(--zebra); }
-td code, th code { font-size: 7.6pt; }
+td code, th code { font-size: 8.6pt; }
 th code { background: rgba(255,255,255,.18); color: #fff; }
 .mermaid .node rect, .mermaid .node path, .mermaid .node polygon, .mermaid rect.actor { fill: #F2F5EF !important; stroke: #435570 !important; }
 .mermaid .edgeLabel, .mermaid .edgeLabel rect, .mermaid .labelBkg { background: #fff !important; fill: #fff !important; }
 .mermaid .edgeLabel p, .mermaid .edgeLabel span { background: #fff !important; }
-p:has(+ pre), p:has(+ .mermaid), p:has(+ .stack), p:has(+ .bars), p:has(+ table) { break-after: avoid; }
+p:has(+ pre), p:has(+ .mermaid), p:has(+ .stack), p:has(+ .bars), p:has(+ table), p:has(+ .fig) { break-after: avoid; }
+.fig { break-inside: avoid; }
+.cap { margin: 4mm 0 2mm; }
+.cap b { display: block; font-weight: 700; color: var(--astral); }
+.cap span { display: block; font-style: italic; }
+.cap code { font-style: normal; }
 .mermaid .note { fill: #F2F5EF !important; stroke: #709491 !important; }
 hr { display: none; }
-.mermaid { display: flex; justify-content: center; margin: 3mm 0 5mm; break-inside: avoid; }
+.mermaid { display: flex; justify-content: center; margin: 0 0 5mm; break-inside: avoid; }
 .mermaid svg { max-width: 100%; max-height: 82mm; height: auto; }
-.ref { padding-left: 8mm; text-indent: -8mm; font-size: 8.8pt; }
-.bars { margin: 3mm 0 5mm; break-inside: avoid; }
-.bars p { font-weight: 600; color: var(--champlain); margin: 0 0 2mm; }
+.ref { padding-left: 8mm; text-indent: -8mm; }
+.bars { margin: 0 0 5mm; break-inside: avoid; }
 .bars div { display: grid; grid-template-columns: 22mm 1fr 20mm; align-items: center; gap: 3mm; margin: 0 0 1.6mm; }
 .bars i { display: block; height: 4.5mm; background: var(--champlain); }
 .bars b { font-weight: 500; font-variant-numeric: tabular-nums; }
-.stack { margin: 3mm 0 5mm; break-inside: avoid; }
+.stack { margin: 0 0 5mm; break-inside: avoid; }
 .stack div { display: flex; height: 15mm; overflow: hidden; }
-.stack i { display: flex; flex-direction: column; justify-content: center; padding: 0 1.5mm; color: #fff; font-style: normal; font-size: 7.8pt; line-height: 1.25; overflow: hidden; white-space: nowrap; }
+.stack i { display: flex; flex-direction: column; justify-content: center; padding: 0 1.5mm; color: #fff; font-style: normal; font-size: 8pt; line-height: 1.25; overflow: hidden; white-space: nowrap; }
 .stack b { font-weight: 600; }
 .stack .s1 { background: var(--kuroi); } .stack .s2 { background: var(--astral); } .stack .s3 { background: var(--champlain); } .stack .s4 { background: var(--pool); color: var(--ink); } .stack .s5 { background: var(--surf); color: var(--ink); }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; margin: 3mm 0 6mm; break-inside: avoid; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; margin: 0 0 6mm; break-inside: avoid; }
 .kpis div { border-top: 1mm solid var(--pool); padding-top: 2.5mm; }
 .kpis b { display: block; font: 700 21pt/1.1 'Bricolage Grotesque', sans-serif; color: var(--astral); font-variant-numeric: lining-nums; }
-.kpis span { display: block; font-size: 8.4pt; color: var(--muted); margin-top: 1mm; line-height: 1.35; }
-.hitos { margin: 3mm 0 5mm; break-inside: avoid; font-size: 8.8pt; }
+.kpis span { display: block; font-size: 9pt; color: var(--muted); margin-top: 1mm; line-height: 1.35; }
+.hitos { margin: 0 0 5mm; break-inside: avoid; font-size: 9.5pt; }
 .hitos div { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 9mm; }
 .hitos span { padding: 2mm 0; border-bottom: .25mm solid var(--line); position: relative; }
 .hitos div:not(.h) span:not(:last-child)::after { content: '→'; position: absolute; right: -6.5mm; top: 2mm; color: var(--pool-texto); font-weight: 700; }
 .hitos .h span { font-weight: 700; color: var(--champlain); border-bottom: .6mm solid var(--champlain); }
 .hitos .vacio { color: var(--muted); font-style: italic; }
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; margin: 3mm 0 5mm; break-inside: avoid; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; margin: 0 0 5mm; break-inside: avoid; }
 .split p { font-weight: 700; color: var(--champlain); margin: 0 0 1.5mm; padding-bottom: 1.5mm; border-bottom: .6mm solid var(--pool); }
-.split ul { margin: 0; padding-left: 4mm; font-size: 9pt; }
-.toc { break-after: page; }
+.split ul { margin: 0; padding-left: 4mm; font-size: 10pt; }
+.toc { page: front; break-after: page; }
 .toc-title { font: 700 21pt/1.12 'Bricolage Grotesque', sans-serif; letter-spacing: -.012em; color: var(--astral); padding-bottom: 2.2mm; border-bottom: .9mm solid var(--surf); margin-bottom: 4mm; }
 .toc ol { list-style: none; padding: 0; margin: 0; }
 .toc li { display: flex; align-items: baseline; gap: 2mm; margin: 0 0 .7mm; line-height: 1.35; }
 .toc li.h2 { font-weight: 600; margin-top: 2mm; }
-.toc li.h3 { padding-left: 7mm; font-size: 8.8pt; color: var(--muted); }
+.toc li.h3 { padding-left: 7mm; font-size: 10pt; color: var(--muted); }
 .toc .dots { flex: 1; border-bottom: .3mm dotted #9AA3A0; transform: translateY(-1mm); }
 .toc .pg { font-variant-numeric: tabular-nums; min-width: 6mm; text-align: right; }
 `;
@@ -140,12 +150,16 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
   const [, sub = ''] = h1.textContent.split(' · ');
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.append(...cover.querySelectorAll('p'));
-  cover.innerHTML = ${JSON.stringify(COVER_SVG)} + '<div class="texto"><div class="uni">Universidad Mayor</div>'
+  // El primer párrafo (universidad, facultad y escuela) va arriba; el resto, al pie de la tapa.
+  const [uni, ...rest] = cover.querySelectorAll('p');
+  meta.append(...rest);
+  cover.innerHTML = ${JSON.stringify(COVER_SVG)} + '<div class="texto"><div class="uni"></div>'
     + '<div class="brand">SignalMap</div><div class="sub">' + sub + '</div></div>';
+  cover.querySelector('.uni').append(...uni.childNodes);
   cover.querySelector('.texto').append(meta);
   doc.prepend(cover);
-  // Índice: un renglón por h2/h3, con la página que da la primera pasada ("00" mientras tanto).
+  // Índice: un renglón por h2/h3, con la página que da la primera pasada ("00" mientras tanto),
+  // contada desde la introducción.
   const tocPages = ${JSON.stringify(tocPages)};
   const toc = document.createElement('section');
   toc.className = 'toc';
@@ -159,14 +173,14 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
     toc.lastChild.append(li);
   });
   cover.after(toc);
-  // Cada sección principal empieza en página nueva; el número va en otro color (.num).
+  // El número de cada título va en otro color (.num). Solo Bibliografía y Anexos abren página.
   doc.querySelectorAll('h2, h3').forEach((h) => {
     const m = h.textContent.match(/^(\\d+(\\.\\d+)?)\\.?\\s+(.*)$/);
     if (m) h.innerHTML = '<span class="num">' + m[1] + '</span>' + h.innerHTML.replace(/^\\d+(\\.\\d+)?\\.?\\s+/, '');
-    if (h.tagName === 'H2' && !/^Resumen/.test(h.textContent)) h.classList.add('section');
+    if (h.tagName === 'H2' && /^(Bibliografía|Anexos)$/.test(h.textContent)) h.classList.add('section');
   });
   // Referencias con sangría francesa (APA).
-  const refs = [...doc.querySelectorAll('h2')].find((h) => h.textContent === 'Referencias');
+  const refs = [...doc.querySelectorAll('h2')].find((h) => h.textContent === 'Bibliografía');
   for (let el = refs?.nextElementSibling; el?.tagName === 'P'; el = el.nextElementSibling) el.classList.add('ref');
   // Diagramas.
   doc.querySelectorAll('pre code.language-mermaid').forEach((code) => {
@@ -174,6 +188,33 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
     div.className = 'mermaid';
     div.textContent = code.textContent;
     code.parentElement.replaceWith(div);
+  });
+  // Leyendas: un párrafo "Figura N. Título" o "Tabla N. Título" justo antes de la figura o la
+  // tabla. Si la numeración no es correlativa, si la leyenda no tiene nada debajo o si el texto
+  // no cita alguna, el PDF no se genera.
+  const caps = { Figura: [], Tabla: [] };
+  doc.querySelectorAll('p').forEach((p) => {
+    const m = p.textContent.match(/^(Figura|Tabla) (\\d+)\\. \\S/);
+    if (!m) return;
+    const next = p.nextElementSibling;
+    if (!next || !['TABLE', 'DIV'].includes(next.tagName)) throw new Error(m[1] + ' ' + m[2] + ' sin figura ni tabla debajo');
+    caps[m[1]].push(Number(m[2]));
+    // Edge no respeta break-after: avoid (ni entre un <caption> y su tabla), así que la leyenda
+    // y lo que titula van juntas en un bloque que no se corta. Todas las tablas entran en una página.
+    p.className = 'cap';
+    p.innerHTML = '<b>' + m[1] + ' ' + m[2] + '</b><span>' + p.innerHTML.replace(/^(Figura|Tabla) \\d+\\.\\s*/, '') + '</span>';
+    const fig = document.createElement('div');
+    fig.className = 'fig';
+    p.before(fig);
+    fig.append(p, next);
+  });
+  const copy = doc.cloneNode(true);
+  copy.querySelectorAll('.cap').forEach((c) => c.remove());
+  const text = copy.textContent.replace(/\\s+/g, ' ');
+  for (const [kind, nums] of Object.entries(caps)) nums.forEach((n, i) => {
+    if (n !== i + 1) throw new Error(kind + ' ' + n + ' fuera de orden (se esperaba ' + (i + 1) + ')');
+    const cited = text.split(kind + ' ' + n).slice(1).some((after) => !/^\\d/.test(after));
+    if (!cited) throw new Error(kind + ' ' + n + ' no se cita en el texto');
   });
   await Promise.all(['400 13px "IBM Plex Sans"', '600 13px "IBM Plex Sans"', '700 21px "Bricolage Grotesque"', '800 74px "Bricolage Grotesque"', '400 13px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
   await mermaid.run({ querySelector: '.mermaid' });
@@ -239,8 +280,6 @@ try {
   });
 
   const evaluate = async (expression) => (await send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
-  const footer = '<div style="width:100%;font:7.5pt IBM Plex Sans,sans-serif;color:#5A6272;padding:0 17mm;display:flex;justify-content:space-between">'
-    + '<span>SignalMap · Hito 2 · Documento técnico</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>';
   const render = async (tocPages) => {
     writeFileSync(html, PAGE(markdown, tocPages));
     await send('Page.navigate', { url: pathToFileURL(html).href });
@@ -256,9 +295,7 @@ try {
     printBackground: true,
     generateDocumentOutline: true,
     preferCSSPageSize: true,
-    displayHeaderFooter: true,
-    headerTemplate: '<span></span>',
-    footerTemplate: footer,
+    displayHeaderFooter: false,
     });
     const pdf = Buffer.from(data, 'base64');
     const pages = headingPages(pdf);
@@ -266,9 +303,10 @@ try {
     return { pdf, pages };
   };
 
-  // Primera pasada con el índice en "00": la paginación ya es la final. Segunda, con los números.
+  // Primera pasada con el índice en "00": la paginación ya es la final. Segunda, con los números,
+  // contados desde la introducción (el primer título), que es la página 1.
   const first = await render(null);
-  const final = await render(first.pages);
+  const final = await render(first.pages.map((p) => p - first.pages[0] + 1));
   if (final.pages.join() !== first.pages.join()) throw new Error('La paginación cambió entre pasadas: revisar el índice');
   writeFileSync(OUTPUT, final.pdf);
   const pagesCount = (readFileSync(OUTPUT, 'latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;

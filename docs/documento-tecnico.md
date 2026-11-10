@@ -1,55 +1,37 @@
 # SignalMap · Hito 2 — Motor back-end y API REST
 
-**Documento técnico** · Universidad Mayor, Facultad de Ciencias, Ingeniería y Tecnología · Arquitectura de Desarrollo (Web y Móvil) · Docente: Carlos Mauricio Muñoz
+Universidad Mayor · Facultad de Ciencias, Ingeniería y Tecnología · Escuela de Ingeniería Civil
 
-**Equipo:** Maximiliano Alvarado (`Signali`) · Gabriel Díaz (`Gabo-collab`) · Santiago, noviembre de 2026
+**Documento técnico** · Asignatura: INGT1003 Arquitectura de Desarrollo (Móvil y Web) · Docente: Carlos Mauricio Muñoz
+
+**Equipo:** SignalMap · **Integrantes:** Maximiliano Alvarado (`Signali`) y Gabriel Díaz (`Gabo-collab`)
 
 **Repositorio:** https://github.com/Signali/MapeoWifiSignal
 
-## Resumen
+Santiago, noviembre de 2026
 
-SignalMap mide la señal WiFi en puntos fijos de un edificio, marcados con tiras NFC, para comprobar si un repetidor mejoró la cobertura. Este documento describe el servidor construido en el Hito 2: una API REST de 13 endpoints con CRUD completo de edificios y puntos de medición, lectura de pisos y autenticación con JWT para tres roles, sobre PostgreSQL 17.
-
-Cuatro decisiones lo definen:
-
-- **Monolito en capas** (sección 3). Un equipo de 2 personas y unos 24 puntos por piso no justifican servicios separados. Las reglas de cada capa se comprobaron con búsquedas en el código.
-- **Contrato antes que código** (sección 4). La interfaz se acordó antes de programar. Cada error responde su código HTTP, nunca `200`, y un recurso de otra organización responde `404` para no revelar que existe.
-- **La base garantiza lo que puede comprobar sola** (sección 5): duplicados, rangos y formatos. El servicio se ocupa de lo que necesita leer otra tabla o saber quién pregunta.
-- **Credenciales fuera del repositorio y JWT propio** (sección 6): toda la configuración llega por variables de entorno, y la verificación del token se probó contra cada ataque conocido.
-
-**Cómo se comprobó** (sección 8): 391 tests, uno por cada respuesta del contrato, corren en cada Pull Request contra un PostgreSQL 17 real. Las 86 fallas introducidas a propósito en reglas críticas fueron detectadas por los tests. El servicio queda listo para recibir peticiones en un tiempo de entre 0,4 y 1 s, según el estado del equipo (sección 3.4). Una prueba de carga mostró que la lista de puntos sostiene unas 880 peticiones por segundo sin errores y que el límite es el login, con unas 6 por segundo (sección 8.3). El uso de inteligencia artificial está declarado, con las partes en que se usó y cómo se verificó (sección 8.4).
-
-**Respecto del Hito 1** (sección 2) se mantienen el stack y la arquitectura. Cambian el modelo de datos, el formato de errores y la renovación del token. La ingesta de mediciones, la app y PostGIS pasan al Hito 3.
-
----
-
-## 1. Introducción y alcance
+## 1. Introducción
 
 El informe del Hito 1 (Alvarado y Díaz, 2026) planteó el problema: las empresas que instalan o amplían su red WiFi no saben con certeza si la señal llega a cada puesto ni si el repetidor que agregan funciona. SignalMap lo resuelve con tiras NFC en puntos fijos del edificio, una app Android que mide la señal en esos puntos y una plataforma web que muestra el resultado antes y después de instalar el repetidor.
 
-Este documento cubre **solo el servidor**: la API REST que esas dos aplicaciones van a usar, sus capas y su base de datos. En concreto, el Hito 2 entrega:
+Este documento describe **el servidor construido en el Hito 2**, que esas dos aplicaciones van a usar: una API REST de 13 endpoints bajo `/api/v1`, con alta, consulta, edición y baja de edificios y puntos de medición, consulta de pisos y login con JWT para tres roles (`admin`, `tecnico` y `cliente`), sobre PostgreSQL 17 con 7 tablas. Está escrito en Node.js 26 con Express y TypeScript, y se levanta siguiendo el README. Quedan fuera las campañas y mediciones, el mapa de calor, la comparación antes/después, la trilateración, la recomendación del repetidor, el reporte PDF, la app y la web: son del Hito 3.
 
-- **Edificios y puntos de medición** con alta, consulta, edición y baja; **pisos**, solo para consultar.
-- **Login con JWT** y tres roles: `admin`, `tecnico` y `cliente`.
-- **13 endpoints** bajo `/api/v1`, acordados en un contrato antes de programar.
-- **PostgreSQL 17** con 7 tablas y un script que crea la base desde cero.
-- Un servicio en **Node.js 26 + Express + TypeScript** que se levanta siguiendo el README.
+**Qué encontrará el lector.** La sección 2 cuenta qué cambió desde el Hito 1. Las secciones 3 a 6 siguen una misma historia, la de un técnico que registra el punto P-25 en el piso 3 de la Torre Norte, y a través de ella explican las cuatro decisiones que definen el servidor:
 
-```mermaid
-flowchart LR
-  C["Cliente HTTP<br/>(hoy Postman · Hito 3: app y web)"] -->|"HTTP + JSON<br/>Bearer JWT"| A["API REST SignalMap<br/>Node.js · Express · TypeScript"]
-  A -->|"SQL parametrizado"| D[("PostgreSQL 17")]
-```
+- **Monolito en capas** (sección 3): un equipo de 2 personas y unos 24 puntos por piso no justifican servicios separados.
+- **Contrato antes que código** (sección 4): cada error responde su código HTTP, nunca `200`, y un recurso de otra organización responde `404` para no revelar que existe.
+- **La base garantiza lo que puede comprobar sola** (sección 5); el servicio se ocupa de lo que necesita leer otra tabla o saber quién pregunta.
+- **Credenciales fuera del repositorio y JWT propio** (sección 6), con la verificación del token probada contra cada ataque conocido.
 
-**Cómo leer este documento.** Las secciones 3 a 6 siguen a una misma historia: un técnico que registra el punto P-25 en el piso 3 de la Torre Norte, y lo que le pasa a ese punto después. Cada sección explica una parte del servidor a través de esa historia. Las tablas de consulta (variables, campos, mensajes de error) están en los anexos, para que el cuerpo se pueda leer de corrido.
-
-**Fuera de este hito:** campañas y mediciones, mapa de calor, comparación antes/después, trilateración, recomendación del repetidor, reporte PDF, app Android y web. Todo eso es del Hito 3 (sección 2).
+La sección 7 justifica el stack y la 8 muestra cómo se comprobó: 391 tests contra un PostgreSQL real en cada Pull Request, 86 fallas introducidas a propósito y detectadas, y una prueba de carga. La conclusión (sección 9) dice qué se logró, qué quedó pendiente y qué aprendimos. Las tablas de consulta están en los anexos, junto con la declaración de uso de inteligencia artificial (Anexo E).
 
 ---
 
 ## 2. Qué cambió desde el Hito 1
 
-El Hito 1 fijó un plan; al construir el servidor, algunas piezas se mantuvieron, otras cambiaron y otras se movieron al Hito 3:
+El Hito 1 fijó un plan; al construir el servidor, algunas piezas se mantuvieron, otras cambiaron y otras se movieron al Hito 3 (Figura 1):
+
+Figura 1. Qué pasó con cada pieza del plan del Hito 1
 
 <div class="hitos">
   <div class="h"><span>Hito 1: el plan</span><span>Hito 2: lo construido</span><span>Hito 3</span></div>
@@ -63,6 +45,10 @@ El Hito 1 fijó un plan; al construir el servidor, algunas piezas se mantuvieron
 La arquitectura y el stack siguen igual: un solo back-end para la app y la web, Node.js con Express y TypeScript, Zod para validar cada endpoint y PostgreSQL relacional con la jerarquía organización → edificio → piso → punto. También se mantienen los tres roles y el JWT, y el `nfc_uid` único por punto, que ahora es único en todo el sistema.
 
 ### 2.2 Lo que cambió
+
+La Tabla 1 resume cada cambio y su motivo.
+
+Tabla 1. Cambios respecto del Hito 1
 
 | El Hito 1 decía | El Hito 2 tiene | Por qué |
 |---|---|---|
@@ -93,6 +79,16 @@ La arquitectura y el stack siguen igual: un solo back-end para la app y la web, 
 
 ## 3. Arquitectura: el viaje de una petición
 
+El servidor queda entre sus clientes y la base de datos (Figura 2): hoy lo usa Postman, y en el Hito 3 lo usarán la app y la web.
+
+Figura 2. El servidor entre sus clientes y la base de datos
+
+```mermaid
+flowchart LR
+  C["Cliente HTTP<br/>(hoy Postman · Hito 3: app y web)"] -->|"HTTP + JSON<br/>Bearer JWT"| A["API REST SignalMap<br/>Node.js · Express · TypeScript"]
+  A -->|"SQL parametrizado"| D[("PostgreSQL 17")]
+```
+
 En el piso 3 de la Torre Norte (40 × 25 m, con 24 tiras ya instaladas) el técnico pega una tira nueva junto a la sala de reuniones y la registra como el punto P-25: 30 m desde el borde izquierdo del plano y 12,5 m desde el borde superior. Hoy lo hace desde Postman; en el Hito 3 lo hará la app. Lo que viaja es esto:
 
 ```http
@@ -107,7 +103,9 @@ El código y la tira van en minúscula a propósito: así los escribió el técn
 
 ### 3.1 Seis preguntas antes de guardar un punto
 
-El servidor es **un solo servicio** (unas 1.000 líneas de TypeScript en `backend/src/`) con una base PostgreSQL. Por dentro, la petición pasa por capas, y cada una hace una sola pregunta. Si la respuesta es «no», corta ahí con su código y las demás ni se enteran:
+El servidor es **un solo servicio** (unas 1.000 líneas de TypeScript en `backend/src/`) con una base PostgreSQL. Por dentro, la petición pasa por capas, y cada una hace una sola pregunta. Si la respuesta es «no», corta ahí con su código y las demás ni se enteran (Figura 3):
+
+Figura 3. Las seis preguntas que recorre `POST /points` antes de guardar
 
 ```mermaid
 sequenceDiagram
@@ -118,7 +116,7 @@ sequenceDiagram
   participant R as repository
   participant DB as PostgreSQL
   C->>M: POST /api/v1/points
-  Note over M: 1 ¿quién sos? → 401<br/>2 ¿podés crear puntos? → 403<br/>3 ¿el cuerpo tiene forma? → 400
+  Note over M: 1 ¿quién eres? → 401<br/>2 ¿puedes crear puntos? → 403<br/>3 ¿el cuerpo tiene forma? → 400
   M->>Ct: cuerpo validado: "P-25", "04B11C22D3E480"
   Ct->>S: create(usuario, punto)
   S->>R: ¿existe el piso 1 y lo ve este usuario?
@@ -148,7 +146,9 @@ Dos líneas: pedirle al servicio que cree el punto y responder `201`. Ninguna de
 
 ### 3.2 Cómo sabemos que las capas no son solo carpetas
 
-Tener carpetas con nombres de capas no prueba nada. La prueba es que cada capa respete lo que **no** puede hacer:
+Tener carpetas con nombres de capas no prueba nada. La prueba es que cada capa respete lo que **no** puede hacer (Tabla 2):
+
+Tabla 2. Qué hace y qué no puede hacer cada capa
 
 | Capa | Hace | No puede |
 |---|---|---|
@@ -161,14 +161,18 @@ Esas prohibiciones se comprobaron con búsquedas en el código. Estas son las qu
 
 ```console
 # desde backend/src
-$ grep -l "from 'express'"  services/*.ts                    # services que conocen HTTP
+# ¿services que conocen HTTP?
+$ grep -l "from 'express'" services/*.ts
 (ninguno)
-$ grep -l "res\.\|\.status("  services/*.ts                  # services que arman respuestas
+# ¿services que arman respuestas?
+$ grep -l "res\.\|\.status(" services/*.ts
 (ninguno)
-$ grep -l "repositories/"   controllers/*.ts schemas/*.ts   # controllers o schemas que tocan la base
+# ¿controllers o schemas que tocan la base?
+$ grep -l "repositories/" controllers/*.ts schemas/*.ts
 (ninguno)
-$ grep -rl "SELECT \|INSERT \|UPDATE \|DELETE FROM" .   | grep -v repositories/
-(ninguno)                                                    # todo el SQL vive en repositories/
+# ¿SQL fuera de repositories/?
+$ grep -rl "SELECT \|INSERT \|UPDATE \|DELETE FROM" . | grep -v repositories/
+(ninguno)
 ```
 
 Falta una pieza para que ningún error se escape con `200`: los servicios lanzan errores con un tipo de negocio (`not_found`, `domain_rule`, `conflict`…) y **un único archivo**, `middlewares/error-handler.ts`, los traduce a código HTTP. No hay otro camino para responder un error.
@@ -182,7 +186,9 @@ Se eligió un **monolito en capas**. Para entender el costo de cada opción se c
 - **Operarlo es simple.** Hoy es un proceso y una base; en el Hito 3, dos contenedores. Hay un solo `GET /health` que vigilar.
 - **Los datos son una cadena.** Organización → edificio → piso → punto, y en el Hito 3 campaña → medición. Repartirlos en bases distintas obligaría a cuidar esa integridad a mano, que es justo lo que PostgreSQL hace solo.
 
-El costo asumido es que todo escala junto y un error grave puede tumbar el servicio entero. Y la decisión tiene fecha de revisión: si el análisis del Hito 3 (mapa de calor, trilateración) llegara a consumir tanta CPU que frenara el registro de mediciones, eso sería lo primero en separarse, porque solo lee datos.
+El costo asumido es que todo escala junto y un error grave puede tumbar el servicio entero. Y la decisión tiene fecha de revisión: si el análisis del Hito 3 (mapa de calor, trilateración) llegara a consumir tanta CPU que frenara el registro de mediciones, eso sería lo primero en separarse, porque solo lee datos. La Figura 4 muestra dónde estaría ese corte.
+
+Figura 4. Hoy, un servicio; el análisis se separaría solo si frenara las mediciones
 
 ```mermaid
 flowchart LR
@@ -195,10 +201,11 @@ flowchart LR
 
 ### 3.4 ¿Cuánto tarda en arrancar?
 
-El servicio queda listo para recibir peticiones en **entre 0,4 y 1 s**, según el estado del equipo. Se midió desde que se lanza el proceso hasta que `GET /health` responde `200`, en series de 10 arranques en Pc-Portatil (Intel Core i5-13420H, 24 GB de RAM, Windows 11, Node 26.13.0). Cualquiera puede repetirlo con `npm run startup-time` en `backend/`.
+El servicio queda listo para recibir peticiones en **entre 0,4 y 1 s**, según el estado del equipo. Se midió desde que se lanza el proceso hasta que `GET /health` responde `200`, en series de 10 arranques en Pc-Portatil (Intel Core i5-13420H, 24 GB de RAM, Windows 11, Node 26.13.0). Cualquiera puede repetirlo con `npm run startup-time` en `backend/`. La Figura 5 muestra el resultado de cada serie.
+
+Figura 5. Tiempo de arranque: mediana de 10 arranques por serie (enchufado y a batería, la serie central de tres)
 
 <div class="bars" aria-label="Mediana de 10 arranques por serie">
-  <p>Mediana de 10 arranques (enchufado y a batería: la serie central de tres)</p>
   <div><span>Serie 1</span><i style="width:68.5%"></i><b>753 ms</b></div>
   <div><span>Serie 2</span><i style="width:87.4%"></i><b>961 ms</b></div>
   <div><span>Serie 3</span><i style="width:84.7%"></i><b>932 ms</b></div>
@@ -210,7 +217,9 @@ El servicio queda listo para recibir peticiones en **entre 0,4 y 1 s**, según e
 
 La variación no viene del método. Las series 1 a 4 son del 6 de noviembre y no se registró si el equipo estaba enchufado; las series 2 a 4 se corrieron seguidas y alternando dos formas de consultar `/health`, y dieron valores parecidos. El 9 de noviembre se repitió con tres series por estado: enchufado dio medianas de 387 y 388 ms, y a batería, de 560 a 592 ms. La energía explica una parte, pero ni a batería se volvió a llegar a las cifras del 6 de noviembre, y el resto de la diferencia no se pudo explicar. `/health` no consulta la base, así que el número no incluye la conexión a PostgreSQL.
 
-¿En qué se va ese tiempo? El desglose es del 6 de noviembre, así que corresponde a esos tiempos más lentos. Cargando cada pieza por separado (3 corridas) se explican unos 0,67 s; el resto, hasta que `/health` responde, no se desglosó:
+¿En qué se va ese tiempo? El desglose es del 6 de noviembre, así que corresponde a esos tiempos más lentos. Cargando cada pieza por separado (3 corridas) se explican unos 0,67 s; el resto, hasta que `/health` responde, no se desglosó (Figura 6):
+
+Figura 6. Desglose del arranque del 6 de noviembre, pieza por pieza
 
 <div class="stack" aria-label="Desglose del arranque">
   <div>
@@ -253,6 +262,10 @@ GET /api/v1/points/25
 Las listas devuelven un arreglo simple, ordenado por `id` y sin paginación, porque hay unos 24 puntos por piso. La paginación queda para el Hito 3 (sección 8.2).
 
 ### 4.2 Los 13 endpoints
+
+La Tabla 3 lista los 13 endpoints con sus roles, parámetros y respuestas.
+
+Tabla 3. Los 13 endpoints de la API
 
 | # | Verbo | Ruta | Roles | Parámetros | Éxito | Errores |
 |---|---|---|---|---|---|---|
@@ -327,6 +340,10 @@ Hay tres más, comunes a todas las rutas: `413` si el cuerpo pasa de 100 kB, `41
 
 ### 4.4 Quién puede hacer qué
 
+La Tabla 4 resume qué puede hacer cada rol.
+
+Tabla 4. Permisos por rol
+
 | Acción | `admin` | `tecnico` | `cliente` |
 |---|:-:|:-:|:-:|
 | Ver edificios, pisos y puntos | toda su organización | toda su organización | solo sus edificios asignados |
@@ -341,6 +358,10 @@ El técnico crea y corrige puntos porque es quien está en terreno con las tiras
 El `INSERT` del final de la sección 3 dejó al P-25 en la tabla `points` de PostgreSQL 17. No en memoria ni en un archivo: si el servicio se reinicia, el punto sigue ahí. El acceso es con el driver `pg` y SQL escrito a mano, sin ORM (la comparación está en la sección 7).
 
 ### 5.1 El modelo
+
+La Figura 7 muestra las 7 tablas y cómo se relacionan.
+
+Figura 7. Modelo de datos: las 7 tablas y sus relaciones
 
 ```mermaid
 erDiagram
@@ -358,8 +379,9 @@ El P-25 cuelga de una cadena: su piso (el piso 3), el edificio de ese piso (la T
 
 ### 5.2 Quién cuida cada regla
 
-La regla de fondo es que **la base garantiza todo lo que puede comprobar sola**, para que ningún camino (la API, el seed o un error de programación) deje datos inválidos. El servicio se ocupa de lo que necesita leer otra tabla o saber quién pregunta:
+La regla de fondo es que **la base garantiza todo lo que puede comprobar sola**, para que ningún camino (la API, el seed o un error de programación) deje datos inválidos. El servicio se ocupa de lo que necesita leer otra tabla o saber quién pregunta (Figura 8):
 
+Figura 8. Qué reglas cuida la base y cuáles el servicio
 
 <div class="split">
   <div><p>La base lo impide sola</p><ul>
@@ -463,7 +485,9 @@ cabecera:  { "alg": "HS256", "typ": "JWT" }
 contenido: { "sub": "<id del usuario>", "org_id": 1, "role": "tecnico", "exp": <vencimiento> }
 ```
 
-El `sub` va como texto, como pide RFC 7519 (Jones et al., 2015, §4.1.2). El costo de no usar una librería es que la verificación queda en nuestras manos, y por eso sigue lo que recomienda RFC 8725 (Sheffer et al., 2020, §3.1): **aceptar solo el algoritmo que uno espera**. El servicio compara la cabecera con la única que emite y rechaza cualquier otra sin interpretarla. Además, revisa siempre en el mismo orden:
+El `sub` va como texto, como pide RFC 7519 (Jones et al., 2015, §4.1.2). El costo de no usar una librería es que la verificación queda en nuestras manos, y por eso sigue lo que recomienda RFC 8725 (Sheffer et al., 2020, §3.1): **aceptar solo el algoritmo que uno espera**. El servicio compara la cabecera con la única que emite y rechaza cualquier otra sin interpretarla. Además, revisa siempre en el mismo orden (Figura 9):
+
+Figura 9. Orden en que se verifica un token
 
 ```mermaid
 flowchart LR
@@ -506,7 +530,9 @@ Todas las decisiones se tomaron con los mismos criterios: un equipo de 2 persona
 
 ### 7.1 Framework: Express
 
-El Hito 1 comparó Express con Spring Boot. Al empezar el Hito 2 se amplió la comparación, sin cambiar la decisión:
+El Hito 1 comparó Express con Spring Boot. Al empezar el Hito 2 se amplió la comparación, sin cambiar la decisión (Tabla 5):
+
+Tabla 5. Express frente a las alternativas
 
 | Opción | Qué ofrece | Por qué no en este proyecto |
 |---|---|---|
@@ -561,6 +587,10 @@ La comparación confirmó la elección, con un matiz: ninguno de los dos corre e
 
 ### 8.1 Cómo se comprueba que funciona
 
+La Figura 10 reúne las cuatro cifras que se explican en esta sección.
+
+Figura 10. Indicadores de calidad del servicio
+
 <div class="kpis">
   <div><b>391</b><span>tests, uno por cada respuesta del contrato</span></div>
   <div><b>86 / 86</b><span>fallas introducidas a propósito, detectadas</span></div>
@@ -592,10 +622,11 @@ Y ninguna entrada del cliente provoca un `500`: tokens deformes, JSON roto, esca
 
 ### 8.3 ¿Y bajo carga?
 
-La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Para tener un número se lanzaron peticiones en paralelo con `autocannon` (versión 8) contra el servicio corriendo, con la base cargada con el seed (24 puntos en el piso). Fue en Pc-Portatil, con el cliente y el servidor en la **misma máquina** (compiten por la CPU), **una corrida de 10 segundos por escenario**, sin repetir, y **solo con lecturas y login**: no se escribió nada. La herramienta no está en el repositorio. Sirve para ubicar el orden de magnitud, no como prueba de producción.
+La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Para tener un número se lanzaron peticiones en paralelo con `autocannon` (versión 8) contra el servicio corriendo, con la base cargada con el seed (24 puntos en el piso). Fue en Pc-Portatil, con el cliente y el servidor en la **misma máquina** (compiten por la CPU), **una corrida de 10 segundos por escenario**, sin repetir, y **solo con lecturas y login**: no se escribió nada. La herramienta no está en el repositorio. Sirve para ubicar el orden de magnitud, no como prueba de producción. La Figura 11 muestra el resultado por endpoint.
+
+Figura 11. Peticiones por segundo según el endpoint, con 10 o 50 conexiones simultáneas
 
 <div class="bars" aria-label="Peticiones por segundo según el endpoint">
-  <p>Peticiones por segundo (cada una con 10 o 50 conexiones simultáneas)</p>
   <div><span>/health</span><i style="width:100%"></i><b>6.231</b></div>
   <div><span>/buildings</span><i style="width:28.3%"></i><b>1.761</b></div>
   <div><span>/points/:id</span><i style="width:20.3%"></i><b>1.267</b></div>
@@ -607,22 +638,20 @@ La sección 3.3 sostiene que la carga es chica, pero eso era una estimación. Pa
 
 **El login es el límite.** `POST /auth/login` rindió **6 por segundo** con 10 conexiones (1,7 s de espera) y 5 con 50 (9,8 s, con un tiempo de espera agotado). La causa es que `bcryptjs` calcula el hash en JavaScript, en el único hilo de Node, y mientras lo hace el servicio no atiende nada más: con solo 3 logins simultáneos, `GET /health` pasó de 2 ms a entre 150 y 190 ms. Un login suelto tardó unos 180 ms en esa prueba. Al repetirlo con 30 intentos seguidos con un email inexistente (consulta y bcrypt, sin firmar un token), la mediana fue de 58 ms enchufado y 86 ms a batería, así que las cifras de esta sección pueden variar con el estado del equipo, como el arranque (sección 3.4). No se cambió nada por esto, porque con la carga prevista no se nota. Es un límite conocido, y en el Hito 3 se puede mitigar con un límite de intentos o con un hash que no bloquee el hilo.
 
-### 8.4 Uso de inteligencia artificial
+## 9. Conclusión
 
-El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para un primer borrador de las diapositivas; la presentación final es un archivo HTML hecho con Claude Code. La identidad visual de este documento y de la presentación (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
+**Qué se logró.** El Hito 2 terminó con un servidor que funciona y que cualquiera puede comprobar. La API que se acordó en el contrato antes de programar quedó construida completa, guarda en PostgreSQL y se levantó en dos equipos distintos siguiendo solo los README. Las capas no son solo carpetas: sus prohibiciones se comprobaron con búsquedas que se pueden repetir en el código.
 
-**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisó; en los README, la colección de Postman, la presentación y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
+**Qué quedó pendiente.** El servidor todavía no recibe mediciones, que son la razón de ser del producto: sin campañas ni lecturas de señal, SignalMap aún no puede mostrar si un repetidor mejoró la cobertura. Tampoco existen la app ni la web, y faltan el límite de intentos de login, CORS, la renovación del token y la paginación (sección 8.2). Además, el login es el punto débil bajo carga (sección 8.3).
 
-<p style="break-after: avoid"><b>Cómo se verificó:</b></p>
+**Qué aprendimos.**
 
-- Los 391 tests y el CI en cada Pull Request, las 86 mutaciones y la revisión de código y de seguridad al cerrar cada recurso (sección 8.1).
-- Las cifras del documento se midieron o se contrastaron con el código: conteos de endpoints, tablas, tests y líneas, tiempos de arranque (3.4) y de carga (8.3). Las referencias se abrieron en su fuente original y se citan solo las verificadas.
-- Cada cambio entra por un Pull Request con aviso al compañero para su revisión.
-- La redacción del documento se revisó con los patrones de escritura típica de IA de la skill `humanizer` (blader/humanizer, basada en la guía «Signs of AI writing» de Wikipedia), que se usó como lista de control, sin instalarla. Cada cambio lo aprobó un integrante y pasó por la revisión del compañero en el Pull Request.
-- El asistente también se equivocó y se corrigió con esta lectura. Por ejemplo, se retiró la frase «arranca en segundos», que no estaba medida, y se corrigió la afirmación de que Vitest corre «por el mismo camino que el servicio», que era falsa.
-- Lo que un integrante no pueda explicar no se entrega. Para eso hay una lista de preguntas probables, cada una con su respuesta y su evidencia en el código, que estudian los dos integrantes.
+- **Acordar el contrato antes de programar ordenó las discusiones.** Cada ajuste posterior, como los `413` y `415` o la normalización de nombres y códigos, se trató como un cambio de contrato en el Pull Request de su recurso, no como un detalle de implementación.
+- **Un test que nunca falló no prueba nada.** Romper las reglas a propósito encontró dos huecos que la suite en verde escondía (sección 8.1).
+- **Las cifras se miden, no se suponen.** La frase «arranca en segundos» resultó ser «entre 0,4 y 1 s», y la carga que creíamos chica mostró un límite que no habíamos previsto: el login.
+- **Un equipo limpio encuentra lo que el propio esconde.** El ensayo en el PC de Gabriel mostró pasos de Windows que nunca habíamos tenido que dar.
 
-## Referencias
+## Bibliografía
 
 Alvarado, M. y Díaz, G. (2026). *SignalMap. Hito 1: propuesta de producto y arquitectura* [Informe de curso, Universidad Mayor]. https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf
 
@@ -654,7 +683,9 @@ Los anexos son material de consulta: resumen los archivos del repositorio, que s
 
 ### Anexo A. Contrato de la API
 
-Archivo: [`docs/api-contract.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/docs/api-contract.md). Se acordó entre los dos integrantes el 2026-11-04, antes de programar, y cada cambio posterior se acordó con el compañero en el Pull Request de su recurso.
+Archivo: [`docs/api-contract.md`](https://github.com/Signali/MapeoWifiSignal/blob/main/docs/api-contract.md). Se acordó entre los dos integrantes el 2026-11-04, antes de programar, y cada cambio posterior se acordó con el compañero en el Pull Request de su recurso. La Tabla 6 indica qué contiene cada parte.
+
+Tabla 6. Partes del contrato de la API
 
 | Parte del contrato | Contenido |
 |---|---|
@@ -666,6 +697,10 @@ Archivo: [`docs/api-contract.md`](https://github.com/Signali/MapeoWifiSignal/blo
 | §8 Fuera del contrato | Lo previsto para los próximos hitos |
 
 ### Anexo B. Modelo de datos y script de la base
+
+La Tabla 7 resume qué guarda cada tabla y sus claves únicas.
+
+Tabla 7. Las 7 tablas de la base
 
 | Tabla | Guarda | Clave única, además del `id` |
 |---|---|---|
@@ -693,7 +728,9 @@ Pasos completos: [`README.md`](https://github.com/Signali/MapeoWifiSignal/blob/m
 
 ### Anexo D. Variables de entorno
 
-Todas están en `.env.example` con valores de ejemplo; `config.ts` las valida al arrancar (sección 6.1).
+Todas están en `.env.example` con valores de ejemplo; `config.ts` las valida al arrancar (sección 6.1). La Tabla 8 las agrupa por uso.
+
+Tabla 8. Variables de entorno
 
 | Variable | Para qué | Regla al arrancar |
 |---|---|---|
@@ -703,3 +740,18 @@ Todas están en `.env.example` con valores de ejemplo; `config.ts` las valida al
 | `JWT_SECRET` | Firma de los tokens | 32 caracteres o más, y distinta del valor de ejemplo |
 | `JWT_EXPIRES_IN_ADMIN` · `_TECNICO` · `_CLIENTE` | Duración del token por rol (`8h`, `10h`, `2h`) | Entero + `s`/`m`/`h`/`d`, máximo 30 días |
 | `SEED_ADMIN_PASSWORD` · `_TECNICO_` · `_CLIENTE_` | Claves de los 3 usuarios de prueba | Las usa solo `npm run seed` |
+
+### Anexo E. Declaración de uso de inteligencia artificial
+
+El curso pide declarar qué se usó, en qué parte y cómo se verificó el resultado. Se usó **Claude Code**, el asistente de Anthropic que corre en la terminal, junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`), y **claude.ai** para un primer borrador de las diapositivas; la presentación final es un archivo HTML hecho con Claude Code. La identidad visual de este documento y de la presentación (paleta, tipografías y portada) la propuso el asistente con la skill `frontend-design` y la eligió el equipo entre varias muestras.
+
+**En qué partes.** En el código del servicio (capas, validación, autenticación, repositorios, scripts de seed y de medición del arranque) y en sus tests; en el documento técnico, que el asistente redactó y el equipo revisó; en los README, la colección de Postman, la presentación y el flujo del CI; y en las mediciones de arranque y de carga. En cada decisión de diseño el asistente presentó las alternativas con su costo y **eligió el equipo**; las decisiones quedaron escritas, con su fecha, en `CLAUDE.md`.
+
+<p style="break-after: avoid"><b>Cómo se verificó:</b></p>
+
+- Los 391 tests y el CI en cada Pull Request, las 86 mutaciones y la revisión de código y de seguridad al cerrar cada recurso (sección 8.1).
+- Las cifras del documento se midieron o se contrastaron con el código: conteos de endpoints, tablas, tests y líneas, tiempos de arranque (3.4) y de carga (8.3). Las referencias se abrieron en su fuente original y se citan solo las verificadas.
+- Cada cambio entra por un Pull Request con aviso al compañero para su revisión.
+- La redacción del documento se revisó con los patrones de escritura típica de IA de la skill `humanizer` (blader/humanizer, basada en la guía «Signs of AI writing» de Wikipedia), que se usó como lista de control, sin instalarla. Cada cambio lo aprobó un integrante y pasó por la revisión del compañero en el Pull Request.
+- El asistente también se equivocó y se corrigió con esta lectura. Por ejemplo, se retiró la frase «arranca en segundos», que no estaba medida, y se corrigió la afirmación de que Vitest corre «por el mismo camino que el servicio», que era falsa.
+- Lo que un integrante no pueda explicar no se entrega. Para eso hay una lista de preguntas probables, cada una con su respuesta y su evidencia en el código, que estudian los dos integrantes.
