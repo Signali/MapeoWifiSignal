@@ -95,7 +95,7 @@ Si una petición no termina en **8 s**, corta las conexiones y sale con código 
 - **Duración por rol** desde el `.env` (`JWT_EXPIRES_IN_ADMIN=8h`, `_TECNICO=10h`, `_CLIENTE=2h`; formato entero + `s`/`m`/`h`/`d`). Sin renovación: al vencer, nuevo login.
 - **Login fallido:** `401 "Credenciales inválidas"`, el mismo si falla el email o la clave. Si el email no existe, igual se ejecuta bcrypt contra un hash ficticio: así el tiempo de respuesta no revela qué emails están registrados.
 - **Middlewares** (`src/middlewares/auth.ts`): `authenticate` (401) y `requireRole(...)` (403), antes de `validate` en cada ruta. Detalle en [`src/middlewares/README.md`](src/middlewares/README.md).
-- Limitaciones aceptadas: un token no se puede revocar antes de su `exp`; sin límite de intentos de login (se reconsidera en la auditoría final); bcrypt solo considera los primeros 72 bytes de la clave.
+- Limitaciones aceptadas: un token no se puede revocar antes de su `exp`; sin límite de intentos de login (queda para el Hito 3: documento técnico, sección 8.2); bcrypt solo considera los primeros 72 bytes de la clave.
 
 ### El secreto en producción (plan para el Hito 3)
 

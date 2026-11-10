@@ -97,7 +97,7 @@ Si una corrida quedó cortada entre el `POST` y el `DELETE`, queda `P-25` vivo. 
 | `405 Not Allowed` con HTML de `openresty`, o la Console muestra una URL rara (`...%0A...`, otro dominio) | Se pegó texto de varias filas en una celda del environment: la petición no llega a nuestra API | Borrar el environment y reimportar la plantilla; completar solo `admin_password` a mano en *Current value* |
 | Login `401` aunque la clave "se ve igual" | Se copió otra línea del `.env` o la copia quedó cortada | Comparar el largo: la cantidad de puntos de `admin_password` debe igualar los caracteres de `SEED_ADMIN_PASSWORD` |
 
-## Ensayo en otro equipo (Pc-Casa)
+## Ensayo en otro equipo
 
 Seguir **solo** `backend/README.md` y esta carpeta, sin ayuda:
 
