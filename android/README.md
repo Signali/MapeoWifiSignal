@@ -2,7 +2,7 @@
 
 App Android de SignalMap (Hito 3): el técnico acerca el teléfono a una tira NFC, la app identifica el punto y mide las redes WiFi. Kotlin + Jetpack Compose.
 
-> **Estado:** esqueleto. Por ahora lee la tira NFC y muestra su UID (hexadecimal, mayúsculas, sin separadores). El escaneo WiFi, el login y el envío a la API se agregan en las tareas siguientes.
+> **Estado:** esqueleto. Por ahora lee la tira NFC y muestra su UID (hexadecimal, mayúsculas, sin separadores), y escanea las redes WiFi con sus permisos y el límite de 4 búsquedas cada 2 minutos (pantalla temporal que muestra las 5 más fuertes). El login y el envío a la API se agregan en las tareas siguientes.
 
 ## Requisitos
 
