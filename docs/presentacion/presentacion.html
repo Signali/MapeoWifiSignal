@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SignalMap · Hito 2 · Presentación</title>
+<!-- Sin peticiones externas: las tres tipografías de la identidad están en fonts/ (solo el subconjunto latino, ~150 kB).
+     Si falta la carpeta, se usa la tipografía de respaldo de cada pila y el contenido no cambia. -->
+<style>
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 500 800; font-display: swap; src: url(fonts/bricolage.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(fonts/plex-sans.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 500; font-display: swap; src: url(fonts/jetbrains-mono.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+:root {
+  --kuroi: #131521; --astral: #342E4E; --champlain: #435570; --pool: #709491; --pool-texto: #4F7470; --surf: #C4D4BA;
+  --ink: #131521; --muted: #5A6272; --line: #DDE5D8; --soft: #F2F5EF;
+  --f-title: 'Bricolage Grotesque', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --f-text: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', Consolas, 'Cascadia Mono', monospace;
+}
+* { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { background: #fff; color: var(--ink); font: 400 30px/1.4 var(--f-text); }
+body[data-theme="dark"] { background: var(--kuroi); }
+code, pre { font-family: var(--f-mono); font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; }
+
+/* Escenario fijo de 1920 x 1080 que se escala al tamaño de la ventana */
+.stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; }
+.slide { position: absolute; inset: 0; display: none; flex-direction: column; padding: 70px 120px 120px; background: #fff; overflow: hidden; }
+.slide.active { display: flex; }
+.slide.dark { background: var(--kuroi); color: #fff; }
+.notes { display: none; }
+
+h1 { font: 700 72px/1.1 var(--f-title); letter-spacing: -.012em; color: var(--astral); margin: 0 0 40px; padding-bottom: 20px; border-bottom: 10px solid var(--surf); }
+strong { font-weight: 600; }
+code { font-size: .86em; color: var(--astral); background: var(--soft); padding: 1px 9px; border-radius: 4px; }
+
+/* Pie: dónde estamos en el orden de la rúbrica */
+.chrome { position: absolute; left: 120px; right: 120px; bottom: 44px; display: flex; justify-content: space-between; align-items: center; font-size: 24px; color: var(--muted); }
+body[data-theme="dark"] .chrome { display: none; }
+.secs { display: flex; gap: 48px; }
+.secs span { padding-bottom: 6px; border-bottom: 6px solid transparent; }
+.secs span.on { color: var(--champlain); font-weight: 600; border-bottom-color: var(--pool); }
+
+/* 1 · Portada */
+.cover .plan { position: absolute; right: 0; top: 0; bottom: 0; width: 1020px; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 55%); mask-image: linear-gradient(to right, transparent 0, #000 55%); }
+.cover .plan svg, .close .plan svg { display: block; width: 100%; height: 100%; }
+.cover .txt { position: relative; width: 760px; margin-top: 150px; }
+.cover h1 { font: 800 144px/1 var(--f-title); letter-spacing: -.02em; color: #fff; border: 0; padding: 0; margin: 0 0 24px; }
+.cover .sub { font: 500 48px/1.15 var(--f-title); color: var(--surf); margin: 0 0 56px; text-wrap: balance; }
+.cover .what { font-size: 34px; line-height: 1.45; margin: 0; max-width: 720px; }
+.cover .meta { position: absolute; left: 120px; bottom: 80px; font-size: 26px; line-height: 1.55; color: var(--surf); }
+.cover .meta strong { color: #fff; }
+
+/* 2 · Tres partes */
+.parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 70px; margin-top: 150px; position: relative; }
+.parts::before { content: ''; position: absolute; left: 0; right: 0; top: 41px; border-top: 6px solid var(--surf); }
+.parts li { list-style: none; position: relative; }
+.parts .n { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--astral); color: #fff; font: 700 48px/1 var(--f-title); position: relative; }
+.parts h2 { font: 700 48px/1.1 var(--f-title); color: var(--astral); margin: 36px 0 14px; }
+.parts p { margin: 0; color: var(--muted); font-size: 32px; }
+.parts ol, .parts { padding-left: 0; }
+
+/* 3 · Demostración */
+.reqs { list-style: none; margin: 0; padding: 0; }
+.reqs li { display: grid; grid-template-columns: 190px 1fr auto; column-gap: 28px; align-items: baseline; padding: 22px 0 24px; border-bottom: 2px solid var(--line); }
+.reqs .verb { font: 700 42px var(--f-mono); color: var(--champlain); }
+.reqs .path { font: 500 42px var(--f-mono); color: var(--ink); background: none; padding: 0; }
+.reqs .st { font: 500 34px var(--f-mono); color: #fff; background: var(--champlain); padding: 4px 22px; border-radius: 6px; }
+.reqs .st.err { background: var(--kuroi); }
+.reqs p { grid-column: 2 / 4; margin: 8px 0 0; color: var(--muted); font-size: 32px; }
+.reqs p code { color: var(--astral); }
+.foot-line { margin: auto 0 0; font-size: 32px; color: var(--muted); }
+.foot-line strong { color: var(--ink); }
+
+/* 4 · Seis preguntas: reproductor de código */
+.rail { display: flex; align-items: center; gap: 0; margin: 0 0 22px; }
+.rail span { flex: 1; text-align: center; font: 500 28px var(--f-mono); padding: 12px 0; background: var(--soft); color: var(--muted); border-bottom: 6px solid var(--line); transition: background .25s, color .25s; }
+.rail i { flex: none; width: 44px; text-align: center; color: var(--pool-texto); font: 700 30px var(--f-text); font-style: normal; }
+.rail span.on { background: var(--astral); color: #fff; border-bottom-color: var(--surf); }
+.rail span.done { color: var(--champlain); border-bottom-color: var(--pool); }
+.player { display: grid; grid-template-columns: 1090px 1fr; gap: 40px; height: 500px; }
+.code { background: var(--kuroi); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.code .tab { font: 500 24px var(--f-mono); color: var(--surf); padding: 14px 28px; border-bottom: 2px solid var(--astral); }
+.code pre { margin: 0; padding: 18px 0; flex: 1; font-size: 25px; line-height: 1.55; color: #fff; white-space: pre-wrap; overflow: hidden; }
+.code pre span.ln { display: block; padding: 0 28px 0 34px; border-left: 6px solid transparent; }
+.code pre span.ln.hl { background: rgba(196, 212, 186, .17); border-left-color: var(--surf); }
+.code .k { color: #A7B8D8; } .code .st { color: var(--surf); } .code .cm { color: #8FA5A2; }
+.code .ok { color: var(--surf); font-weight: 500; }
+.card { background: var(--soft); border-left: 10px solid var(--pool); padding: 24px 30px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.card .qn { display: grid; grid-template-columns: 56px 1fr; column-gap: 16px; align-items: center; }
+.card .qn b { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--astral); color: #fff; font: 700 30px var(--f-title); }
+.card .qn span { font: 700 36px/1.15 var(--f-title); color: var(--astral); text-wrap: balance; }
+.card .say { margin: 0; font-size: 28px; line-height: 1.35; }
+.card .lbl { margin: 6px 0 0; font-size: 24px; color: var(--muted); }
+.card .badge { align-self: flex-start; font: 500 28px var(--f-mono); color: #fff; background: var(--champlain); padding: 3px 18px; border-radius: 6px; }
+.card pre { margin: 0; font-size: 23px; line-height: 1.4; white-space: pre-wrap; color: var(--ink); }
+.fade { transition: opacity .17s; }
+.prog { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+.prog i { flex: 1; height: 8px; background: var(--line); border-radius: 4px; }
+.prog i.on { background: var(--pool); }
+.prog span { flex: none; margin-left: 18px; font-size: 22px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .fade, .rail span { transition: none; } }
+
+/* 5 · Express frente a cuatro */
+.lead { font-size: 30px; line-height: 1.4; color: var(--muted); margin: -8px 0 26px; }
+.lead strong { color: var(--ink); }
+.intro { font-size: 29px; color: var(--muted); margin: -8px 0 30px; line-height: 1.4; }
+.intro strong { color: var(--ink); }
+.cmp { display: grid; grid-template-columns: 720px 1fr; gap: 70px; align-items: start; }
+.chosen { background: var(--soft); border-left: 12px solid var(--pool); padding: 30px 44px 8px; }
+.chosen h2 { font: 800 84px/1 var(--f-title); letter-spacing: -.02em; color: var(--astral); margin: 0 0 8px; }
+.chosen .tag { font-size: 28px; color: var(--pool-texto); font-weight: 600; margin: 0 0 22px; }
+.chosen p { margin: 0 0 22px; font-size: 30px; }
+.chosen .cost { border-top: 2px solid var(--line); padding-top: 22px; }
+.chosen .cost strong, .cell .cost strong { color: var(--champlain); }
+.alts { display: flex; flex-direction: column; }
+.alts div { padding: 14px 0 16px; border-bottom: 2px solid var(--line); }
+.alts div:first-child { padding-top: 0; }
+.alts h3 { font: 700 40px/1.1 var(--f-title); color: var(--champlain); margin: 0 0 4px; }
+.alts p { margin: 0; font-size: 29px; }
+
+/* 6 · Cada elección, con su costo */
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; flex: 1; }
+.cell { padding: 0 52px 12px 0; }
+.cell:nth-child(2n) { padding: 0 0 12px 52px; border-left: 2px solid var(--line); }
+.cell:nth-child(n+3) { padding-top: 22px; border-top: 2px solid var(--line); }
+.cell h2 { font: 700 52px/1.1 var(--f-title); color: var(--astral); margin: 0; }
+.cell .vs { color: var(--muted); font-size: 28px; margin: 4px 0 14px; }
+.cell p { margin: 0 0 14px; font-size: 30px; line-height: 1.35; }
+.cell .cost { color: var(--ink); }
+.motor { margin: 0; padding-top: 14px; border-top: 2px solid var(--line); font-size: 28px; line-height: 1.35; }
+.motor strong { color: var(--champlain); }
+
+/* 7 · Monolito */
+.mono { display: grid; grid-template-columns: 720px 1fr; gap: 60px; align-items: start; }
+.nums { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 40px; }
+.nums div { border-top: 8px solid var(--pool); padding-top: 14px; }
+.nums b { display: block; font: 800 88px/1 var(--f-title); color: var(--astral); font-variant-numeric: lining-nums; }
+.nums span { display: block; font-size: 28px; line-height: 1.3; color: var(--muted); margin-top: 6px; }
+.dia svg { display: block; width: 100%; height: auto; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 34px; }
+.two p { margin: 0; font-size: 30px; line-height: 1.38; padding-left: 24px; border-left: 10px solid var(--surf); }
+.two strong { color: var(--champlain); }
+.fowler { margin: 30px 0 0; font-size: 27px; color: var(--muted); }
+
+/* 8 · Cierre */
+.close .plan { position: absolute; right: 0; top: 0; bottom: 0; width: 800px; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 50%); mask-image: linear-gradient(to right, transparent 0, #000 50%); }
+.close h1 { font: 800 150px/1 var(--f-title); letter-spacing: -.02em; color: #fff; border: 0; padding: 0; margin: 60px 0 80px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 54px 50px; width: 1020px; position: relative; }
+.facts div { border-top: 8px solid var(--pool); padding-top: 16px; }
+.facts b { display: block; font: 800 120px/1 var(--f-title); color: var(--surf); font-variant-numeric: lining-nums; }
+.facts span { display: block; font-size: 30px; line-height: 1.3; margin-top: 8px; max-width: 460px; }
+
+/* Controles */
+.zone { position: fixed; top: 0; bottom: 0; width: 7%; z-index: 5; cursor: pointer; }
+.zone.prev { left: 0; } .zone.next { right: 0; }
+#negro { position: fixed; inset: 0; background: #000; z-index: 20; display: none; }
+#negro.on { display: block; }
+#ayuda { position: fixed; right: 24px; bottom: 24px; z-index: 30; background: var(--kuroi); color: #fff; border: 2px solid var(--pool); border-radius: 8px; padding: 18px 24px; font: 400 16px/1.7 var(--f-text); max-width: 420px; }
+#ayuda[hidden] { display: none; }
+#laser { position: fixed; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(255, 92, 80, .6); box-shadow: 0 0 0 7px rgba(255, 92, 80, .25); pointer-events: none; z-index: 40; display: none; left: -99px; top: -99px; }
+body.laser #laser { display: block; }
+body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
+#ayuda kbd { font: 500 14px var(--f-mono); background: var(--astral); border-radius: 4px; padding: 1px 7px; }
+
+@media print {
+  @page { size: 1920px 1080px; margin: 0; }
+  html, body { height: auto; overflow: visible; background: #fff; }
+  .stage { position: static; transform: none !important; height: auto; }
+  .slide { display: flex !important; position: relative; width: 1920px; height: 1080px; break-after: page; }
+  .zone, #ayuda, #negro, #laser { display: none !important; }
+  .chrome { display: none !important; }
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="stage" id="stage">
+
+  <!-- 1 · Portada · 0:00 a 0:20 -->
+  <section class="slide dark cover active" data-title="Portada" data-end="20">
+    <div class="plan" data-plan="label"></div>
+    <div class="txt">
+      <h1>SignalMap</h1>
+      <p class="sub">Hito 2: motor back-end y API REST</p>
+      <p class="what">Mide la señal WiFi en puntos fijos de un edificio, marcados con tiras NFC, para comprobar si un repetidor mejoró la cobertura. Hoy mostramos el servidor.</p>
+    </div>
+    <div class="meta"><strong>Maximiliano Alvarado y Gabriel Díaz</strong><br>Universidad Mayor · Arquitectura de Desarrollo (Web y Móvil)<br>Noviembre de 2026</div>
+    <aside class="notes">
+      <p><b>0:00 a 0:20.</b> Presentate: «Soy Maximiliano; con Gabriel construimos el servidor del Hito 2.»</p>
+      <p>Una sola frase de qué es SignalMap: mide la señal WiFi en puntos fijos de un edificio, marcados con tiras NFC, para comprobar si un repetidor mejoró la cobertura.</p>
+      <p>Aclarar que hoy no se ve la app: se ve el servidor que la va a alimentar. «Primero lo mostramos andando.»</p>
+    </aside>
+  </section>
+
+  <!-- 2 · Tres partes · 0:20 a 0:30 -->
+  <section class="slide" data-title="Tres partes" data-end="30">
+    <h1>Tres partes, en este orden</h1>
+    <ol class="parts">
+      <li><span class="n">1</span><h2>Demostración en vivo</h2><p>Cuatro peticiones contra el servicio corriendo.</p></li>
+      <li><span class="n">2</span><h2>Tecnologías</h2><p>Qué elegimos, frente a qué, y qué nos costó.</p></li>
+      <li><span class="n">3</span><h2>Arquitectura</h2><p>Por qué un solo servicio, y cuándo lo revisaríamos.</p></li>
+    </ol>
+    <div class="chrome"><div class="secs"><span>Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>0:20 a 0:30.</b> Decí el orden sin leer la diapositiva: primero lo ves funcionando, después por qué estas tecnologías, al final por qué un solo servicio.</p>
+      <p>Pasá directo a Postman. Si querés sacar la diapositiva mientras mostrás Postman, tocá <b>B</b> (pantalla en negro).</p>
+    </aside>
+  </section>
+
+  <!-- 3 · Demostración · 0:30 a 2:30 -->
+  <section class="slide" data-sec="0" data-title="Demostración en vivo" data-end="150">
+    <h1>Demostración en vivo: la vida del P-25</h1>
+    <p class="lead">Un punto de medición nace, se corrige, se borra y deja de existir. <strong>Cada paso responde con un código distinto.</strong></p>
+    <ul class="reqs">
+      <li><span class="verb">POST</span><code class="path">/api/v1/points</code><span class="st">201 Created</span>
+        <p>Crea el punto y dice dónde quedó: <code>Location: /api/v1/points/25</code></p></li>
+      <li><span class="verb">PATCH</span><code class="path">/api/v1/points/25</code><span class="st">200 OK</span>
+        <p>Corrige solo <code>x</code> e <code>y</code>, sin reenviar todo el punto</p></li>
+      <li><span class="verb">DELETE</span><code class="path">/api/v1/points/25</code><span class="st">204 No Content</span>
+        <p>Borra y no devuelve cuerpo</p></li>
+      <li><span class="verb">GET</span><code class="path">/api/v1/points/25</code><span class="st err">404 Not Found</span>
+        <p>Prueba de que el borrado fue real</p></li>
+    </ul>
+    <p class="foot-line"><strong>391 tests</strong>, uno por cada respuesta del contrato, corren en cada Pull Request.</p>
+    <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>0:30 a 2:30.</b> Antes de arrancar (ya hecho): <code>npm run seed</code> (el P-25 queda con id 25), <code>npm start</code>, <code>/health</code> en ok, Postman con el environment «SignalMap local (plantilla)» y el login hecho. El login no cuenta entre las 4 peticiones.</p>
+      <p><b>Pasá a Postman</b> (alt+tab, o <b>B</b> para negro) y corré en orden:</p>
+      <p><b>1 · POST → 201.</b> «Crear devuelve dónde quedó lo creado»: cabecera <code>Location: /api/v1/points/25</code> (RFC 9110 §15.3.2). Es el P-25: 30 m desde el borde izquierdo, 12,5 m desde el superior, en el piso 3 de la Torre Norte (40 × 25 m).</p>
+      <p><b>2 · PATCH → 200.</b> Mandamos solo <code>{ "x": 13, "y": 8.5 }</code>: corregir no obliga a reenviar todo (RFC 5789). No hay PUT.</p>
+      <p><b>3 · DELETE → 204.</b> Sin cuerpo. Borrar es irreversible y queda para el administrador.</p>
+      <p><b>4 · GET → 404.</b> <code>{ "message": "Punto no encontrado" }</code>. Es el error y a la vez la prueba de que el borrado fue real.</p>
+      <p>Cerrá con los tests en verde (391, uno por respuesta del contrato; en Windows pasan 388 y se saltean 3) y volvé a las diapositivas.</p>
+    </aside>
+  </section>
+
+  <!-- 4 · Seis preguntas · 2:30 a 3:20 -->
+  <section class="slide" data-sec="0" data-title="Seis preguntas antes de guardar un punto" data-end="200">
+    <h1>Seis preguntas antes de guardar un punto</h1>
+    <p class="lead">Son como puertas en fila: cada una hace <strong>una sola pregunta</strong> y, si la respuesta es no, corta ahí y devuelve su código.</p>
+    <div class="rail" id="rail"><span>middlewares</span><i>→</i><span>controller</span><i>→</i><span>service</span><i>→</i><span>repository</span></div>
+    <div class="player">
+      <div class="code"><div class="tab fade" id="pfile"></div><pre class="fade" id="pcode"></pre></div>
+      <div class="card fade" id="pcard">
+        <div class="qn"><b id="pn"></b><span id="pq"></span></div>
+        <p class="say" id="psay"></p>
+        <p class="lbl" id="plbl"></p>
+        <span class="badge" id="pst"></span>
+        <pre id="pbody"></pre>
+      </div>
+    </div>
+    <div class="prog"><div id="pprog" style="display:contents"></div><span id="phint"></span></div>
+    <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>2:30 a 3:20.</b> La diapositiva avanza sola, un paso cada 6 segundos (8 pasos, unos 48 s). Hablá acompañando el código que va apareciendo; no lo leas.</p>
+      <p><b>Con el lápiz o las flechas:</b> en esta diapositiva, siguiente y anterior mueven el código paso a paso (y pausan el avance automático). Cuando ya no quedan pasos, siguiente pasa a la diapositiva 5. <b>D</b> retoma el avance automático.</p>
+      <p><b>Pasos 1 a 3 (middlewares):</b> «Lo que acabamos de ver pasó por capas, y cada una hace una sola pregunta. Si la respuesta es no, corta ahí con su código.» ¿Quién sos? → 401. ¿Podés crear puntos? → 403. ¿El cuerpo tiene forma? → 400. <b>Primero quién pide y después qué pide:</b> por eso un cliente con cuerpo mal formado recibe 403 y no 400.</p>
+      <p><b>Paso 4 (controller):</b> dos líneas: le pide al servicio que cree y responde 201 con <code>Location</code>. Ninguna decisión de negocio vive ahí.</p>
+      <p><b>Pasos 5 y 6 (service):</b> ¿lo ve este usuario? → 404 (un recurso ajeno responde igual que uno inexistente). ¿Cae dentro de 40 × 25 m? → 422; con <code>"x": 45</code> corta acá, sin llegar a la base.</p>
+      <p><b>Paso 7 (repository):</b> el INSERT con parámetros; si el código o la tira ya existen, la base lo impide con UNIQUE → 409. Con el P-25 las seis respuestas son sí y vuelve 201.</p>
+      <p><b>Paso 8 (evidencia):</b> las cuatro búsquedas en el código dieron «ninguno». Además, un único archivo, <code>middlewares/error-handler.ts</code>, traduce los errores de negocio a código HTTP: no hay otro camino para responder un error, y ninguno sale con 200.</p>
+    </aside>
+  </section>
+
+  <!-- 5 · Express frente a cuatro · 3:20 a 4:20 -->
+  <section class="slide" data-sec="1" data-title="Express frente a cuatro" data-end="260">
+    <h1>Express, frente a cuatro alternativas</h1>
+    <p class="intro">Los mismos criterios para todo: <strong>un equipo de 2 personas y un semestre</strong>, el lenguaje de la web (TypeScript), capas que se puedan defender, que <strong>los dos</strong> podamos explicar cada parte, y una carga baja (~24 puntos por piso).</p>
+    <div class="cmp">
+      <div class="chosen">
+        <h2>Express 5</h2>
+        <p class="tag">Elegido</p>
+        <p>Rutas y middlewares, sin estructura impuesta. Muy documentado, y se integra directo con Zod y Supertest.</p>
+        <p class="cost"><strong>Costo:</strong> Express no impone capas. La separación es una disciplina nuestra, y la comprobamos con búsquedas en el código.</p>
+      </div>
+      <div class="alts">
+        <div><h3>Fastify</h3><p>La velocidad no se nota con esta carga, y suma un sistema de plugins por aprender.</p></div>
+        <div><h3>NestJS</h3><p>Para 2 personas y 2 recursos, la ceremonia cuesta más de lo que ordena.</p></div>
+        <div><h3>Hono</h3><p>Su fuerte son las funciones en el borde de la red, que no usamos.</p></div>
+        <div><h3>Spring Boot</h3><p>Otro lenguaje: no comparte tipos con la web en TypeScript.</p></div>
+      </div>
+    </div>
+    <div class="chrome"><div class="secs"><span>Demostración</span><span class="on">Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>3:20 a 4:20.</b> Empezá por los criterios (arriba): son los mismos para todas las decisiones y es lo que evita justificar «por moda».</p>
+      <p>El Hito 1 comparó Express con Spring Boot; al empezar el Hito 2 se amplió la comparación con Fastify, NestJS y Hono, sin cambiar la decisión.</p>
+      <p>Recorré las cuatro alternativas en una línea cada una (están en pantalla). La más probable en preguntas es NestJS: estructura impuesta con módulos, decoradores e inyección de dependencias; para 2 personas y 2 recursos cuesta más de lo que ordena.</p>
+      <p><b>El costo asumido</b> (decilo sin que te lo pidan): Express no impone capas. Lo compensamos con reglas que se comprueban en el código, las cuatro búsquedas de la diapositiva anterior. Si el equipo o el proyecto crecieran, el candidato para revisar la decisión sería NestJS.</p>
+    </aside>
+  </section>
+
+  <!-- 6 · Cada elección, con su costo · 4:20 a 5:15 -->
+  <section class="slide" data-sec="1" data-title="Cada elección, con su costo" data-end="315">
+    <h1>Cada elección, con su costo</h1>
+    <div class="grid4">
+      <div class="cell">
+        <h2>TypeScript sin compilar</h2>
+        <p class="vs">en vez de compilar a <code>dist/</code></p>
+        <p>Node 26 corre los <code>.ts</code> directo y <code>tsc</code> solo revisa tipos: lo que corre es lo que está en el repositorio.</p>
+        <p class="cost"><strong>Costo:</strong> nada de <code>enum</code> ni <code>namespace</code>, y el proyecto depende de Node 26.</p>
+      </div>
+      <div class="cell">
+        <h2>pg con SQL a mano</h2>
+        <p class="vs">en vez de Prisma, Knex o Kysely</p>
+        <p>Las consultas quedan a la vista en <code>repositories/</code>, que es la evidencia de las capas. Prisma pediría su propio esquema, duplicando <code>db/schema.sql</code>.</p>
+        <p class="cost"><strong>Costo:</strong> mapear filas a objetos y declarar los tipos a mano.</p>
+      </div>
+      <div class="cell">
+        <h2>JWT propio con node:crypto</h2>
+        <p class="vs">en vez de <code>jsonwebtoken</code></p>
+        <p>Cero dependencias en la pieza más sensible del servicio.</p>
+        <p class="cost"><strong>Costo:</strong> verificar el token es cosa nuestra, así que hay 28 tests de ataques (<code>alg: none</code>, firma alterada, vencido, deformes). Todos responden <code>401</code>.</p>
+      </div>
+      <div class="cell">
+        <h2>Vitest</h2>
+        <p class="vs">en vez de Jest</p>
+        <p>Trae TypeScript y ESM sin configurar. El ESM de Jest es experimental y pide una bandera de Node.</p>
+        <p class="cost"><strong>Costo:</strong> también transforma el TypeScript por su cuenta; lo cubre <code>npm run typecheck</code> en el CI.</p>
+      </div>
+    </div>
+    <p class="motor"><strong>PostgreSQL</strong>, frente a MongoDB (Hito 1): los datos son una cadena y la base cuida su integridad sola, con claves foráneas, <code>UNIQUE</code> y <code>CHECK</code>. <strong>Costo:</strong> esquema rígido, con migraciones.</p>
+    <div class="chrome"><div class="secs"><span>Demostración</span><span class="on">Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>4:20 a 5:15.</b> <b>En voz, solo tres: PostgreSQL, pg y JWT.</b> TypeScript y Vitest quedan en pantalla y para las preguntas.</p>
+      <p><b>PostgreSQL frente a MongoDB:</b> se comparó en el Hito 1 y se mantiene. Los datos son una cadena (organización → edificio → piso → punto) y la base cuida esa integridad sola, con claves foráneas, UNIQUE y CHECK. Costo: esquema rígido, cada cambio es una migración.</p>
+      <p><b>TypeScript sin compilar:</b> Node 26 ejecuta los .ts directamente; <code>tsc</code> solo revisa tipos y corre en el CI. El pase a compilar en el Hito 3 está preparado en <code>tsconfig.json</code>.</p>
+      <p><b>pg con SQL a mano:</b> las consultas viven solo en <code>repositories/</code>, con valores siempre como parámetros ($1, $2…): ningún valor puede cambiar la consulta.</p>
+      <p><b>JWT propio:</b> HS256 con <code>node:crypto</code>. Aceptamos solo el algoritmo que esperamos (RFC 8725), la firma se compara en tiempo constante y se revisa antes que el vencimiento. Los 28 tests: 13 de tokens falsificados, alterados o vencidos y 15 deformes; ninguno termina en 500.</p>
+      <p><b>Vitest:</b> la comparación con Jest se hizo al documentar; confirmó la elección con un matiz: ninguno de los dos corre el código exactamente como Node.</p>
+    </aside>
+  </section>
+
+  <!-- 7 · Monolito · 5:15 a 6:25 -->
+  <section class="slide" data-sec="2" data-title="Un solo servicio, por ahora" data-end="385">
+    <h1>Un solo servicio, por ahora</h1>
+    <p class="lead">Un <strong>monolito</strong> es un único programa que hace todo. Lo dividiríamos solo si algún día hiciera falta.</p>
+    <div class="mono">
+      <div class="nums">
+        <div><b>2</b><span>personas y un semestre para construirlo y operarlo</span></div>
+        <div><b>~24</b><span>puntos por piso, y el técnico mide de a uno</span></div>
+        <div><b>4</b><span>escaneos WiFi cada 2 minutos permite Android</span></div>
+        <div><b>1</b><span>proceso y una base, y un solo <code>/health</code> que vigilar</span></div>
+      </div>
+      <div class="dia">
+        <svg viewBox="0 0 880 420" role="img" aria-label="Hoy, un servicio con sus cuatro capas sobre PostgreSQL. En el Hito 3, un módulo de análisis separado solo si la CPU frena las mediciones.">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#342E4E"/></marker></defs>
+          <rect x="0" y="0" width="880" height="170" rx="14" fill="#F2F5EF" stroke="#709491" stroke-width="3"/>
+          <text x="24" y="42" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-weight="700" font-size="28" fill="#435570">Hito 2: un servicio</text>
+          <g font-family="JetBrains Mono, Consolas, monospace" font-size="23" fill="#131521" text-anchor="middle">
+            <rect x="24" y="70" width="180" height="70" rx="6" fill="#fff" stroke="#342E4E" stroke-width="2.5"/><text x="114" y="113">routes</text>
+            <rect x="242" y="70" width="180" height="70" rx="6" fill="#fff" stroke="#342E4E" stroke-width="2.5"/><text x="332" y="113">controllers</text>
+            <rect x="460" y="70" width="180" height="70" rx="6" fill="#fff" stroke="#342E4E" stroke-width="2.5"/><text x="550" y="113">services</text>
+            <rect x="678" y="70" width="180" height="70" rx="6" fill="#fff" stroke="#342E4E" stroke-width="2.5"/><text x="768" y="113" font-size="21">repositories</text>
+          </g>
+          <g stroke="#342E4E" stroke-width="2.5" marker-end="url(#ar)">
+            <line x1="206" y1="105" x2="238" y2="105"/><line x1="424" y1="105" x2="456" y2="105"/><line x1="642" y1="105" x2="674" y2="105"/>
+          </g>
+          <line x1="768" y1="142" x2="768" y2="262" stroke="#342E4E" stroke-width="2.5" marker-end="url(#ar)"/>
+          <path d="M678 290 V372 A90 22 0 0 0 858 372 V290" fill="#342E4E"/>
+          <ellipse cx="768" cy="290" rx="90" ry="22" fill="#435570"/>
+          <text x="768" y="344" text-anchor="middle" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-weight="600" font-size="24" fill="#fff">PostgreSQL 17</text>
+          <rect x="24" y="270" width="520" height="124" rx="10" fill="none" stroke="#709491" stroke-width="3" stroke-dasharray="10 8"/>
+          <text x="44" y="312" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-weight="700" font-size="26" fill="#435570">Módulo de análisis</text>
+          <text x="44" y="347" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="22" fill="#5A6272">mapa de calor, trilateración</text>
+          <text x="44" y="378" font-family="IBM Plex Sans, Segoe UI, sans-serif" font-size="22" fill="#5A6272">Hito 3, solo si la CPU frena las mediciones</text>
+          <line x1="548" y1="332" x2="672" y2="332" stroke="#709491" stroke-width="3" stroke-dasharray="3 8" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="two">
+      <p><strong>Costo asumido:</strong> todo escala junto, y un error grave puede tumbar el servicio entero.</p>
+      <p><strong>Se revisa si</strong> el análisis del Hito 3 consume tanta CPU que frena el registro de mediciones. Eso se separa primero, porque solo lee datos.</p>
+    </div>
+    <p class="fowler">Fowler (2015): los microservicios exitosos casi siempre empezaron como un monolito.</p>
+    <div class="chrome"><div class="secs"><span>Demostración</span><span>Tecnologías</span><span class="on">Arquitectura</span></div><div class="count"></div></div>
+    <aside class="notes">
+      <p><b>5:15 a 6:25.</b> Decisión por argumento, no por moda. Fowler (2015) observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió cuando los límites ya estaban claros. Lo usamos como consulta; la decisión sale de nuestros números:</p>
+      <p><b>2 personas</b> con un semestre: cada servicio extra suma despliegue, configuración y depuración para las mismas dos personas.</p>
+      <p><b>~24 puntos por piso</b>, el técnico mide uno a la vez y Android permite 4 escaneos WiFi cada 2 minutos: ninguna parte necesita crecer por separado.</p>
+      <p><b>1 proceso y una base:</b> hoy se opera con un solo <code>/health</code>; en el Hito 3, dos contenedores. El servicio queda listo para recibir peticiones en entre 0,4 y 1 s, según el estado del equipo.</p>
+      <p><b>Los datos son una cadena:</b> organización → edificio → piso → punto (y en el Hito 3, campaña → medición). Repartirlos en bases distintas obligaría a cuidar esa integridad a mano, y PostgreSQL ya la cuida solo.</p>
+      <p><b>Costo asumido:</b> todo escala junto y un error grave puede tumbar el servicio entero.</p>
+      <p><b>Cuándo se revisa:</b> si el análisis del Hito 3 (mapa de calor, trilateración) frenara el registro de mediciones, eso sería lo primero en separarse.</p>
+      <p>Si preguntan por carga: las lecturas sostienen ~880 peticiones por segundo sin errores; el límite real es el login (~6 por segundo, porque bcryptjs calcula en el hilo único de Node). Está documentado en la sección 8.3 del informe.</p>
+    </aside>
+  </section>
+
+  <!-- 8 · Cierre · 6:25 a 6:40 -->
+  <section class="slide dark close" data-title="Cierre" data-end="400">
+    <div class="plan" data-plan="nolabel"></div>
+    <h1>¿Preguntas?</h1>
+    <div class="facts">
+      <div><b>13</b><span>endpoints, con CRUD completo de edificios y puntos</span></div>
+      <div><b>7</b><span>tablas, que un script crea desde cero</span></div>
+      <div><b>391</b><span>tests, uno por cada respuesta del contrato</span></div>
+      <div><b>86 / 86</b><span>fallas introducidas a propósito, todas detectadas</span></div>
+    </div>
+    <aside class="notes">
+      <p><b>6:25 a 6:40.</b> Las cuatro cifras, rápido: 13 endpoints, 7 tablas, 391 tests, y las 86 fallas que rompimos a propósito en reglas críticas: las 86 hicieron fallar al menos un test.</p>
+      <p>Cerrá con «¿preguntas?». El guion termina en 6:40: quedan 20 segundos de colchón. <b>A los 7:00 se corta, sin minutos de gracia.</b></p>
+      <p>Después, hasta 2 minutos de preguntas al integrante sorteado. El banco de preguntas está en el vault (Paso 11).</p>
+    </aside>
+  </section>
+
+</div>
+
+<div class="zone prev" id="zprev" aria-hidden="true"></div>
+<div class="zone next" id="znext" aria-hidden="true"></div>
+<div id="negro"></div>
+<div id="laser"></div>
+<div id="ayuda" hidden>
+  <b>Atajos</b><br>
+  <kbd>→</kbd> <kbd>Espacio</kbd> <kbd>Av Pág</kbd> siguiente · <kbd>←</kbd> <kbd>Re Pág</kbd> anterior<br>
+  <kbd>1</kbd> a <kbd>8</kbd> saltar a una diapositiva · <kbd>Inicio</kbd> <kbd>Fin</kbd><br>
+  <kbd>F</kbd> pantalla completa · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro<br>
+  <kbd>P</kbd> ventana de presentador · <kbd>T</kbd> iniciar o pausar el cronómetro · <kbd>R</kbd> reiniciarlo<br>
+  <b>Lápiz o control remoto:</b> <kbd>Av Pág</kbd> <kbd>Re Pág</kbd> siguiente y anterior (en la diapositiva 4 recorren el código paso a paso) · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro · <kbd>F5</kbd> pantalla completa<br>
+  <kbd>L</kbd> puntero láser · <kbd>D</kbd> retoma el avance automático de la diapositiva 4<br>
+  <kbd>?</kbd> esta ayuda
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var TOTAL = 420; // 7:00, en segundos
+  var stage = document.getElementById('stage');
+  var slides = Array.prototype.slice.call(stage.querySelectorAll('.slide'));
+  var negro = document.getElementById('negro');
+  var ayuda = document.getElementById('ayuda');
+  var cur = 0, pw = null, t0 = 0, acc = 0, running = false;
+
+  /* Anillos de cobertura alrededor del P-25 (piso 3, 40 x 25 m). Sin las 24 tiras: aquí son solo la imagen. */
+  function planSvg(label) {
+    var rings = [[34, '#342E4E'], [25, '#435570'], [17, '#709491'], [9.5, '#C4D4BA']]
+      .map(function (r) { return "<circle cx='30' cy='12.5' r='" + r[0] + "' fill='" + r[1] + "'/>"; }).join('');
+    return "<svg viewBox='0 0 40 25' preserveAspectRatio='xMaxYMid slice' role='img' aria-label='Anillos de cobertura alrededor del punto P-25'>"
+      + "<rect width='40' height='25' fill='#131521'/>" + rings
+      + "<circle cx='30' cy='12.5' r='.95' fill='none' stroke='#131521' stroke-width='.16'/><circle cx='30' cy='12.5' r='.5' fill='#131521'/>"
+      + (label ? "<text x='28.7' y='12.92' text-anchor='end' font-family='IBM Plex Sans, Segoe UI, sans-serif' font-weight='600' font-size='1.05' fill='#131521'>P-25</text>" : '')
+      + '</svg>';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-plan]'), function (el) {
+    el.innerHTML = planSvg(el.getAttribute('data-plan') === 'label');
+  });
+
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  function show(n) {
+    cur = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, i) {
+      s.classList.toggle('active', i === cur);
+      var c = s.querySelector('.count'); if (c) c.textContent = (i + 1) + ' / ' + slides.length;
+    });
+    document.body.setAttribute('data-theme', slides[cur].classList.contains('dark') ? 'dark' : 'light');
+    try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) { /* file:// restringido: no pasa nada */ }
+    if (cur === 3) startPlayer(); else stopPlayer();
+    renderPresenter();
+  }
+
+  /* Cronómetro: vive acá, no en la ventana de presentador, para que no se pierda si esa ventana se cierra. */
+  function elapsed() { return (acc + (running ? performance.now() - t0 : 0)) / 1000; }
+  function toggleTimer() { if (running) { acc += performance.now() - t0; running = false; } else { t0 = performance.now(); running = true; } renderPresenter(); }
+  function resetTimer() { acc = 0; running = false; renderPresenter(); }
+  function mmss(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  /* Ventana de presentador */
+  var PRESENTER = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Presentador · SignalMap</title><style>'
+    + 'body{margin:0;font:400 20px/1.45 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:#131521;background:#fff;display:grid;grid-template-columns:1fr 380px;height:100vh}'
+    + 'main{padding:24px 32px;overflow:auto}aside{background:#131521;color:#fff;padding:24px 28px;display:flex;flex-direction:column;gap:14px}'
+    + 'h1{font:700 30px/1.15 "Bricolage Grotesque","Segoe UI",sans-serif;color:#342E4E;margin:0 0 4px}.n{color:#5A6272;font-size:16px;margin:0 0 14px}'
+    + '#notes p{margin:0 0 12px}#notes code{font:500 .86em Consolas,monospace;background:#F2F5EF;padding:0 5px;border-radius:3px}'
+    + '#t{font:800 96px/1 "Bricolage Grotesque","Segoe UI",sans-serif;font-variant-numeric:tabular-nums lining-nums;color:#C4D4BA}'
+    + '#t.warn{color:#F3C969}#t.alarm{color:#FF9B8F}#est{font-size:15px;color:#C4D4BA}#ritmo{font-size:19px}#ritmo.late{color:#FF9B8F}'
+    + '.sig{border-top:2px solid #435570;padding-top:12px;font-size:16px;color:#C4D4BA}.sig b{color:#fff;display:block;font-size:19px}'
+    + '.keys{margin-top:auto;font-size:13px;color:#8FA5A2;line-height:1.7}'
+    + '</style></head><body><main><h1 id="tit"></h1><p class="n" id="num"></p><div id="notes"></div></main>'
+    + '<aside><div><div id="t">7:00</div><div id="est"></div></div><div id="ritmo"></div><div class="sig" id="sig"></div>'
+    + '<div class="keys">→ siguiente · ← anterior · T cronómetro · R reiniciar<br>B pantalla en negro · F pantalla completa</div></aside></body></html>';
+
+  function openPresenter() {
+    if (pw && !pw.closed) { pw.focus(); return; }
+    pw = window.open('', 'signalmap-presentador', 'popup,width=1180,height=720');
+    if (!pw) return;
+    pw.document.open(); pw.document.write(PRESENTER); pw.document.close();
+    pw.addEventListener('keydown', onKey);
+    renderPresenter();
+  }
+
+  function renderPresenter() {
+    if (!pw || pw.closed) return;
+    var d = pw.document, s = slides[cur], e = elapsed(), rem = TOTAL - e;
+    var $ = function (id) { return d.getElementById(id); };
+    if (!$('tit')) return;
+    $('tit').textContent = s.getAttribute('data-title');
+    $('num').textContent = 'Diapositiva ' + (cur + 1) + ' de ' + slides.length;
+    var notes = s.querySelector('.notes'); var html = notes ? notes.innerHTML : '';
+    if ($('notes').getAttribute('data-i') !== String(cur)) { $('notes').innerHTML = html; $('notes').setAttribute('data-i', String(cur)); }
+    var t = $('t');
+    t.textContent = rem < 0 ? '+' + mmss(-rem) : mmss(Math.ceil(rem));
+    t.className = rem < 0 || rem <= 30 ? 'alarm' : rem <= 60 ? 'warn' : '';
+    $('est').textContent = running ? 'En marcha. T para pausar.' : (e === 0 ? 'Listo. T para empezar a contar.' : 'En pausa. T para seguir.');
+    var end = +s.getAttribute('data-end'), left = end - e, r = $('ritmo');
+    r.textContent = 'Cierra en el minuto ' + mmss(end) + ' del guion (el reloj marcaría ' + mmss(TOTAL - end) + ')' + (e === 0 ? '' : left >= 0 ? ': te quedan ' + mmss(left) : ': vas ' + mmss(-left) + ' pasado');
+    r.className = e > 0 && left < 0 ? 'late' : '';
+    var nx = slides[cur + 1];
+    $('sig').innerHTML = nx ? 'Sigue<b>' + nx.getAttribute('data-title') + '</b>' : 'Es la última diapositiva';
+  }
+  setInterval(renderPresenter, 250);
+
+  /* Diapositiva 4: reproductor de código. Código real de backend/src; avanza solo cada STEP_MS. */
+  var STEP_MS = 6000;
+  var ROUTE = ['pointsRouter.post(', "  '/',", '  authenticate,', "  requireRole('admin', 'tecnico'),", '  validate({ query: noQuery, body: createPointBody }),', '  points.create,', ');'];
+  function route(i) { return ROUTE.map(function (t, n) { return n === i ? [t, 'hl'] : [t]; }); }
+  var STEPS = [
+    { file: 'routes/points.ts', layer: 0, n: '1', q: '¿Quién sos?', say: 'Lee el token. Sin token, o con uno falso, corta acá.', lbl: 'Si la respuesta es no:', st: '401 · sin sesión', body: '{ "message": "Token requerido" }', lines: route(2) },
+    { file: 'routes/points.ts', layer: 0, n: '2', q: '¿Podés crear puntos?', say: 'El rol del token tiene que ser admin o técnico. Un cliente solo mira.', lbl: 'Si la respuesta es no:', st: '403 · sin permiso', body: '{ "message": "No tiene permiso para esta acción" }', lines: route(3) },
+    { file: 'routes/points.ts', layer: 0, n: '3', q: '¿El cuerpo tiene forma?', say: 'Zod revisa el formato: x e y son números con hasta 2 decimales.', lbl: 'Si la respuesta es no:', st: '400 · mal formado', body: '{ "message": "x debe ser un número con hasta 2 decimales" }', lines: route(4) },
+    { file: 'controllers/points.ts (sin tipos)', layer: 1, n: '→', q: 'Dos líneas, ninguna decisión', say: 'Le pide al servicio que cree el punto y responde. Nada más.', lbl: 'Si todo salió bien:', st: '201 · creado', body: 'Location: /api/v1/points/25', lines: [['export async function create(req, res) {'], ['  const point = await pointsService.create(req.user!, req.body);', 'hl'], ['  res.status(201).location(`${req.baseUrl}/${point.id}`).json(point);', 'hl'], ['}']] },
+    { file: 'services/points.ts (sin tipos)', layer: 2, n: '4', q: '¿Lo ve este usuario?', say: 'Busca el piso solo dentro de la organización del usuario. Si no lo ve, es como si no existiera.', lbl: 'Si la respuesta es no:', st: '404 · no lo ve', body: '{ "message": "Piso no encontrado" }', lines: [['export async function create(user, point) {'], ['  const floor = await floors.findById(point.floor_id, readScope(user));', 'hl'], ['  if (!floor) throw floorNotFound();', 'hl'], ['  assertInside(floor, point.x, point.y);'], ['  return points.create(point);'], ['}']] },
+    { file: 'services/points.ts (sin tipos)', layer: 2, n: '5', q: '¿Cae dentro de 40 × 25 m?', say: 'Compara x e y con las medidas del piso. Con x = 45 no entra.', lbl: 'Si la respuesta es no:', st: '422 · rompe una regla', body: '{ "message": "Las coordenadas quedan fuera del piso (40 x 25 m)" }', lines: [['function assertInside(floor, x, y) {'], ['  const inside = (value, max) => value === undefined || (value >= 0 && value <= max);'], ['  if (!inside(x, floor.width_m) || !inside(y, floor.height_m)) {', 'hl'], ["    throw new AppError('domain_rule', `Las coordenadas quedan fuera del piso (${floor.width_m} x ${floor.height_m} m)`);", 'hl'], ['  }'], ['}']] },
+    { file: 'repositories/points.ts (sin tipos)', layer: 3, n: '6', q: '¿Ya existe P-25 o esa tira?', say: 'La base lo impide sola con UNIQUE. Los valores viajan como parámetros ($1, $2…), nunca pegados al SQL.', lbl: 'Si la respuesta es sí:', st: '409 · duplicado', body: '{ "message": "La tira NFC ya está asociada a otro punto" }', lines: [['const { rows } = await query('], ['  `INSERT INTO points (floor_id, code, x, y, nfc_uid) VALUES ($1, $2, $3, $4, $5)', 'hl', 'str'], ['   RETURNING id, floor_id, code, x, y, nfc_uid`,', 'hl', 'str'], ['  [point.floor_id, point.code, point.x, point.y, point.nfc_uid],'], [');']] },
+    { file: 'terminal · desde backend/src', layer: -1, n: '✓', q: '¿Capas o solo carpetas?', say: 'Cuatro búsquedas en el código: ningún service conoce Express, ningún controller toca la base y no hay SQL fuera de repositories/.', lbl: 'Resultado:', st: '4 de 4 en «ninguno»', body: '', lines: [['$ grep -l "from \'express\'" services/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -l "res\\.\\|\\.status(" services/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -l "repositories/" controllers/*.ts schemas/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -rl "SELECT \\|INSERT \\|UPDATE \\|DELETE FROM" . | grep -v repositories/'], ['(ninguno)', 'hl', 'ok']] }
+  ];
+  var step = 0, auto = true, stepTimer = null;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var KW = /(\/\/.*|^\$ .*)|(`[^`]*`?|'[^']*'?|"[^"]*"?)|\b(const|await|async|function|export|return|throw|new|if)\b/g;
+  function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function colorize(t) {
+    var out = '', last = 0, m; KW.lastIndex = 0;
+    while ((m = KW.exec(t))) {
+      out += esc(t.slice(last, m.index));
+      out += '<span class="' + (m[1] ? 'cm' : m[2] ? 'st' : 'k') + '">' + esc(m[0]) + '</span>';
+      last = m.index + m[0].length;
+    }
+    return out + esc(t.slice(last));
+  }
+  function lineHtml(l) {
+    var cls = 'ln' + (l[1] === 'hl' ? ' hl' : '');
+    var inner = l[2] === 'str' ? '<span class="st">' + esc(l[0]) + '</span>' : l[2] === 'ok' ? '<span class="ok">' + esc(l[0]) + '</span>' : colorize(l[0]);
+    return '<span class="' + cls + '">' + inner + '</span>';
+  }
+  var $p = function (id) { return document.getElementById(id); };
+  function renderStep(animate) {
+    var d = STEPS[step], fades = [$p('pfile'), $p('pcode'), $p('pcard')];
+    var rail = $p('rail').querySelectorAll('span');
+    Array.prototype.forEach.call(rail, function (el, i) { el.className = i === d.layer ? 'on' : (d.layer === -1 || i < d.layer) ? 'done' : ''; });
+    $p('pprog').innerHTML = STEPS.map(function (_, i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('');
+    $p('phint').textContent = (step + 1) + ' / ' + STEPS.length + (auto ? '' : ' · en pausa (D para seguir)');
+    var apply = function () {
+      $p('pfile').textContent = d.file;
+      $p('pcode').innerHTML = d.lines.map(lineHtml).join('');
+      $p('pn').textContent = d.n; $p('pq').textContent = d.q; $p('psay').textContent = d.say;
+      $p('plbl').textContent = d.lbl; $p('pst').textContent = d.st;
+      $p('pbody').textContent = d.body; $p('pbody').style.display = d.body ? '' : 'none';
+      fades.forEach(function (el) { el.style.opacity = 1; });
+    };
+    if (animate && !reduceMotion) { fades.forEach(function (el) { el.style.opacity = 0; }); setTimeout(apply, 170); } else apply();
+  }
+  function scheduleStep() {
+    clearTimeout(stepTimer);
+    if (!auto) return;
+    stepTimer = setTimeout(function () { if (step < STEPS.length - 1) { step++; renderStep(true); scheduleStep(); } }, STEP_MS);
+  }
+  function startPlayer() { step = 0; auto = true; renderStep(false); scheduleStep(); }
+  function stopPlayer() { clearTimeout(stepTimer); }
+  function moveStep(delta) { auto = false; clearTimeout(stepTimer); step = Math.max(0, Math.min(STEPS.length - 1, step + delta)); renderStep(true); }
+  function resumeAuto() { auto = true; renderStep(false); scheduleStep(); }
+  /* Siguiente y anterior (lápiz, flechas, clic en los bordes): en la diapositiva 4 recorren los pasos del código. */
+  function next() { if (cur === 3 && step < STEPS.length - 1) moveStep(1); else show(cur + 1); }
+  function prev() {
+    if (cur === 3 && step > 0) { moveStep(-1); return; }
+    show(cur - 1);
+    if (cur === 3) { stopPlayer(); auto = false; step = STEPS.length - 1; renderStep(false); }
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+
+  function onKey(ev) {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    var k = ev.key, handled = true;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') next();
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') prev();
+    else if (k === 'Home') show(0);
+    else if (k === 'End') show(slides.length - 1);
+    else if (/^[1-8]$/.test(k)) show(+k - 1);
+    else if (k === 'f' || k === 'F' || k === 'F5') toggleFullscreen();
+    else if (k === 'l' || k === 'L') document.body.classList.toggle('laser');
+    else if (k === 'b' || k === 'B' || k === '.') negro.classList.toggle('on');
+    else if (k === 'p' || k === 'P') openPresenter();
+    else if (k === 't' || k === 'T') toggleTimer();
+    else if (k === 'r' || k === 'R') resetTimer();
+    else if ((k === 'd' || k === 'D') && cur === 3) resumeAuto();
+    else if (k === '?' || k === 'h' || k === 'H') ayuda.hidden = !ayuda.hidden;
+    else if (k === 'Escape') { negro.classList.remove('on'); ayuda.hidden = true; }
+    else handled = false;
+    if (handled) ev.preventDefault();
+  }
+
+  document.addEventListener('keydown', onKey);
+  document.getElementById('zprev').addEventListener('click', prev);
+  document.getElementById('znext').addEventListener('click', next);
+  var sx = null;
+  document.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 60) { if (dx < 0) next(); else prev(); }
+  }, { passive: true });
+  /* Puntero láser (tecla L) y cursor que se oculta a los 2,5 s sin moverse, para proyectar limpio con el lápiz */
+  var laser = document.getElementById('laser'), idleTimer = null;
+  document.addEventListener('mousemove', function (e) {
+    laser.style.left = e.clientX + 'px'; laser.style.top = e.clientY + 'px';
+    document.body.classList.remove('idle'); clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, 2500);
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('beforeunload', function () { if (pw && !pw.closed) pw.close(); });
+
+  fit();
+  var h = parseInt(location.hash.slice(1), 10);
+  show(h >= 1 && h <= slides.length ? h - 1 : 0);
+})();
+</script>
+</body>
+</html>
