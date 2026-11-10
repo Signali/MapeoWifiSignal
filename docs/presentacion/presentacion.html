@@ -121,13 +121,15 @@ body[data-theme="dark"] .chrome { display: none; }
 
 /* 6 · Cada elección, con su costo */
 .grid4 { display: grid; grid-template-columns: 1fr 1fr; flex: 1; }
-.cell { padding: 0 52px 34px 0; }
-.cell:nth-child(2n) { padding: 0 0 34px 52px; border-left: 2px solid var(--line); }
-.cell:nth-child(n+3) { padding-top: 34px; border-top: 2px solid var(--line); }
+.cell { padding: 0 52px 12px 0; }
+.cell:nth-child(2n) { padding: 0 0 12px 52px; border-left: 2px solid var(--line); }
+.cell:nth-child(n+3) { padding-top: 22px; border-top: 2px solid var(--line); }
 .cell h2 { font: 700 52px/1.1 var(--f-title); color: var(--astral); margin: 0; }
 .cell .vs { color: var(--muted); font-size: 28px; margin: 4px 0 14px; }
 .cell p { margin: 0 0 14px; font-size: 30px; line-height: 1.35; }
 .cell .cost { color: var(--ink); }
+.motor { margin: 0; padding-top: 14px; border-top: 2px solid var(--line); font-size: 28px; line-height: 1.35; }
+.motor strong { color: var(--champlain); }
 
 /* 7 · Monolito */
 .mono { display: grid; grid-template-columns: 720px 1fr; gap: 60px; align-items: start; }
@@ -223,7 +225,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     <p class="foot-line"><strong>391 tests</strong>, uno por cada respuesta del contrato, corren en cada Pull Request.</p>
     <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>0:30 a 2:30.</b> Antes de arrancar (ya hecho): <code>npm run seed</code> (el P-25 queda con id 25), <code>npm start</code>, <code>/health</code> en ok, Postman con el environment «SignalMap local» y el login hecho. El login no cuenta entre las 4 peticiones.</p>
+      <p><b>0:30 a 2:30.</b> Antes de arrancar (ya hecho): <code>npm run seed</code> (el P-25 queda con id 25), <code>npm start</code>, <code>/health</code> en ok, Postman con el environment «SignalMap local (plantilla)» y el login hecho. El login no cuenta entre las 4 peticiones.</p>
       <p><b>Pasá a Postman</b> (alt+tab, o <b>B</b> para negro) y corré en orden:</p>
       <p><b>1 · POST → 201.</b> «Crear devuelve dónde quedó lo creado»: cabecera <code>Location: /api/v1/points/25</code> (RFC 9110 §15.3.2). Es el P-25: 30 m desde el borde izquierdo, 12,5 m desde el superior, en el piso 3 de la Torre Norte (40 × 25 m).</p>
       <p><b>2 · PATCH → 200.</b> Mandamos solo <code>{ "x": 13, "y": 8.5 }</code>: corregir no obliga a reenviar todo (RFC 5789). No hay PUT.</p>
@@ -233,8 +235,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </aside>
   </section>
 
-  <!-- 4 · Seis preguntas · 2:30 a 3:30 -->
-  <section class="slide" data-sec="0" data-title="Seis preguntas antes de guardar un punto" data-end="210">
+  <!-- 4 · Seis preguntas · 2:30 a 3:20 -->
+  <section class="slide" data-sec="0" data-title="Seis preguntas antes de guardar un punto" data-end="200">
     <h1>Seis preguntas antes de guardar un punto</h1>
     <p class="lead">Son como puertas en fila: cada una hace <strong>una sola pregunta</strong> y, si la respuesta es no, corta ahí y devuelve su código.</p>
     <div class="rail" id="rail"><span>middlewares</span><i>→</i><span>controller</span><i>→</i><span>service</span><i>→</i><span>repository</span></div>
@@ -251,7 +253,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     <div class="prog"><div id="pprog" style="display:contents"></div><span id="phint"></span></div>
     <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>2:30 a 3:30.</b> La diapositiva avanza sola, un paso cada 7 segundos (8 pasos, unos 56 s). Hablá acompañando el código que va apareciendo; no lo leas.</p>
+      <p><b>2:30 a 3:20.</b> La diapositiva avanza sola, un paso cada 6 segundos (8 pasos, unos 48 s). Hablá acompañando el código que va apareciendo; no lo leas.</p>
       <p><b>Con el lápiz o las flechas:</b> en esta diapositiva, siguiente y anterior mueven el código paso a paso (y pausan el avance automático). Cuando ya no quedan pasos, siguiente pasa a la diapositiva 5. <b>D</b> retoma el avance automático.</p>
       <p><b>Pasos 1 a 3 (middlewares):</b> «Lo que acabamos de ver pasó por capas, y cada una hace una sola pregunta. Si la respuesta es no, corta ahí con su código.» ¿Quién sos? → 401. ¿Podés crear puntos? → 403. ¿El cuerpo tiene forma? → 400. <b>Primero quién pide y después qué pide:</b> por eso un cliente con cuerpo mal formado recibe 403 y no 400.</p>
       <p><b>Paso 4 (controller):</b> dos líneas: le pide al servicio que cree y responde 201 con <code>Location</code>. Ninguna decisión de negocio vive ahí.</p>
@@ -261,8 +263,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </aside>
   </section>
 
-  <!-- 5 · Express frente a cuatro · 3:30 a 4:30 -->
-  <section class="slide" data-sec="1" data-title="Express frente a cuatro" data-end="270">
+  <!-- 5 · Express frente a cuatro · 3:20 a 4:20 -->
+  <section class="slide" data-sec="1" data-title="Express frente a cuatro" data-end="260">
     <h1>Express, frente a cuatro alternativas</h1>
     <p class="intro">Los mismos criterios para todo: <strong>un equipo de 2 personas y un semestre</strong>, el lenguaje de la web (TypeScript), capas que se puedan defender, que <strong>los dos</strong> podamos explicar cada parte, y una carga baja (~24 puntos por piso).</p>
     <div class="cmp">
@@ -281,15 +283,15 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </div>
     <div class="chrome"><div class="secs"><span>Demostración</span><span class="on">Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>3:30 a 4:30.</b> Empezá por los criterios (arriba): son los mismos para todas las decisiones y es lo que evita justificar «por moda».</p>
+      <p><b>3:20 a 4:20.</b> Empezá por los criterios (arriba): son los mismos para todas las decisiones y es lo que evita justificar «por moda».</p>
       <p>El Hito 1 comparó Express con Spring Boot; al empezar el Hito 2 se amplió la comparación con Fastify, NestJS y Hono, sin cambiar la decisión.</p>
       <p>Recorré las cuatro alternativas en una línea cada una (están en pantalla). La más probable en preguntas es NestJS: estructura impuesta con módulos, decoradores e inyección de dependencias; para 2 personas y 2 recursos cuesta más de lo que ordena.</p>
       <p><b>El costo asumido</b> (decilo sin que te lo pidan): Express no impone capas. Lo compensamos con reglas que se comprueban en el código, las cuatro búsquedas de la diapositiva anterior. Si el equipo o el proyecto crecieran, el candidato para revisar la decisión sería NestJS.</p>
     </aside>
   </section>
 
-  <!-- 6 · Cada elección, con su costo · 4:30 a 5:30 -->
-  <section class="slide" data-sec="1" data-title="Cada elección, con su costo" data-end="330">
+  <!-- 6 · Cada elección, con su costo · 4:20 a 5:15 -->
+  <section class="slide" data-sec="1" data-title="Cada elección, con su costo" data-end="315">
     <h1>Cada elección, con su costo</h1>
     <div class="grid4">
       <div class="cell">
@@ -317,9 +319,11 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
         <p class="cost"><strong>Costo:</strong> también transforma el TypeScript por su cuenta; lo cubre <code>npm run typecheck</code> en el CI.</p>
       </div>
     </div>
+    <p class="motor"><strong>PostgreSQL</strong>, frente a MongoDB (Hito 1): los datos son una cadena y la base cuida su integridad sola, con claves foráneas, <code>UNIQUE</code> y <code>CHECK</code>. <strong>Costo:</strong> esquema rígido, con migraciones.</p>
     <div class="chrome"><div class="secs"><span>Demostración</span><span class="on">Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>4:30 a 5:30.</b> <b>Si vas justo de tiempo, decí solo JWT y pg</b> (ensayo: recortar primero esta diapositiva).</p>
+      <p><b>4:20 a 5:15.</b> <b>En voz, solo tres: PostgreSQL, pg y JWT.</b> TypeScript y Vitest quedan en pantalla y para las preguntas.</p>
+      <p><b>PostgreSQL frente a MongoDB:</b> se comparó en el Hito 1 y se mantiene. Los datos son una cadena (organización → edificio → piso → punto) y la base cuida esa integridad sola, con claves foráneas, UNIQUE y CHECK. Costo: esquema rígido, cada cambio es una migración.</p>
       <p><b>TypeScript sin compilar:</b> Node 26 ejecuta los .ts directamente; <code>tsc</code> solo revisa tipos y corre en el CI. El pase a compilar en el Hito 3 está preparado en <code>tsconfig.json</code>.</p>
       <p><b>pg con SQL a mano:</b> las consultas viven solo en <code>repositories/</code>, con valores siempre como parámetros ($1, $2…): ningún valor puede cambiar la consulta.</p>
       <p><b>JWT propio:</b> HS256 con <code>node:crypto</code>. Aceptamos solo el algoritmo que esperamos (RFC 8725), la firma se compara en tiempo constante y se revisa antes que el vencimiento. Los 28 tests: 13 de tokens falsificados, alterados o vencidos y 15 deformes; ninguno termina en 500.</p>
@@ -327,8 +331,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </aside>
   </section>
 
-  <!-- 7 · Monolito · 5:30 a 6:45 -->
-  <section class="slide" data-sec="2" data-title="Un solo servicio, por ahora" data-end="405">
+  <!-- 7 · Monolito · 5:15 a 6:25 -->
+  <section class="slide" data-sec="2" data-title="Un solo servicio, por ahora" data-end="385">
     <h1>Un solo servicio, por ahora</h1>
     <p class="lead">Un <strong>monolito</strong> es un único programa que hace todo. Lo dividiríamos solo si algún día hiciera falta.</p>
     <div class="mono">
@@ -371,7 +375,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     <p class="fowler">Fowler (2015): los microservicios exitosos casi siempre empezaron como un monolito.</p>
     <div class="chrome"><div class="secs"><span>Demostración</span><span>Tecnologías</span><span class="on">Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>5:30 a 6:45.</b> Decisión por argumento, no por moda. Fowler (2015) observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió cuando los límites ya estaban claros. Lo usamos como consulta; la decisión sale de nuestros números:</p>
+      <p><b>5:15 a 6:25.</b> Decisión por argumento, no por moda. Fowler (2015) observa que los sistemas de microservicios exitosos casi siempre empezaron como un monolito que se dividió cuando los límites ya estaban claros. Lo usamos como consulta; la decisión sale de nuestros números:</p>
       <p><b>2 personas</b> con un semestre: cada servicio extra suma despliegue, configuración y depuración para las mismas dos personas.</p>
       <p><b>~24 puntos por piso</b>, el técnico mide uno a la vez y Android permite 4 escaneos WiFi cada 2 minutos: ninguna parte necesita crecer por separado.</p>
       <p><b>1 proceso y una base:</b> hoy se opera con un solo <code>/health</code>; en el Hito 3, dos contenedores. El servicio queda listo para recibir peticiones en entre 0,4 y 1 s, según el estado del equipo.</p>
@@ -382,8 +386,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </aside>
   </section>
 
-  <!-- 8 · Cierre · 6:45 a 7:00 -->
-  <section class="slide dark close" data-title="Cierre" data-end="420">
+  <!-- 8 · Cierre · 6:25 a 6:40 -->
+  <section class="slide dark close" data-title="Cierre" data-end="400">
     <div class="plan" data-plan="nolabel"></div>
     <h1>¿Preguntas?</h1>
     <div class="facts">
@@ -393,8 +397,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
       <div><b>86 / 86</b><span>fallas introducidas a propósito, todas detectadas</span></div>
     </div>
     <aside class="notes">
-      <p><b>6:45 a 7:00.</b> Las cuatro cifras, rápido: 13 endpoints, 7 tablas, 391 tests, y las 86 fallas que rompimos a propósito en reglas críticas: las 86 hicieron fallar al menos un test.</p>
-      <p>Cerrá con «¿preguntas?». <b>A los 7:00 se corta, sin minutos de gracia.</b></p>
+      <p><b>6:25 a 6:40.</b> Las cuatro cifras, rápido: 13 endpoints, 7 tablas, 391 tests, y las 86 fallas que rompimos a propósito en reglas críticas: las 86 hicieron fallar al menos un test.</p>
+      <p>Cerrá con «¿preguntas?». El guion termina en 6:40: quedan 20 segundos de colchón. <b>A los 7:00 se corta, sin minutos de gracia.</b></p>
       <p>Después, hasta 2 minutos de preguntas al integrante sorteado. El banco de preguntas está en el vault (Paso 11).</p>
     </aside>
   </section>
@@ -407,11 +411,11 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
 <div id="laser"></div>
 <div id="ayuda" hidden>
   <b>Atajos</b><br>
-  <kbd>→</kbd> <kbd>Espacio</kbd> <kbd>Re Pág</kbd> siguiente · <kbd>←</kbd> <kbd>Av Pág</kbd> anterior<br>
+  <kbd>→</kbd> <kbd>Espacio</kbd> <kbd>Av Pág</kbd> siguiente · <kbd>←</kbd> <kbd>Re Pág</kbd> anterior<br>
   <kbd>1</kbd> a <kbd>8</kbd> saltar a una diapositiva · <kbd>Inicio</kbd> <kbd>Fin</kbd><br>
   <kbd>F</kbd> pantalla completa · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro<br>
   <kbd>P</kbd> ventana de presentador · <kbd>T</kbd> iniciar o pausar el cronómetro · <kbd>R</kbd> reiniciarlo<br>
-  <b>Lápiz o control remoto:</b> <kbd>Re Pág</kbd> <kbd>Av Pág</kbd> siguiente y anterior (en la diapositiva 4 recorren el código paso a paso) · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro · <kbd>F5</kbd> pantalla completa<br>
+  <b>Lápiz o control remoto:</b> <kbd>Av Pág</kbd> <kbd>Re Pág</kbd> siguiente y anterior (en la diapositiva 4 recorren el código paso a paso) · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro · <kbd>F5</kbd> pantalla completa<br>
   <kbd>L</kbd> puntero láser · <kbd>D</kbd> retoma el avance automático de la diapositiva 4<br>
   <kbd>?</kbd> esta ayuda
 </div>
@@ -508,7 +512,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
   setInterval(renderPresenter, 250);
 
   /* Diapositiva 4: reproductor de código. Código real de backend/src; avanza solo cada STEP_MS. */
-  var STEP_MS = 7000;
+  var STEP_MS = 6000;
   var ROUTE = ['pointsRouter.post(', "  '/',", '  authenticate,', "  requireRole('admin', 'tecnico'),", '  validate({ query: noQuery, body: createPointBody }),', '  points.create,', ');'];
   function route(i) { return ROUTE.map(function (t, n) { return n === i ? [t, 'hl'] : [t]; }); }
   var STEPS = [
