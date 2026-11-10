@@ -1,6 +1,6 @@
-# Contrato de la API — SignalMap (Hito 2)
+# Contrato de la API — SignalMap (Hitos 2 y 3)
 
-> **Estado:** acordado y validado entre los integrantes del equipo (2026-11-04).
+> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10, **pendiente del OK del compañero**; no se programa antes.
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales
@@ -35,13 +35,13 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | `401 Unauthorized` | Sin token, token inválido o vencido · login con credenciales incorrectas |
 | `403 Forbidden` | El rol del token no tiene permiso para la acción |
 | `404 Not Found` | El recurso no existe, **pertenece a otra organización** o, para un `cliente`, **está en un edificio que no tiene asignado** (en ningún caso se revela que existe) |
-| `409 Conflict` | Duplicado (`nfc_uid`, `code` en el piso, `name` del edificio en la organización) · borrar un edificio que tiene pisos |
+| `409 Conflict` | Duplicado (`nfc_uid`, `code` en el piso, `name` del edificio en la organización) · borrar un edificio que tiene pisos · borrar un punto que tiene mediciones · `client_uuid` ya usado en otra organización · anular una medición ya anulada |
 | `413 Content Too Large` | Cuerpo de la petición mayor a 100 kB |
 | `415 Unsupported Media Type` | Charset o codificación del cuerpo no soportados (ej. `charset=latin1`) |
 | `422 Unprocessable Content` | Formato correcto, pero viola una regla de dominio: coordenadas fuera del piso |
 | `500 Internal Server Error` | Error inesperado. Mensaje genérico, sin detalles internos |
 
-**Orden de verificación:** `401` → `403` → `400` → `404` → `422` → `409`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`. Un punto fuera del piso **y** con `code` repetido recibe `422`: las coordenadas se validan antes de escribir.
+**Orden de verificación:** `401` → `403` → `400` → `404` → `422` → `409`. Ejemplo: un cliente que intenta crear un punto con el cuerpo mal formado recibe `403`, no `400`. Un punto fuera del piso **y** con `code` repetido recibe `422`: las coordenadas se validan antes de escribir. En `POST /measurements`, un `client_uuid` ya registrado se resuelve después del `400` y antes del `404` (§6.15).
 
 ## 3. Roles y permisos
 
@@ -51,6 +51,9 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | Crear, editar y borrar edificios | ✅ | ❌ `403` | ❌ `403` |
 | Crear y editar puntos | ✅ | ✅ | ❌ `403` |
 | Borrar puntos | ✅ | ❌ `403` | ❌ `403` |
+| Resolver una tira NFC y ver mediciones | ✅ todos los de la org | ✅ todos los de la org | ✅ **solo sus edificios asignados** (otros → `404`) |
+| Registrar mediciones | ✅ | ✅ | ❌ `403` |
+| Anular mediciones | ✅ | ❌ `403` | ❌ `403` |
 
 - Los usuarios no se crean por la API: vienen del script de datos de prueba (solo desarrollo y demo).
 - Un `cliente` puede tener **uno o más edificios asignados** (tabla de asignaciones usuario–edificio). Las asignaciones también vienen de los datos de prueba; no hay endpoint para gestionarlas en este hito.
@@ -90,6 +93,39 @@ Los pisos se cargan con los datos de prueba; no tienen creación, edición ni bo
 
 Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y`, o con más de 2 decimales (`12.345`), es `400` (formato); un número fuera del piso es `422` (regla de dominio).
 
+### Red de la organización
+Cada organización tiene **un SSID** (`wifi_ssid`, 1 a 32 caracteres): el nombre de su red WiFi. Lo carga `npm run seed` desde la variable `SEED_WIFI_SSID` del `.env`; no hay ruta para leerlo ni cambiarlo. Define qué lecturas se guardan y cuál da el color de un punto. Un repetidor que extiende la red usa el mismo SSID con otro BSSID.
+
+### Medición (`measurement`)
+| Campo | Tipo | Reglas |
+|---|---|---|
+| `id` | entero | Lo asigna el servidor |
+| `point_id` | entero | Obligatorio · el punto debe existir en la organización (y, para `cliente`, en un edificio asignado) → si no, `404` |
+| `phase` | texto | Obligatorio · `"antes"` o `"despues"` (sin tilde) → si no, `400` |
+| `client_uuid` | texto | Obligatorio · UUID (`8-4-4-4-12` hexadecimal) generado por la app; el servidor lo guarda en minúsculas · único en todo el sistema: reenviar el mismo **no duplica** (§6.15) |
+| `readings` | arreglo | Obligatorio al crear · 1 a 100 lecturas → si no, `400` · se validan **todas**, pero el servidor **guarda solo las del SSID de la organización** (comparación exacta, distingue mayúsculas): las de otras redes se descartan sin error (minimización de datos) |
+| `measured_at` | fecha ISO 8601 (UTC) | La pone el servidor al recibirla (el reloj del teléfono no es confiable) |
+| `category` | texto | La calcula el servidor con la lectura más fuerte guardada: `"buena"` (> −65 dBm) · `"regular"` (−65 a −70 dBm, ambos incluidos) · `"debil"` (< −70 dBm) · `"sin_senal"` (no se captó la red de la organización) |
+| `best_rssi_dbm` | entero o `null` | La lectura más fuerte guardada; `null` si `sin_senal` |
+| `voided` | objeto o `null` | `null` si la medición vale; si fue anulada: `{ "reason": "...", "at": "<fecha>" }` (quién la anuló se guarda, pero la API no lo devuelve) |
+
+Quién midió (`user_id`) se guarda para trazabilidad, pero la API no lo devuelve.
+
+### Lectura (`reading`), dentro de `readings`
+| Campo | Tipo | Reglas |
+|---|---|---|
+| `bssid` | texto | Obligatorio · `aa:bb:cc:dd:ee:ff` (6 pares hexadecimales separados por `:`; acepta mayúsculas, el servidor lo guarda en minúsculas) · no se repite dentro de una medición → si no, `400` |
+| `ssid` | texto | Obligatorio · 0 a 32 caracteres (vacío = red oculta) |
+| `rssi_dbm` | entero | Obligatorio · −120 a 0 |
+| `frequency_mhz` | entero | Obligatorio · 2400 a 7125 (bandas de 2,4, 5 y 6 GHz) |
+
+**Anulación.** Una medición mal hecha no se borra: el `admin` la **anula** con un motivo de esta lista cerrada:
+- `punto_equivocado`: se leyó la tira de otro punto o el técnico no estaba junto a ella;
+- `fase_equivocada`: se envió como «antes» siendo «después», o al revés (se anula y se mide de nuevo en la fase correcta);
+- `condiciones_anomalas`: el router o el repetidor estaba reiniciándose o apagado, o había una interferencia fuera de lo normal.
+
+Una medición anulada deja de contar: en el plano vuelve a verse la anterior válida de ese punto y fase. No se puede «des-anular». Una medición tomada en las condiciones normales del lugar, aunque dé señal débil, **no** está mal hecha: es el dato.
+
 ## 5. Tabla de endpoints
 
 | # | Verbo | Ruta | Roles | Parámetros | Éxito | Errores |
@@ -106,7 +142,12 @@ Coordenadas 2D por piso (sin altura). Un valor no numérico en `x`/`y`, o con m�
 | 10 | `GET` | `/api/v1/points/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
 | 11 | `POST` | `/api/v1/points` | `admin`, `tecnico` | cuerpo: `floor_id`, `code`, `x`, `y`, `nfc_uid` | `201` + `Location` | `400` · `401` · `403` · `404` · `409` · `422` |
 | 12 | `PATCH` | `/api/v1/points/:id` | `admin`, `tecnico` | ruta: `id` · cuerpo: `code`, `x`, `y`, `nfc_uid` (al menos uno) | `200` | `400` · `401` · `403` · `404` · `409` · `422` |
-| 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` · `401` · `403` · `404` |
+| 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` · `401` · `403` · `404` · `409` |
+| 14 | `GET` | `/api/v1/points/by-tag/:nfc_uid` | todos | ruta: `nfc_uid` | `200` | `400` · `401` · `404` |
+| 15 | `POST` | `/api/v1/measurements` | `admin`, `tecnico` | cuerpo: `point_id`, `phase`, `client_uuid`, `readings` | `201` + `Location` (o `200` si el `client_uuid` ya existe) | `400` · `401` · `403` · `404` · `409` |
+| 16 | `GET` | `/api/v1/measurements` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 17 | `GET` | `/api/v1/measurements/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
+| 18 | `DELETE` | `/api/v1/measurements/:id` | `admin` | ruta: `id` · consulta: `reason` (obligatorio) | `204` | `400` · `401` · `403` · `404` · `409` |
 
 ## 6. Detalle y ejemplos
 
@@ -288,6 +329,97 @@ Comprueba que el servicio está arriba. No requiere token.
 |---|---|
 | Rol `tecnico` o `cliente` | `403` |
 | No existe o es de otra organización | `404` |
+| El punto tiene mediciones (aunque estén anuladas) | `409 { "message": "El punto tiene mediciones y no se puede borrar" }` |
+
+### 14. `GET /api/v1/points/by-tag/:nfc_uid`
+La usa la app al acercar el teléfono a una tira. El `nfc_uid` se acepta en minúsculas o mayúsculas (sin separadores).
+```json
+200 OK
+{ "id": 7, "floor_id": 1, "code": "P-07", "x": 12.5, "y": 8.0, "nfc_uid": "04A23B1C5D8080",
+  "floor": { "id": 1, "name": "Piso 3" }, "building": { "id": 1, "name": "Torre Norte" } }
+```
+| Caso | Respuesta |
+|---|---|
+| `nfc_uid` vacío, > 32 caracteres o no hexadecimal | `400 { "message": "nfc_uid debe tener de 1 a 32 caracteres hexadecimales" }` |
+| Ningún punto tiene esa tira, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Tira NFC no registrada" }` |
+
+### 15. `POST /api/v1/measurements`
+```json
+// Petición (la app manda todo lo que captó)
+{ "point_id": 7, "phase": "antes", "client_uuid": "3f2b8c1e-9d4a-4e7b-a1c2-5d6e7f809a1b",
+  "readings": [
+    { "bssid": "a4:2b:b0:11:22:33", "ssid": "Inmobiliaria Norte", "rssi_dbm": -74, "frequency_mhz": 5180 },
+    { "bssid": "a4:2b:b0:11:22:34", "ssid": "Inmobiliaria Norte", "rssi_dbm": -79, "frequency_mhz": 2437 },
+    { "bssid": "10:fe:ed:aa:bb:cc", "ssid": "Vecino 5G", "rssi_dbm": -60, "frequency_mhz": 5240 }
+  ] }
+
+// 201 Created
+// Location: /api/v1/measurements/31
+{ "id": 31, "point_id": 7, "phase": "antes", "measured_at": "2026-11-12T15:04:05.000Z",
+  "category": "debil", "best_rssi_dbm": -74, "voided": null,
+  "readings": [
+    { "bssid": "a4:2b:b0:11:22:33", "ssid": "Inmobiliaria Norte", "rssi_dbm": -74, "frequency_mhz": 5180 },
+    { "bssid": "a4:2b:b0:11:22:34", "ssid": "Inmobiliaria Norte", "rssi_dbm": -79, "frequency_mhz": 2437 }
+  ] }
+```
+(La red «Vecino 5G» se validó y se descartó: no es la de la organización.) `readings` de la respuesta va ordenado de la señal más fuerte a la más débil.
+
+| Caso | Respuesta |
+|---|---|
+| Falta un campo, tipo incorrecto o campo desconocido (en la medición o en una lectura) | `400` |
+| `point_id` falta o no es entero | `400 { "message": "point_id es obligatorio y debe ser entero" }` |
+| `phase` falta o no es `antes`/`despues` | `400 { "message": "phase debe ser antes o despues" }` |
+| `client_uuid` falta o no es un UUID | `400 { "message": "client_uuid es obligatorio y debe ser un UUID" }` |
+| `readings` falta, vacío o con más de 100 lecturas | `400 { "message": "readings debe tener entre 1 y 100 lecturas" }` |
+| `bssid` con otro formato | `400 { "message": "bssid debe tener el formato aa:bb:cc:dd:ee:ff" }` |
+| `ssid` con más de 32 caracteres | `400 { "message": "ssid debe tener hasta 32 caracteres" }` |
+| `rssi_dbm` no entero o fuera de rango | `400 { "message": "rssi_dbm debe ser un entero entre -120 y 0" }` |
+| `frequency_mhz` no entero o fuera de rango | `400 { "message": "frequency_mhz debe ser un entero entre 2400 y 7125" }` |
+| Un `bssid` repetido en la misma medición | `400 { "message": "Hay un bssid repetido en readings" }` |
+| Rol `cliente` | `403` |
+| El `client_uuid` ya se registró en la organización | `200` con la medición que ya estaba guardada (**no se crea otra**; el servidor no compara el cuerpo) |
+| El `client_uuid` ya se usó en otra organización | `409 { "message": "client_uuid ya fue usado" }` |
+| El punto no existe o es de otra organización | `404 { "message": "Punto no encontrado" }` |
+| Ninguna lectura es de la red de la organización | **No es error**: `201` con `readings: []`, `category: "sin_senal"` y `best_rssi_dbm: null` |
+
+### 16. `GET /api/v1/measurements?floor_id=1&phase=antes`
+Para pintar el plano: un elemento por **cada punto del piso**, ordenado por `point_id`, con su **última medición válida** (no anulada) en esa fase, o `null` si no tiene.
+```json
+200 OK
+[
+  { "point_id": 7, "measurement": { "id": 31, "point_id": 7, "phase": "antes", "measured_at": "2026-11-12T15:04:05.000Z",
+      "category": "debil", "best_rssi_dbm": -74, "voided": null, "readings": [ … ] } },
+  { "point_id": 8, "measurement": null }
+]
+```
+«Última» = la de `measured_at` más reciente (a igual fecha, la de mayor `id`).
+
+| Caso | Respuesta |
+|---|---|
+| Falta `floor_id` o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
+| Falta `phase` o no es `antes`/`despues` | `400 { "message": "phase debe ser antes o despues" }` |
+| Parámetro de consulta desconocido | `400` |
+| El piso no existe, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Piso no encontrado" }` |
+
+### 17. `GET /api/v1/measurements/:id`
+Devuelve la medición con el mismo formato de §6.15, **también si está anulada** (con `voided` completo).
+| Caso | Respuesta |
+|---|---|
+| `id` no es entero | `400` |
+| No existe, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Medición no encontrada" }` |
+
+### 18. `DELETE /api/v1/measurements/:id?reason=punto_equivocado`
+Anula la medición (no la borra).
+```
+204 No Content
+```
+| Caso | Respuesta |
+|---|---|
+| Rol `tecnico` o `cliente` | `403` |
+| `id` no es entero | `400` |
+| Falta `reason` o no es un motivo de la lista | `400 { "message": "reason es obligatorio: punto_equivocado, fase_equivocada o condiciones_anomalas" }` |
+| No existe o es de otra organización | `404 { "message": "Medición no encontrada" }` |
+| Ya estaba anulada | `409 { "message": "La medición ya está anulada" }` |
 
 ## 7. Respuestas comunes a todas las rutas protegidas
 
@@ -308,6 +440,7 @@ Comprueba que el servicio está arriba. No requiere token.
 ## 8. Fuera de este contrato (próximos hitos)
 
 - Creación y gestión de usuarios y de sus edificios asignados (hoy solo por datos de prueba).
-- Creación y edición de pisos y planos.
-- Mediciones, campañas, mapa de calor, comparación antes/después, recomendación y reporte (Hito 3).
+- Creación y edición de pisos y planos, y del SSID de la organización (hoy por datos de prueba).
+- Mapa de calor, trilateración, recomendación del repetidor y reporte PDF.
 - Renovación de token (refresh) y vencimiento según turno laboral.
+- Cola de mediciones sin conexión en la app.
