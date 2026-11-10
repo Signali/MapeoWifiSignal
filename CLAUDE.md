@@ -1,6 +1,6 @@
 # CLAUDE.md — SignalMap
 
-Proyecto universitario (Universidad Mayor, Arquitectura de Desarrollo Web y Móvil): app Android + tiras NFC + plataforma web para medir señal WiFi antes/después de instalar un repetidor. Resumen del Hito 1 en el vault de Obsidian (ver abajo): `SignalMap\Hito 1 - Informe resumido.md`. Propuesta de back-end: `SignalMap\Propuesta Back-End\`.
+Proyecto universitario (Universidad Mayor, Arquitectura de Desarrollo Web y Móvil): app Android + tiras NFC + plataforma web para medir señal WiFi antes/después de instalar un repetidor. En el vault de Obsidian (ver abajo), el mapa de todo está en `SignalMap\00 Índice.md` (orden: hito → tipo → archivo con la fecha adelante, y el prompt vigente marcado «(VIGENTE)»). Resumen del Hito 1: `SignalMap\Hito 1\2026-11-03 · Hito 1 - Informe resumido.md`. Propuesta de back-end: `SignalMap\Hito 2\1 Propuesta y contrato\`.
 
 ## Rúbrica del profesor (archivo fijo)
 
@@ -37,7 +37,7 @@ Reglas:
 - **Pisos:** entran por seed; sin CRUD propio en este hito.
 - **PostGIS diferida al Hito 3 (decidido 2026-11-04):** en el Hito 2 `x`/`y` son columnas numéricas (metros, 2D por piso); PostGIS se aplica y ejecuta en el Hito 3, junto con las consultas espaciales que la justifiquen (migración: columna `geometry(Point, 0)` generada desde `x`/`y`). Implica en el Hito 3 usar la imagen `postgis/postgis:17` y crear la extensión con un rol con permisos. **Condición de control:** al empezar el Hito 3, antes de instalarla, escribir la consulta espacial concreta que la necesita; si existe, se aplica y se defiende con ese caso; si no, se documenta como decisión revisada ("no hace falta con ~24 puntos por piso"). Nunca instalarla como adorno. No instalarla ni declararla en el Hito 2. Se documenta como cambio respecto al Hito 1 (que decía "se implementa en el Hito 2").
 - **PostgreSQL 17 confirmado** (2026-11-04); la propuesta decía 16 y se corrigió. El esquema no usa nada exclusivo de la 17.
-- **Stack (firmado en el Hito 1 §5, se mantiene):** Node.js + **Express + TypeScript** (frente a Spring Boot) y **Zod** para validar (un schema por endpoint). Costo asumido: Express da poca estructura; se compensa con las capas `routes/` → `controllers/` → `services/` → `repositories/` y `middlewares/`. Comparativa ampliada (Fastify, NestJS, Hono, Spring Boot) en el vault: `SignalMap\Propuesta Back-End\Justificación de tecnologías.md`. El porqué de `pg` (frente a Prisma y Knex/Kysely) y de Vitest (frente a Jest) quedó escrito en el documento técnico §7 (2026-11-06). Vitest se eligió sin comparar al armar el esqueleto; la comparación se hizo al documentar (TypeScript y ESM sin configuración; Jest tiene ESM experimental) y confirmó la elección.
+- **Stack (firmado en el Hito 1 §5, se mantiene):** Node.js + **Express + TypeScript** (frente a Spring Boot) y **Zod** para validar (un schema por endpoint). Costo asumido: Express da poca estructura; se compensa con las capas `routes/` → `controllers/` → `services/` → `repositories/` y `middlewares/`. Comparativa ampliada (Fastify, NestJS, Hono, Spring Boot) en el vault: `SignalMap\Hito 2\1 Propuesta y contrato\2026-11-06 · Justificación de tecnologías.md`. El porqué de `pg` (frente a Prisma y Knex/Kysely) y de Vitest (frente a Jest) quedó escrito en el documento técnico §7 (2026-11-06). Vitest se eligió sin comparar al armar el esqueleto; la comparación se hizo al documentar (TypeScript y ESM sin configuración; Jest tiene ESM experimental) y confirmó la elección.
 - **Arquitectura:** monolito en capas. El equipo es de **2 personas**: citar ese número en el argumento monolito vs. distribuido.
 - **Orden:** el contrato de la API (tabla en `docs/`) se escribe y acuerda antes de programar.
 - **Contrato (Bloque 1, cerrado 2026-11-04):**
@@ -94,8 +94,8 @@ Reglas:
 - **Contrato de las rutas nuevas** (mediciones, tira → punto, consulta para la web): se escribe y se acuerda con el compañero **antes de programar**, en `docs/api-contract.md`.
 - **Reparto:** lo definen los integrantes; cada uno sube su parte con su cuenta (A5 y factor individual).
 - **PostGIS:** con este flujo no hay consulta espacial que la necesite → se documenta como «no hacía falta» (condición de control).
-- Plan con fechas, recortes y riesgos: vault, `SignalMap\Hito 3\Plan del Hito 3 - 2026-11-10.md`.
-- Detalle y supuestos pendientes: vault, `SignalMap\Propuesta Back-End\Propuesta Back-End.md`.
+- Plan con fechas, recortes y riesgos: vault, `SignalMap\Hito 3\2026-11-10 · Plan del Hito 3.md`.
+- Detalle y supuestos pendientes: vault, `SignalMap\Hito 2\1 Propuesta y contrato\2026-11-04 · Propuesta Back-End.md`.
 
 ## Estructura del repositorio (exigida por la rúbrica del Hito 2)
 - `backend/` — código del servicio, con capas visibles (ver `backend/README.md`).
