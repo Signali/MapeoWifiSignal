@@ -35,7 +35,7 @@ beforeAll(async () => {
   auth.tecnico = await login('tecnico@demo.cl', process.env.SEED_TECNICO_PASSWORD);
   auth.cliente = await login('cliente@demo.cl', process.env.SEED_CLIENTE_PASSWORD);
 
-  const org = await pool.query<{ id: number }>(`INSERT INTO organizations (name) VALUES ('Otra Org') RETURNING id`);
+  const org = await pool.query<{ id: number }>(`INSERT INTO organizations (name, wifi_ssid) VALUES ('Otra Org', 'Otra Red') RETURNING id`);
   otherOrgId = org.rows[0].id;
   // Mismo nombre que un edificio de la org 1: la unicidad es por organización.
   const building = await pool.query<{ id: number }>(

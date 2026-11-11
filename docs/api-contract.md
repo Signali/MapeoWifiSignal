@@ -1,6 +1,6 @@
 # Contrato de la API — SignalMap (Hitos 2 y 3)
 
-> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), **pendiente del OK del compañero**; no se programa antes.
+> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), unido a `main` el 2026-11-11 tras la revisión de Maximiliano; **la revisión de Gabriel sigue pendiente** (cualquier ajuste entra por un PR nuevo).
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales

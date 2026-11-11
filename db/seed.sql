@@ -1,19 +1,23 @@
 -- =============================================================================
--- SignalMap — datos de ejemplo (Hito 2). SOLO desarrollo y demo.
+-- SignalMap — datos de ejemplo (Hitos 2 y 3). SOLO desarrollo y demo.
 --
 -- Lo ejecuta `npm run seed` (backend/scripts/seed.ts) dentro de una transacción,
 -- y después ese script crea los usuarios con las claves del .env. Este archivo
--- no lleva usuarios ni claves.
+-- no lleva usuarios ni claves. El nombre de la red WiFi de la organización
+-- llega por la variable SEED_WIFI_SSID: seed.ts la fija en la transacción
+-- (set_config) y aquí se lee con current_setting.
 --
--- Resetea: vacía las 7 tablas y reinicia los IDs, así cada corrida deja el mismo
+-- Resetea: vacía las 9 tablas y reinicia los IDs, así cada corrida deja el mismo
 -- estado (P-07 = id 7). Borra todo lo creado por la API: nunca correrlo en un
--- entorno real.
+-- entorno real. Sin mediciones: los puntos quedan «sin medir» para la demo.
 -- =============================================================================
 
-TRUNCATE organizations, email_domains, users, buildings, floors, points, user_buildings
+TRUNCATE organizations, email_domains, users, buildings, floors, points, user_buildings,
+         measurements, network_readings
     RESTART IDENTITY;
 
-INSERT INTO organizations (name) VALUES ('Inmobiliaria Norte');
+INSERT INTO organizations (name, wifi_ssid)
+VALUES ('Inmobiliaria Norte', current_setting('signalmap.wifi_ssid'));
 
 -- Dominio corporativo de la organización: sus usuarios deben usarlo.
 INSERT INTO email_domains (domain, kind, org_id)
@@ -31,6 +35,7 @@ SELECT id, 'Piso 3', 40.00, 25.00 FROM buildings WHERE name = 'Torre Norte';
 
 -- 24 puntos en 6 columnas x 4 filas, recorridas en zigzag (bajando y subiendo
 -- por columna). P-07 coincide con el ejemplo del contrato: (12.5, 8.0).
+-- P-07, P-08 y P-09 llevan el UID de las 3 tiras NFC reales; el resto, UID inventados.
 INSERT INTO points (floor_id, code, x, y, nfc_uid)
 SELECT f.id, p.code, p.x, p.y, p.nfc_uid
 FROM floors f
@@ -42,9 +47,9 @@ CROSS JOIN (VALUES
     ('P-04',  6.00, 20.00, '04A23B1C5D7D80'),
     ('P-05', 12.50, 20.00, '04A23B1C5D7E80'),
     ('P-06', 12.50, 14.00, '04A23B1C5D7F80'),
-    ('P-07', 12.50,  8.00, '04A23B1C5D8080'),
-    ('P-08', 12.50,  2.00, '04A23B1C5D8180'),
-    ('P-09', 19.00,  2.00, '04A23B1C5D8280'),
+    ('P-07', 12.50,  8.00, '04C7DC7FBF2A81'),
+    ('P-08', 12.50,  2.00, '04D3DC7FBF2A81'),
+    ('P-09', 19.00,  2.00, '04D2DC7FBF2A81'),
     ('P-10', 19.00,  8.00, '04A23B1C5D8380'),
     ('P-11', 19.00, 14.00, '04A23B1C5D8480'),
     ('P-12', 19.00, 20.00, '04A23B1C5D8580'),
