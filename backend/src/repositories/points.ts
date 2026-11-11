@@ -70,8 +70,11 @@ export async function update(id: number, orgId: number, changes: PointChanges): 
   return rows[0];
 }
 
-// false si el punto no existe en la organización. Nada referencia a points: sin 409.
+// false si el punto no existe en la organización. Un punto con mediciones (aunque estén
+// anuladas) no se borra: 409, mapeado solo en esta llamada (ver `query` en db.ts).
 export async function remove(id: number, orgId: number): Promise<boolean> {
-  const { rowCount } = await query(`DELETE FROM points p USING floors f, buildings b WHERE ${IN_ORG}`, [id, orgId]);
+  const { rowCount } = await query(`DELETE FROM points p USING floors f, buildings b WHERE ${IN_ORG}`, [id, orgId], {
+    measurements_point_id_fkey: 'El punto tiene mediciones y no se puede borrar',
+  });
   return rowCount === 1;
 }

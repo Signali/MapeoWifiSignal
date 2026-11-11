@@ -105,6 +105,8 @@ beforeAll(async () => {
 const createdIds: number[] = [];
 
 afterAll(async () => {
+  // Las mediciones que insertó el test de DELETE (409) deben irse antes que sus puntos.
+  await pool.query('DELETE FROM measurements WHERE point_id = ANY($1)', [createdIds]);
   await pool.query('DELETE FROM points WHERE id = ANY($1) OR floor_id = ANY($2)', [
     createdIds,
     [ids.annexFloor, ids.otherFloor],
@@ -723,6 +725,25 @@ describe('DELETE /api/v1/points/:id (fila 13)', () => {
 
   test('admin borra un punto de un edificio no asignado al cliente → 204', async () => {
     const point = await createdPoint({ floor_id: ids.annexFloor, x: 6, y: 6 });
+    expect((await del(point.id, auth.admin)).status).toBe(204);
+  });
+
+  test.each([
+    ['vigente', false],
+    ['anulada', true],
+  ])('punto con una medición %s → 409 (sigue existiendo); sin mediciones se borra', async (_label, voided) => {
+    const point = await createdPoint();
+    await pool.query(
+      `INSERT INTO measurements (point_id, user_id, phase, client_uuid, measured_at, voided_at, void_reason, voided_by)
+       SELECT $1, u.id, 'antes', gen_random_uuid(), now(),
+              CASE WHEN $2::boolean THEN now() END, CASE WHEN $2::boolean THEN 'punto_equivocado' END,
+              CASE WHEN $2::boolean THEN u.id END
+       FROM users u WHERE u.role = 'admin' ORDER BY u.id LIMIT 1`,
+      [point.id, voided],
+    );
+    expectError(await del(point.id, auth.admin), 409, { message: 'El punto tiene mediciones y no se puede borrar' });
+    expect((await getPoint(point.id)).status).toBe(200);
+    await pool.query('DELETE FROM measurements WHERE point_id = $1', [point.id]);
     expect((await del(point.id, auth.admin)).status).toBe(204);
   });
 

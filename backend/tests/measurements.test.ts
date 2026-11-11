@@ -365,6 +365,95 @@ describe('GET /api/v1/measurements/:id (fila 17)', () => {
 });
 
 // ---------------------------------------------------------------------------------------
+const REASON_MSG = { message: 'reason es obligatorio: punto_equivocado, fase_equivocada o condiciones_anomalas' };
+const ALREADY_VOIDED = { message: 'La medición ya está anulada' };
+
+const voidIt = (id: number | string, query = '?reason=punto_equivocado', token = auth.admin) =>
+  request(app).delete(`/api/v1/measurements/${id}${query}`).set('Authorization', token);
+
+describe('DELETE /api/v1/measurements/:id?reason= (fila 18)', () => {
+  test('204 sin cuerpo y después GET con voided { reason, at }; no se borra ni pierde lecturas', async () => {
+    const created = await post(auth.admin, validBody());
+    expect(created.status).toBe(201);
+    const res = await voidIt(created.body.id, '?reason=fase_equivocada');
+    expect(res.status).toBe(204);
+    expect(res.text).toBe('');
+    const after = await get(created.body.id);
+    expect(after.status).toBe(200);
+    expect(after.body.voided).toEqual({ reason: 'fase_equivocada', at: expect.any(String) });
+    expect(Number.isNaN(Date.parse(after.body.voided.at))).toBe(false);
+    expect(after.body.readings).toEqual(created.body.readings);
+    const { rows } = await pool.query('SELECT voided_by FROM measurements WHERE id = $1', [created.body.id]);
+    expect(rows[0].voided_by).toBe(ids.adminUser);
+  });
+
+  test.each(['punto_equivocado', 'fase_equivocada', 'condiciones_anomalas'])('acepta el motivo %s', async (reason) => {
+    const created = await post(auth.admin, validBody());
+    expect((await voidIt(created.body.id, `?reason=${reason}`)).status).toBe(204);
+  });
+
+  test('la anulada sale de la ruta 16 y vuelve la anterior válida', async () => {
+    const pointId = await insertId(
+      `INSERT INTO points (floor_id, code, x, y, nfc_uid) VALUES ($1, 'V-01', 2, 2, '0F0F0F01') RETURNING id`,
+      [ids.annexFloor],
+    );
+    const older = await insertAt(pointId, 'antes', hoursAgo(5));
+    const newer = await insertAt(pointId, 'antes', hoursAgo(1));
+    const query = `?floor_id=${ids.annexFloor}&phase=antes`;
+    const idOf = async () =>
+      (await listFloor(query)).body.find((e: { point_id: number }) => e.point_id === pointId).measurement?.id;
+    expect(await idOf()).toBe(newer);
+    expect((await voidIt(newer)).status).toBe(204);
+    expect(await idOf()).toBe(older);
+  });
+
+  test.each([
+    ['sin reason', ''],
+    ['reason vacío', '?reason='],
+    ['reason inventado', '?reason=porque_si'],
+  ])('400: %s', async (_label, query) => {
+    const created = await post(auth.admin, validBody());
+    expectError(await voidIt(created.body.id, query), 400, REASON_MSG);
+    expect((await get(created.body.id)).body.voided).toBeNull();
+  });
+
+  test('400: parámetro de consulta desconocido', async () => {
+    expectError(await voidIt(1, '?reason=punto_equivocado&x=1'), 400);
+  });
+
+  test.each(['abc', '0', '2147483648'])('400: id %s', async (id) => {
+    expectError(await voidIt(id), 400, { message: 'El id debe ser un número entero' });
+  });
+
+  test('401 sin token', async () => {
+    const res = await request(app).delete('/api/v1/measurements/1?reason=punto_equivocado');
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Token requerido' });
+  });
+
+  test.each(['tecnico', 'cliente'] as const)('403 %s (no se anula)', async (role) => {
+    const created = await post(auth.admin, validBody({ point_id: P24 }));
+    expectError(await voidIt(created.body.id, '?reason=punto_equivocado', auth[role]), 403, FORBIDDEN);
+    expect((await get(created.body.id)).body.voided).toBeNull();
+  });
+
+  test('404: inexistente y de otra organización (sigue vigente)', async () => {
+    expectError(await voidIt(2147483647), 404, MEASUREMENT_NOT_FOUND);
+    const other = await insertOtherOrgMeasurement();
+    expectError(await voidIt(other), 404, MEASUREMENT_NOT_FOUND);
+    const { rows } = await pool.query('SELECT voided_at FROM measurements WHERE id = $1', [other]);
+    expect(rows[0].voided_at).toBeNull();
+  });
+
+  test('409: ya estaba anulada, y no cambia el motivo original', async () => {
+    const created = await post(auth.admin, validBody());
+    expect((await voidIt(created.body.id, '?reason=punto_equivocado')).status).toBe(204);
+    expectError(await voidIt(created.body.id, '?reason=fase_equivocada'), 409, ALREADY_VOIDED);
+    expect((await get(created.body.id)).body.voided.reason).toBe('punto_equivocado');
+  });
+});
+
+// ---------------------------------------------------------------------------------------
 // Medición insertada por SQL con la fecha que se quiera (la API no deja fechas a medida).
 async function insertAt(pointId: number, phase: string, measuredAt: Date, voided = false): Promise<number> {
   const uuid = randomUUID();

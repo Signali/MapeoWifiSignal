@@ -22,6 +22,13 @@ export async function list(req: Request, res: Response): Promise<void> {
   res.status(200).json(await measurementsService.listByFloor(req.user!, queryIdOf(req, 'floor_id'), phase));
 }
 
+// `reason` ya validado por validate({ query: voidQuery }).
+export async function voidMeasurement(req: Request, res: Response): Promise<void> {
+  const { reason } = req.query as { reason: string };
+  await measurementsService.voidMeasurement(req.user!, idOf(req), reason);
+  res.status(204).end();
+}
+
 export async function getById(req: Request, res: Response): Promise<void> {
   res.status(200).json(await measurementsService.getById(req.user!, idOf(req)));
 }

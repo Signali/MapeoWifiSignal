@@ -114,6 +114,17 @@ export async function listByFloor(
   }));
 }
 
+// Anular: solo admin (lo exige la ruta). Si no hay fila vigente, se distingue entre una ya
+// anulada (409) y una que no existe o es de otra organización (404). `assignedTo: null` =
+// sin filtro por asignación: el admin ve todos los edificios de su organización.
+export async function voidMeasurement(user: TokenUser, id: number, reason: string): Promise<void> {
+  if (await measurements.voidMeasurement(id, user.orgId, user.id, reason)) return;
+  if (await measurements.findById(id, { orgId: user.orgId, assignedTo: null })) {
+    throw new AppError('conflict', 'La medición ya está anulada');
+  }
+  throw new AppError('not_found', 'Medición no encontrada');
+}
+
 export async function getById(user: TokenUser, id: number): Promise<MeasurementOut> {
   const row = await measurements.findById(id, readScope(user));
   if (!row) throw new AppError('not_found', 'Medición no encontrada');
