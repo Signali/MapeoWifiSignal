@@ -103,6 +103,7 @@ Reglas:
 - `db/` — diagrama del modelo de datos y script que crea la base desde cero.
 - `postman/` — colección del cliente de pruebas exportada, lista para importar.
 - `android/` — app Android del técnico (Kotlin + Compose); ver `android/README.md`.
+- `frontend/` — web (React + Vite + TypeScript); ver `frontend/README.md`.
 - `.env.example` en la raíz — todas las variables con valores de ejemplo; **nunca datos reales**.
 - `.gitignore` — excluye `.env`, `node_modules/`, builds y configuración local.
 - `Skills/` — documentación de las skills usadas; las skills viven en `.claude/skills/`.
