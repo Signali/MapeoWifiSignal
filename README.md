@@ -49,6 +49,8 @@ Nunca subir el `.env` ni escribir claves reales en `.env.example`, en el README 
 | [`docs/`](docs/README.md) | Documento técnico (PDF) y tabla de la API |
 | [`db/`](db/README.md) | Modelo de datos y script de creación de la base de datos |
 | [`postman/`](postman/README.md) | Colección del cliente de pruebas |
+| [`android/`](android/README.md) | App Android del técnico (Kotlin + Compose) |
+| [`frontend/`](frontend/README.md) | Web (React + Vite + TypeScript) |
 | `.env.example` | Variables de configuración de ejemplo (sin datos reales) |
 | [`LICENSE`](LICENSE) | Licencia MIT del proyecto |
 | [`Skills/`](Skills/README.md) | Skills de Claude Code usadas y declaración de uso |

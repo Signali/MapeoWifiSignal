@@ -1,0 +1,129 @@
+/* Paleta «aurora» y fuentes del documento técnico, autoalojadas. */
+@font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 500 800; font-display: swap; src: url(./assets/fonts/bricolage.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(./assets/fonts/plex-sans.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 500; font-display: swap; src: url(./assets/fonts/jetbrains-mono.woff2) format('woff2'); }
+
+:root {
+  --texto: #131521;
+  --titulo: #342E4E;
+  --acento: #435570;
+  --relleno: #C4D4BA;
+  --relleno-2: #709491;
+  --numero: #4F7470;
+  --error: #B3261E;
+  --f-titulo: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
+  --f-texto: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --f-mono: 'JetBrains Mono', Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--texto);
+  font-family: var(--f-texto);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1 { font-family: var(--f-titulo); color: var(--titulo); margin: 0 0 1rem; }
+
+/* Foco visible en todo control */
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+button, select, input { font: inherit; color: inherit; }
+
+button {
+  background: var(--titulo);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.6; cursor: default; }
+
+select, input[type='email'], input[type='password'] {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--acento);
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* Login */
+.login { max-width: 22rem; margin: 12vh auto 0; padding: 0 1rem; }
+.login form { display: grid; gap: 1rem; }
+.login label { display: grid; gap: 0.25rem; color: var(--titulo); font-weight: 500; }
+.notice { margin: 0; padding: 0.5rem 0.75rem; background: var(--relleno); border-radius: 6px; }
+.error { margin: 0; color: var(--error); font-weight: 500; }
+
+/* Cabecera */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 3px solid var(--relleno);
+}
+.brand { font-family: var(--f-titulo); color: var(--titulo); font-size: 1.25rem; }
+.who { margin-left: auto; color: var(--acento); font-family: var(--f-mono); font-size: 0.875rem; }
+
+/* Selector */
+.floorview { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; align-items: flex-start; }
+.field { display: grid; gap: 0.25rem; min-width: 12rem; margin: 0; padding: 0; border: 0; }
+.field > label, .field > .label, .field > legend { color: var(--titulo); font-weight: 500; padding: 0; }
+.phase { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+.phase legend { width: 100%; }
+.radio { display: flex; align-items: center; gap: 0.4rem; min-height: 2.5rem; }
+
+/* Estados */
+.status p { margin: 0; }
+.status-error { color: var(--error); }
+.status-error button { margin-top: 0.5rem; }
+.status-loading, .status-empty { color: var(--acento); }
+
+/* Plano y leyenda */
+.plan-area { margin-top: 1.5rem; display: grid; gap: 1rem; }
+.plan { width: 100%; height: auto; display: block; overflow: visible; }
+.plan .border { fill: #fff; stroke: var(--acento); stroke-width: 0.15; }
+.plan .grid line { stroke: #E3E5EA; stroke-width: 0.06; }
+.plan .point { cursor: pointer; outline: none; }
+.plan .dot { stroke-width: 0.15; }
+.plan .dot-empty { stroke-dasharray: 0.35 0.25; }
+.plan .ring { fill: none; stroke: var(--acento); stroke-width: 0.2; display: none; }
+.plan .point:focus-visible .ring, .plan .point.selected .ring { display: block; }
+.plan .letter {
+  font-family: var(--f-texto);
+  font-size: 1.1px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.plan .code {
+  font-family: var(--f-mono);
+  font-size: 0.9px;
+  fill: var(--texto);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+.legend li { display: flex; align-items: center; gap: 0.4rem; }
+.swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.swatch-empty { background: #fff; color: var(--c); border: 2px dashed var(--c); }
