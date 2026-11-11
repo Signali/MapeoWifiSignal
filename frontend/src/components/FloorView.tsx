@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { listBuildings, listFloors, listMeasurements, listPoints } from '../api/endpoints.ts'
+import { getHeatmap, getRecommendation, listBuildings, listEmitters, listFloors, listMeasurements, listPoints } from '../api/endpoints.ts'
 import type { Session } from '../api/session.ts'
-import type { Category, Floor, FloorMeasurement, Phase, Point } from '../api/types.ts'
+import type { Category, Emitter, Floor, FloorMeasurement, Heatmap, Phase, Point, Recommendation } from '../api/types.ts'
+import { useLatest } from '../hooks/useLatest.ts'
 import { useRequest } from '../hooks/useRequest.ts'
 import { readSelection, writeSelection } from '../selection.ts'
 import type { Selection } from '../selection.ts'
+import { AnalysisPanel } from './AnalysisPanel.tsx'
 import { FloorPlan } from './FloorPlan.tsx'
 import { Legend } from './Legend.tsx'
 import { StatusMessage } from './StatusMessage.tsx'
@@ -144,13 +146,30 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
   const [selectedId, setSelectedId] = useState<number>()
   const points = useRequest<Point[]>(() => listPoints(floor.id), [floor.id])
   const measurements = useRequest<FloorMeasurement[]>(() => listMeasurements(floor.id, phase), [floor.id, phase])
+  // Análisis del piso (rutas 19 a 21). Son capas auxiliares: si fallan, el plano con sus puntos sigue visible.
+  const heatmap = useRequest<Heatmap>(() => getHeatmap(floor.id, phase), [floor.id, phase])
+  const emitters = useRequest<Emitter[]>(() => listEmitters(floor.id, phase), [floor.id, phase])
+  const recommendation = useRequest<Recommendation>(() => getRecommendation(floor.id), [floor.id])
+  // Última respuesta de cada capa (no desaparece al recargar), pero una capa cuyo pedido falló se oculta:
+  // no debe quedar dibujada la de otra fase como si valiera.
+  const heatShown = useLatest(heatmap.data)
+  const emittersShown = useLatest(emitters.data)
+  const recommendationShown = useLatest(recommendation.data)
+  const heatLayer = heatmap.error ? null : heatShown
+  const emittersLayer = emitters.error ? null : emittersShown
+  const recommendationLayer = recommendation.error ? null : recommendationShown
+  const [showHeat, setShowHeat] = useState(true)
+  const [showMarkers, setShowMarkers] = useState(true)
+  const analysisError = heatmap.error ?? emitters.error ?? recommendation.error
+  const reloadAnalysis = () => {
+    heatmap.reload()
+    emitters.reload()
+    recommendation.reload()
+  }
 
   // useRequest vacía `data` en cada pedido; se conserva la última respuesta para que el plano no
   // desaparezca al cambiar de fase o al pulsar «Actualizar» (los puntos no cambian con la fase).
-  const [shown, setShown] = useState<FloorMeasurement[] | null>(null)
-  useEffect(() => {
-    if (measurements.data) setShown(measurements.data)
-  }, [measurements.data])
+  const shown = useLatest(measurements.data)
 
   const error = points.error ?? measurements.error
   // Mientras llegan las mediciones, el plano sigue visible con las categorías anteriores, atenuado.
@@ -185,7 +204,13 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
         <>
           <div className="plan-actions">
             {!refreshing && <Summary categories={points.data.map((p) => categoryOf(p.id))} />}
-            <button type="button" onClick={measurements.reload}>
+            <button
+              type="button"
+              onClick={() => {
+                measurements.reload()
+                reloadAnalysis()
+              }}
+            >
               Actualizar
             </button>
           </div>
@@ -202,8 +227,21 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
               categoryOf={categoryOf}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              heat={showHeat && heatLayer ? { cells: heatLayer.cells, cellM: heatLayer.cell_m } : null}
+              emitters={showMarkers ? (emittersLayer ?? []) : []}
+              repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
             />
           </div>
+          {analysisError && <StatusMessage kind="error" message={analysisError} onRetry={reloadAnalysis} />}
+          <AnalysisPanel
+            emitters={emittersLayer}
+            recommendation={recommendationLayer}
+            loading={emitters.loading || recommendation.loading}
+            showHeat={showHeat}
+            showMarkers={showMarkers}
+            onShowHeat={setShowHeat}
+            onShowMarkers={setShowMarkers}
+          />
         </>
       )}
       <Legend />
