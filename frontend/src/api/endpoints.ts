@@ -1,5 +1,5 @@
 import { request } from './client.ts'
-import type { Building, Floor, LoginResponse, Point } from './types.ts'
+import type { Building, Floor, FloorMeasurement, LoginResponse, Phase, Point } from './types.ts'
 
 const BASE = '/api/v1'
 
@@ -24,4 +24,9 @@ export function listFloors(buildingId: number): Promise<Floor[]> {
 // Contrato §6.9
 export function listPoints(floorId: number): Promise<Point[]> {
   return request<Point[]>(`${BASE}/points?floor_id=${floorId}`)
+}
+
+// Contrato §6.16
+export function listMeasurements(floorId: number, phase: Phase): Promise<FloorMeasurement[]> {
+  return request<FloorMeasurement[]>(`${BASE}/measurements?floor_id=${floorId}&phase=${phase}`)
 }
