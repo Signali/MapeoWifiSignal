@@ -13,17 +13,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,18 +37,21 @@ import cl.signalmap.app.device.NfcReader
 import cl.signalmap.app.device.ScanBudget
 import cl.signalmap.app.device.ScanOutcome
 import cl.signalmap.app.device.WifiScanner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import cl.signalmap.app.ui.LoginScreen
+import cl.signalmap.app.ui.MeasureScreen
 import cl.signalmap.app.ui.theme.SignalMapTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Pantalla temporal de T02 y T03: UID de la tira y prueba del escaneo WiFi. Se reemplaza en T12.
+// La prueba del escaneo WiFi (T03) sigue como bloque temporal dentro de «Medir»; T12 la reemplaza.
 class MainActivity : ComponentActivity() {
     private lateinit var nfcReader: NfcReader
     private lateinit var wifiScanner: WifiScanner
     private val scanBudget = ScanBudget { SystemClock.elapsedRealtime() }
     private var nfcAvailable by mutableStateOf(true)
     private var nfcEnabled by mutableStateOf(true)
-    private var lastUid by mutableStateOf<String?>(null)
+    private var resumed by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,26 +60,38 @@ class MainActivity : ComponentActivity() {
         wifiScanner = WifiScanner(this)
         setContent {
             SignalMapTheme {
+                val viewModel: AppViewModel = viewModel()
+                // El lector NFC corre solo con la pantalla «Medir» visible.
+                val readerActive = resumed && viewModel.screen == Screen.Measure
+                DisposableEffect(readerActive) {
+                    if (readerActive) {
+                        nfcAvailable = nfcReader.isAvailable
+                        nfcEnabled = nfcReader.isEnabled
+                        nfcReader.start(viewModel::onTag)
+                    }
+                    onDispose { if (readerActive) nfcReader.stop() }
+                }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .padding(24.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        when {
-                            !nfcAvailable -> Text("Este teléfono no tiene NFC: no puede leer las tiras.")
-                            !nfcEnabled -> {
-                                Text("Activa NFC en los ajustes del teléfono para leer las tiras.")
-                                Button(onClick = { startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) }) {
-                                    Text("Abrir ajustes")
-                                }
-                            }
-                            else -> Text("Acerca el teléfono a una tira NFC.")
-                        }
-                        lastUid?.let { Text(it, style = MaterialTheme.typography.headlineMedium) }
-                        WifiTestSection()
+                    when (viewModel.screen) {
+                        Screen.Login -> LoginScreen(
+                            initialServer = viewModel.savedBaseUrl,
+                            message = viewModel.loginMessage,
+                            loggingIn = viewModel.loggingIn,
+                            onLogin = viewModel::login,
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                        Screen.Measure -> MeasureScreen(
+                            email = viewModel.email,
+                            phase = viewModel.phase,
+                            tag = viewModel.tag,
+                            nfcAvailable = nfcAvailable,
+                            nfcEnabled = nfcEnabled,
+                            onPhase = viewModel::selectPhase,
+                            onLogout = viewModel::logout,
+                            onOpenNfcSettings = { startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) },
+                            modifier = Modifier.padding(innerPadding),
+                            extra = { WifiTestSection() },
+                        )
                     }
                 }
             }
@@ -88,13 +100,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        nfcAvailable = nfcReader.isAvailable
-        nfcEnabled = nfcReader.isEnabled
-        nfcReader.start { lastUid = it }
+        resumed = true
     }
 
     override fun onPause() {
-        nfcReader.stop()
+        resumed = false
         super.onPause()
     }
 
