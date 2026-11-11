@@ -311,6 +311,73 @@ describe('GET /api/v1/points/:id (fila 10)', () => {
 });
 
 // ---------------------------------------------------------------------------------------
+// Se usa el P-24 (UID inventado del seed): así estos tests no dependen de las tiras reales.
+describe('GET /api/v1/points/by-tag/:nfc_uid (fila 14)', () => {
+  const P24 = { id: 24, floor_id: 1, code: 'P-24', x: 38.5, y: 2, nfc_uid: '04A23B1C5D9180' };
+  const P24_RESPONSE = { ...P24, floor: { id: 1, name: 'Piso 3' }, building: { id: 1, name: 'Torre Norte' } };
+  const NOT_REGISTERED = { message: 'Tira NFC no registrada' };
+  const BAD_TAG = { message: 'nfc_uid debe tener de 1 a 32 caracteres hexadecimales' };
+  const byTag = (uid: string, token = auth.admin) =>
+    request(app).get(`/api/v1/points/by-tag/${uid}`).set('Authorization', token);
+
+  test.each(['admin', 'tecnico', 'cliente'] as const)('%s → 200 con el punto, su piso y su edificio', async (role) => {
+    const res = await byTag(P24.nfc_uid, auth[role]);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(P24_RESPONSE);
+  });
+
+  test('el UID en minúsculas → 200 con el mismo punto (nfc_uid en mayúsculas)', async () => {
+    const res = await byTag(P24.nfc_uid.toLowerCase());
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(P24_RESPONSE);
+  });
+
+  test('no devuelve org_id ni datos internos', async () => {
+    const res = await byTag(P24.nfc_uid);
+    expect(Object.keys(res.body).sort()).toEqual(['building', 'code', 'floor', 'floor_id', 'id', 'nfc_uid', 'x', 'y']);
+  });
+
+  test('técnico, tira de un edificio no asignado al cliente → 200', async () => {
+    const res = await byTag(ANNEX_NFC, auth.tecnico);
+    expect(res.status).toBe(200);
+    expect(res.body.code).toBe('A-01');
+    expect(res.body.building).toEqual({ id: ids.annexBuilding, name: 'Anexo Puntos' });
+  });
+
+  test.each([
+    ['XYZ', 'no es hexadecimal'],
+    ['04A2:3B', 'tiene separadores'],
+    ['A'.repeat(33), 'tiene 33 caracteres'],
+  ])('UID %s (%s) → 400', async (uid) => {
+    expectError(await byTag(uid), 400, BAD_TAG);
+  });
+
+  test('parámetro de consulta desconocido → 400', async () => {
+    expectError(
+      await request(app).get(`/api/v1/points/by-tag/${P24.nfc_uid}?floor_id=1`).set('Authorization', auth.admin),
+      400,
+    );
+  });
+
+  test('sin UID, /points/by-tag/ responde como /points/:id → 400', async () => {
+    expectError(await request(app).get('/api/v1/points/by-tag/').set('Authorization', auth.admin), 400, BAD_ID);
+  });
+
+  test('sin token → 401', async () => expect401(await request(app).get(`/api/v1/points/by-tag/${P24.nfc_uid}`)));
+
+  test.each([
+    ['ningún punto tiene esa tira', 'FFFFFFFF', 'admin'],
+    ['es de otra org', OTHER_NFC, 'admin'],
+    ['es de un edificio no asignado al cliente', ANNEX_NFC, 'cliente'],
+    ['es de un edificio asignado por error a otra org', OTHER_NFC, 'cliente'],
+    ['el cliente no tiene asignaciones', P24.nfc_uid, 'clienteSinEdificios'],
+    ['admin de otra org pide la tira del P-24', P24.nfc_uid, 'adminOtraOrg'],
+  ] as const)('la tira %s → 404', async (_label, uid, role) => {
+    expectError(await byTag(uid, auth[role]), 404, NOT_REGISTERED);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
 describe('POST /api/v1/points (fila 11)', () => {
   test.each(['admin', 'tecnico'] as const)('%s → 201 + Location + objeto, y se puede releer', async (role) => {
     const body = validBody();

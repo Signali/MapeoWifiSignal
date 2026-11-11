@@ -17,6 +17,11 @@ export async function getById(req: Request, res: Response): Promise<void> {
   res.status(200).json(await pointsService.getById(req.user!, idOf(req)));
 }
 
+// `nfc_uid` ya viene en mayúsculas: lo dejó validate({ params: byTagParams }).
+export async function getByTag(req: Request<{ nfc_uid: string }>, res: Response): Promise<void> {
+  res.status(200).json(await pointsService.getByTag(req.user!, req.params.nfc_uid));
+}
+
 export async function create(req: Request<unknown, unknown, CreateBody>, res: Response): Promise<void> {
   const point = await pointsService.create(req.user!, req.body);
   res.status(201).location(`${req.baseUrl}/${point.id}`).json(point);

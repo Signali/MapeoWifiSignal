@@ -28,12 +28,19 @@ const code = z
   );
 
 // UID de la tira NFC: hexadecimal (es lo que lee Android), en mayúsculas para que
-// "04a2…" y "04A2…" sean la misma tira (único en todo el sistema → 409).
-const nfcUid = z
-  .string({ error: NFC_REQUIRED })
-  .trim()
-  .regex(/^[0-9A-Fa-f]{1,32}$/, NFC_REQUIRED)
-  .transform((value) => value.toUpperCase());
+// "04a2…" y "04A2…" sean la misma tira (único en todo el sistema → 409). Una sola regla para
+// el cuerpo (crear y editar) y para la ruta by-tag; solo cambia el mensaje de error.
+const hexUid = (message: string, trim = false) =>
+  (trim ? z.string({ error: message }).trim() : z.string({ error: message }))
+    .regex(/^[0-9A-Fa-f]{1,32}$/, message)
+    .transform((value) => value.toUpperCase());
+
+const nfcUid = hexUid(NFC_REQUIRED, true);
+
+// GET /points/by-tag/:nfc_uid (contrato §6.14): se acepta en minúsculas o mayúsculas, sin
+// separadores; llega al service ya en mayúsculas (como se guarda).
+const BY_TAG = 'nfc_uid debe tener de 1 a 32 caracteres hexadecimales';
+export const byTagParams = z.strictObject({ nfc_uid: hexUid(BY_TAG) });
 
 // Metros con hasta 2 decimales: numeric(7,2) redondearía en silencio un tercero. Un entero
 // nunca tiene decimales: se acepta directo, porque con enteros enormes (1e21) la cuenta en
