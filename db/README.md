@@ -90,3 +90,17 @@ Luego:
 1. Repetir el paso 2 (`schema.sql` en las dos bases).
 2. Agregar `SEED_WIFI_SSID` a tu `.env` (está en `.env.example`).
 3. Correr `npm run seed` en `backend/`.
+
+### Pasar al esquema con el contorno del piso (2026-11-11)
+
+`floors` suma dos columnas: `outline` (contorno real del edificio) y `plan_url` (imagen del plano). Si tus bases ya tienen el esquema de 9 tablas, **no hace falta recrearlas**: como `signalmap_user`, en `signalmap` y en `signalmap_test`:
+
+```sql
+ALTER TABLE floors
+  ADD COLUMN outline jsonb
+    CHECK (outline IS NULL OR (jsonb_typeof(outline) = 'array' AND jsonb_array_length(outline) >= 3)),
+  ADD COLUMN plan_url varchar(200)
+    CHECK (plan_url IS NULL OR plan_url ~ '^/plans/[A-Za-z0-9._-]+$');
+```
+
+Las bases nuevas ya las traen en `schema.sql`. Con `outline` y `plan_url` en `NULL` el piso se comporta como antes (rectángulo, sin imagen).

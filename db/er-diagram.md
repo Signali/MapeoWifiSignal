@@ -54,6 +54,8 @@ erDiagram
         varchar name "NOT NULL, ej. Piso 3, UK con building_id"
         numeric width_m "numeric(7,2), NOT NULL, mayor que 0"
         numeric height_m "numeric(7,2), NOT NULL, mayor que 0"
+        jsonb outline "contorno real [[x,y],...], 3 o más vértices; NULL = rectángulo"
+        varchar plan_url "imagen del plano, /plans/..., NULL = sin imagen"
     }
 
     points {
