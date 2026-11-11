@@ -1,6 +1,6 @@
 # Contrato de la API — SignalMap (Hitos 2 y 3)
 
-> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), unido a `main` el 2026-11-11 tras la revisión de Maximiliano; **la revisión de Gabriel sigue pendiente** (cualquier ajuste entra por un PR nuevo).
+> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), unido a `main` el 2026-11-11 tras la revisión de Maximiliano; **la revisión de Gabriel sigue pendiente** (cualquier ajuste entra por un PR nuevo). **Análisis del piso** (rutas 19 a 21: mapa de calor, emisores estimados y ubicación recomendada del repetidor): propuesto el 2026-11-11, **pendiente de acuerdo con Gabriel antes de programar**.
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales
@@ -54,6 +54,7 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | Resolver una tira NFC y ver mediciones | ✅ todos los de la org | ✅ todos los de la org | ✅ **solo sus edificios asignados** (otros → `404`) |
 | Registrar mediciones | ✅ | ✅ | ❌ `403` |
 | Anular mediciones | ✅ | ❌ `403` | ❌ `403` |
+| Ver el mapa de calor, los emisores estimados y la ubicación recomendada | ✅ todos los de la org | ✅ todos los de la org | ✅ **solo sus edificios asignados** (otros → `404`) |
 
 - Los usuarios no se crean por la API: vienen del script de datos de prueba (solo desarrollo y demo).
 - Un `cliente` puede tener **uno o más edificios asignados** (tabla de asignaciones usuario–edificio). Las asignaciones también vienen de los datos de prueba; no hay endpoint para gestionarlas en este hito.
@@ -126,6 +127,27 @@ Quién midió (`user_id`) se guarda para trazabilidad, pero la API no lo devuelv
 
 Una medición anulada deja de contar: en el plano vuelve a verse la anterior válida de ese punto y fase. No se puede «des-anular». Una medición tomada en las condiciones normales del lugar, aunque dé señal débil, **no** está mal hecha: es el dato.
 
+### Análisis del piso (mapa de calor, emisores y recomendación)
+Las rutas 19 a 21 **calculan** a partir de las mediciones; no guardan nada. Para cada punto del piso usan su **última medición válida** (no anulada) de la fase, igual que la ruta 16. Los cálculos son **deterministas**: los mismos datos dan siempre el mismo resultado. Las constantes son fijas y no se envían en la petición:
+
+| Constante | Valor | Para qué |
+|---|---|---|
+| Lado de celda (`cell_m`) | 1 m. Si el lado mayor del piso supera 100 m, `ceil(lado_mayor / 100)` m | Grilla del mapa de calor y posiciones candidatas del repetidor. Limita la respuesta a unas 10 000 celdas |
+| Potencia del IDW | 2 | Cada muestra pesa `1 / d²` |
+| Radio máximo | 8 m | Solo cuentan las muestras a esa distancia o menos del centro de la celda |
+| RSSI de un punto `sin_senal` | −100 dBm | Valor que se usa como muestra de ese punto (no se captó la red: es información de cobertura, no un vacío) |
+| Distancia mínima del modelo | 0,5 m | Una distancia menor se toma como 0,5 m (evita `log10(0)`) |
+| Exponente `n` | 3,0 fijo con 3 puntos; con 4 o más puntos se ajusta entre 2,0 y 5,0 | Ver la ruta 20 |
+| Mínimo de puntos por emisor | 3 | Ver la ruta 20 |
+
+**Mapa de calor (IDW, distancia inversa ponderada).** El valor de una celda es `Σ(vᵢ / dᵢ²) / Σ(1 / dᵢ²)` sobre las muestras a ≤ 8 m del centro de la celda, con `vᵢ` el `best_rssi_dbm` de cada punto (o −100 dBm si es `sin_senal`) y `dᵢ` la distancia en metros. Si una muestra está a menos de 1 cm del centro, su valor se toma tal cual. Una celda sin ninguna muestra a ≤ 8 m queda **sin datos** (`null`). El valor se redondea a 1 decimal y la categoría se calcula con esos umbrales (los mismos de la medición, aplicados al valor redondeado): `"buena"` (> −65), `"regular"` (−65 a −70, ambos incluidos), `"debil"` (< −70). Una celda interpolada **nunca** es `"sin_senal"`.
+
+**Emisor (trilateración).** La posición del teléfono se conoce por la tira NFC; lo desconocido es la posición del emisor. Con el modelo `RSSI(d) = P0 − 10·n·log10(d)` (`P0`: señal a 1 m; `n`: exponente de pérdida) se ajustan por mínimos cuadrados la posición `(x, y)` del emisor, `P0` y, con 4 o más puntos, `n`. Con 3 puntos hay más incógnitas que ecuaciones, así que `n` se fija en 3,0. La posición se limita al piso (si el emisor real está fuera, la estimación queda en el borde más cercano).
+
+**Ubicación recomendada del repetidor.** Se prueban como candidatas los centros de la grilla. Una candidata solo es válida si el modelo (con el `P0` y el `n` del emisor de referencia) predice, desde el emisor, señal `"buena"` en ese lugar: así el repetidor se alimenta bien. Entre las válidas se elige la que **más puntos mejora**: de los puntos medidos en «antes» cuya categoría **no** es `"buena"`, cuenta cuántos pasarían a `"buena"` con el repetidor (misma potencia y mismo entorno que el emisor). En empate gana la candidata con mayor señal predicha desde el emisor; luego la de menor `y`; luego la de menor `x`.
+
+**Límites del modelo (por eso el resultado es una estimación).** No ve paredes ni pisos distintos; supone un repetidor con la misma potencia (`P0`) y el mismo exponente (`n`) que el emisor; con puntos en línea recta hay dos posiciones simétricas igual de buenas y el resultado no distingue cuál es la real; la precisión depende de cuántos puntos se midieron y de cuánto ruido hay en las lecturas (el error medido en el piso real se informa en el documento final, no aquí). Toda respuesta de las rutas 20 y 21 se presenta como **estimada**.
+
 ## 5. Tabla de endpoints
 
 | # | Verbo | Ruta | Roles | Parámetros | Éxito | Errores |
@@ -148,6 +170,9 @@ Una medición anulada deja de contar: en el plano vuelve a verse la anterior vá
 | 16 | `GET` | `/api/v1/measurements` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
 | 17 | `GET` | `/api/v1/measurements/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
 | 18 | `DELETE` | `/api/v1/measurements/:id` | `admin` | ruta: `id` · consulta: `reason` (obligatorio) | `204` | `400` · `401` · `403` · `404` · `409` |
+| 19 | `GET` | `/api/v1/heatmap` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 20 | `GET` | `/api/v1/emitters` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 21 | `GET` | `/api/v1/recommendation` | todos | consulta: `floor_id` (obligatorio) | `200` | `400` · `401` · `404` |
 
 ## 6. Detalle y ejemplos
 
@@ -426,6 +451,93 @@ Anula la medición (no la borra).
 | No existe o es de otra organización | `404 { "message": "Medición no encontrada" }` |
 | Ya estaba anulada | `409 { "message": "La medición ya está anulada" }` |
 
+### 19. `GET /api/v1/heatmap?floor_id=1&phase=antes`
+Mapa de calor del piso en esa fase (IDW, ver «Análisis del piso» en §4). Devuelve **todas** las celdas de la grilla cuyo centro cae dentro del piso, ordenadas por fila (`y` ascendente) y, dentro de la fila, por `x` ascendente. El ejemplo es el Piso 3 (40 × 25 m) con 3 puntos medidos; `cells` se acorta aquí, pero la respuesta real trae las 1 000 celdas (40 × 25).
+```json
+200 OK
+{
+  "floor_id": 1, "phase": "antes",
+  "cell_m": 1, "cols": 40, "rows": 25,
+  "points_used": 3,
+  "cells": [
+    { "x": 0.5,  "y": 0.5, "rssi_dbm": null,  "category": null },
+    { "x": 12.5, "y": 8.5, "rssi_dbm": -73.6, "category": "debil" },
+    { "x": 13.5, "y": 8.5, "rssi_dbm": -66.2, "category": "regular" },
+    { "x": 14.5, "y": 8.5, "rssi_dbm": -61.0, "category": "buena" }
+  ]
+}
+```
+- `x` e `y` son el **centro** de la celda, en metros, con el mismo origen que los puntos (esquina superior izquierda, `y` hacia abajo). `cols` y `rows` son las columnas y filas de la grilla.
+- `points_used` es el número de puntos del piso con una medición válida en la fase (incluidos los `sin_senal`). Con `0`, todas las celdas traen `rssi_dbm: null` y `category: null`.
+- `rssi_dbm` (número con 1 decimal) y `category` son `null` en una celda sin datos.
+- La categoría se calcula solo en el servidor; la web no aplica umbrales.
+
+| Caso | Respuesta |
+|---|---|
+| Falta `floor_id` o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
+| Falta `phase` o no es `antes`/`despues` | `400 { "message": "phase debe ser antes o despues" }` |
+| Parámetro de consulta desconocido | `400` |
+| El piso no existe, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Piso no encontrado" }` |
+| El piso no tiene puntos o ninguno tiene medición en la fase | **No es error**: `200` con `points_used: 0` y todas las celdas sin datos |
+
+### 20. `GET /api/v1/emitters?floor_id=1&phase=antes`
+Posición estimada de cada emisor (cada BSSID de la red de la organización) en el piso y la fase, por trilateración (ver «Análisis del piso» en §4). Entra un emisor solo si al menos **3 puntos** del piso tienen, en su última medición válida de la fase, una lectura de ese BSSID. Ordenados por `points_used` descendente y, en empate, por `bssid` ascendente.
+```json
+200 OK
+[
+  { "bssid": "a4:2b:b0:11:22:33", "ssid": "Inmobiliaria Norte", "frequency_mhz": 5180,
+    "x": 8.4, "y": 5.1, "p0_dbm": -38.2, "n": 3.0, "n_fixed": true,
+    "rmse_db": 2.4, "points_used": 3, "estimated": true }
+]
+```
+- `x`, `y` (metros, 1 decimal): posición estimada, dentro del piso.
+- `p0_dbm` y `n` (1 decimal): parámetros del modelo ajustados. `n_fixed` es `true` cuando `n` se fijó en 3,0 por haber solo 3 puntos.
+- `rmse_db` (1 decimal): error cuadrático medio, en dB, entre las lecturas y lo que predice el modelo. Cuanto menor, mejor ajusta; el cliente puede mostrarlo como confianza.
+- `points_used`: puntos que aportaron una lectura de ese BSSID.
+- `frequency_mhz` y `ssid`: los de la lectura más fuerte de ese BSSID.
+- `estimated` es siempre `true`.
+- Sin ningún BSSID con 3 puntos, la respuesta es `200 []` (no es error).
+
+| Caso | Respuesta |
+|---|---|
+| Falta `floor_id` o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
+| Falta `phase` o no es `antes`/`despues` | `400 { "message": "phase debe ser antes o despues" }` |
+| Parámetro de consulta desconocido | `400` |
+| El piso no existe, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Piso no encontrado" }` |
+
+### 21. `GET /api/v1/recommendation?floor_id=1`
+Ubicación recomendada para instalar el repetidor (ver «Análisis del piso» en §4). Siempre se calcula con las mediciones de la fase **«antes»**: es la decisión previa a instalar. Las mediciones «después» sirven para comprobar el resultado en el mapa de calor. El **emisor de referencia** es el de la ruta 20 (fase «antes») con más `points_used`; en empate, el de menor `rmse_db`; en empate, el de `bssid` menor.
+```json
+200 OK
+{
+  "floor_id": 1,
+  "position": { "x": 17.5, "y": 6.5 },
+  "emitter_bssid": "a4:2b:b0:11:22:33",
+  "target_points": 8,
+  "covered_points": 5,
+  "reason": null,
+  "estimated": true
+}
+```
+- `position`: centro de la celda elegida (metros).
+- `target_points`: puntos medidos en «antes» cuya categoría no es `"buena"` (los que hay que mejorar).
+- `covered_points`: cuántos de ellos pasarían a `"buena"` con el repetidor en `position`.
+- `emitter_bssid`: el emisor de referencia.
+- `estimated` es siempre `true`.
+- Si no hay recomendación posible, **no es error**: `200` con `position: null` y `reason` con **uno** de estos textos (`reason` es `null` cuando sí hay posición):
+
+| `reason` | Cuándo | `emitter_bssid` · `target_points` · `covered_points` |
+|---|---|---|
+| `"Faltan puntos medidos para estimar el emisor (mínimo 3)."` | La ruta 20 (fase «antes») no devuelve ningún emisor | `null` · `null` · `null` |
+| `"Todos los puntos medidos ya tienen señal buena."` | `target_points` es 0 | el emisor · `0` · `0` |
+| `"Ninguna ubicación del piso mejora la señal de los puntos medidos."` | No hay candidata válida (con señal «buena» desde el emisor) o la mejor cubre 0 puntos | el emisor · el número real · `0` |
+
+| Caso | Respuesta |
+|---|---|
+| Falta `floor_id` o no es entero | `400 { "message": "floor_id es obligatorio y debe ser entero" }` |
+| Parámetro de consulta desconocido (incluido `phase`) | `400` |
+| El piso no existe, es de otra organización o (para `cliente`) de un edificio no asignado | `404 { "message": "Piso no encontrado" }` |
+
 ## 7. Respuestas comunes a todas las rutas protegidas
 
 | Caso | Respuesta |
@@ -446,6 +558,7 @@ Anula la medición (no la borra).
 
 - Creación y gestión de usuarios y de sus edificios asignados (hoy solo por datos de prueba).
 - Creación y edición de pisos y planos, y del SSID de la organización (hoy por datos de prueba).
-- Mapa de calor, trilateración, recomendación del repetidor y reporte PDF.
+- Reporte PDF del piso (se agrega al contrato solo si se implementa).
+- Parámetros de consulta para ajustar el análisis (radio, potencia del IDW, tamaño de celda): hoy son constantes fijas (§4).
 - Renovación de token (refresh) y vencimiento según turno laboral.
 - Envío de la cola sin conexión con la app cerrada (en segundo plano): hoy la app envía las pendientes solo mientras está abierta.
