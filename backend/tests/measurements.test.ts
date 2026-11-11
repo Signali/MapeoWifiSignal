@@ -19,6 +19,8 @@ const MEASURED_AT_MSG = { message: 'measured_at debe ser una fecha ISO 8601 con 
 
 const auth = { admin: '', tecnico: '', cliente: '', adminOtraOrg: '' };
 const ids = { adminUser: 0, annexBuilding: 0, annexFloor: 0, annexPoint: 0, otherOrg: 0, otherBuilding: 0, otherFloor: 0, otherPoint: 0 };
+// Piso propio de la ruta 16, con 3 puntos (L-01 a L-03): las otras pruebas no lo tocan.
+const list = { floor: 0, p1: 0, p2: 0, p3: 0, floor2: 0, q1: 0, q2: 0 };
 const uuids: string[] = [];
 
 async function login(email: string, password: string | undefined): Promise<string> {
@@ -48,6 +50,25 @@ beforeAll(async () => {
     [ids.annexFloor],
   );
 
+  list.floor = await insertId(
+    `INSERT INTO floors (building_id, name, width_m, height_m) VALUES ($1, 'Piso 2', 10, 8) RETURNING id`,
+    [ids.annexBuilding],
+  );
+  const listPoint = (code: string, nfc: string) =>
+    insertId(`INSERT INTO points (floor_id, code, x, y, nfc_uid) VALUES ($1, $2, 1, 1, $3) RETURNING id`, [list.floor, code, nfc]);
+  list.p1 = await listPoint('L-01', '0E0E0E01');
+  list.p2 = await listPoint('L-02', '0E0E0E02');
+  list.p3 = await listPoint('L-03', '0E0E0E03');
+  // Segundo piso para las pruebas de fases y de sin_senal (cada una con su punto).
+  list.floor2 = await insertId(
+    `INSERT INTO floors (building_id, name, width_m, height_m) VALUES ($1, 'Piso 4', 10, 8) RETURNING id`,
+    [ids.annexBuilding],
+  );
+  const floor2Point = (code: string, nfc: string) =>
+    insertId(`INSERT INTO points (floor_id, code, x, y, nfc_uid) VALUES ($1, $2, 1, 1, $3) RETURNING id`, [list.floor2, code, nfc]);
+  list.q1 = await floor2Point('Q-01', '0E0E0E11');
+  list.q2 = await floor2Point('Q-02', '0E0E0E12');
+
   ids.otherOrg = await insertId(`INSERT INTO organizations (name, wifi_ssid) VALUES ('Otra Org Mediciones', 'Otra Red') RETURNING id`, []);
   ids.otherBuilding = await insertId(`INSERT INTO buildings (org_id, name) VALUES ($1, 'Torre Norte') RETURNING id`, [ids.otherOrg]);
   ids.otherFloor = await insertId(
@@ -63,8 +84,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM measurements WHERE client_uuid = ANY($1)', [uuids]); // las lecturas caen en cascada
-  await pool.query('DELETE FROM points WHERE id = ANY($1)', [[ids.annexPoint, ids.otherPoint]]);
-  await pool.query('DELETE FROM floors WHERE id = ANY($1)', [[ids.annexFloor, ids.otherFloor]]);
+  const floors = [ids.annexFloor, list.floor, list.floor2, ids.otherFloor];
+  await pool.query('DELETE FROM points WHERE floor_id = ANY($1)', [floors]);
+  await pool.query('DELETE FROM floors WHERE id = ANY($1)', [floors]);
   await pool.query('DELETE FROM buildings WHERE id = ANY($1)', [[ids.annexBuilding, ids.otherBuilding]]);
   await pool.query('DELETE FROM organizations WHERE id = $1', [ids.otherOrg]);
   await pool.end();
@@ -339,5 +361,121 @@ describe('GET /api/v1/measurements/:id (fila 17)', () => {
     expect(annex.status).toBe(201);
     expect((await get(annex.body.id)).status).toBe(200); // el admin sí la ve
     expectError(await get(annex.body.id, auth.cliente), 404, MEASUREMENT_NOT_FOUND);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// Medición insertada por SQL con la fecha que se quiera (la API no deja fechas a medida).
+async function insertAt(pointId: number, phase: string, measuredAt: Date, voided = false): Promise<number> {
+  const uuid = randomUUID();
+  uuids.push(uuid);
+  return insertId(
+    `INSERT INTO measurements (point_id, user_id, phase, client_uuid, measured_at, voided_at, void_reason, voided_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [pointId, ids.adminUser, phase, uuid, measuredAt, voided ? new Date() : null, voided ? 'punto_equivocado' : null, voided ? ids.adminUser : null],
+  );
+}
+
+const listFloor = (query: string, token = auth.admin) =>
+  request(app).get(`/api/v1/measurements${query}`).set('Authorization', token);
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+
+describe('GET /api/v1/measurements?floor_id=&phase= (fila 16)', () => {
+  test('200: un elemento por cada punto del piso, por point_id; los sin medición, con null', async () => {
+    const created = await post(auth.admin, validBody({ point_id: list.p1, phase: 'despues', measured_at: hoursAgo(1).toISOString() }));
+    expect(created.status).toBe(201);
+    const res = await listFloor(`?floor_id=${list.floor}&phase=despues`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { point_id: list.p1, measurement: created.body },
+      { point_id: list.p2, measurement: null },
+      { point_id: list.p3, measurement: null },
+    ]);
+  });
+
+  test('gana la de measured_at más reciente, aunque se haya insertado antes', async () => {
+    const newer = await insertAt(list.p1, 'antes', hoursAgo(1));
+    await insertAt(list.p1, 'antes', hoursAgo(5));
+    const res = await listFloor(`?floor_id=${list.floor}&phase=antes`);
+    expect(res.body[0].measurement.id).toBe(newer);
+  });
+
+  test('a igual measured_at, gana la de mayor id', async () => {
+    const at = hoursAgo(2);
+    await insertAt(list.p2, 'antes', at);
+    const second = await insertAt(list.p2, 'antes', at);
+    const res = await listFloor(`?floor_id=${list.floor}&phase=antes`);
+    expect(res.body[1].measurement.id).toBe(second);
+  });
+
+  test('una anulada no cuenta: vuelve a verse la anterior válida', async () => {
+    const valid = await insertAt(list.p3, 'antes', hoursAgo(5));
+    await insertAt(list.p3, 'antes', hoursAgo(1), true);
+    const res = await listFloor(`?floor_id=${list.floor}&phase=antes`);
+    expect(res.body[2].measurement.id).toBe(valid);
+    expect(res.body[2].measurement.voided).toBeNull();
+  });
+
+  // Los dos tests siguientes usan su propio piso (list.floor2): no dependen de los de arriba.
+  const elementOf = (body: { point_id: number }[], pointId: number) => body.find((e) => e.point_id === pointId) as unknown as {
+    measurement: { id: number; phase: string; category: string; best_rssi_dbm: number | null; readings: unknown[] } | null;
+  };
+
+  test('las fases van separadas', async () => {
+    const before = await insertAt(list.q1, 'antes', hoursAgo(1));
+    const after = await insertAt(list.q1, 'despues', hoursAgo(1));
+    const antes = elementOf((await listFloor(`?floor_id=${list.floor2}&phase=antes`)).body, list.q1);
+    const despues = elementOf((await listFloor(`?floor_id=${list.floor2}&phase=despues`)).body, list.q1);
+    expect(antes.measurement).toMatchObject({ id: before, phase: 'antes' });
+    expect(despues.measurement).toMatchObject({ id: after, phase: 'despues' });
+  });
+
+  test('una medición más reciente sin señal (sin_senal) reemplaza a la anterior con señal', async () => {
+    const withSignal = await post(auth.admin, validBody({ point_id: list.q2, readings: [reading({ rssi_dbm: -60 })], measured_at: hoursAgo(2).toISOString() }));
+    expect(withSignal.body.category).toBe('buena');
+    const noSignal = await post(
+      auth.admin,
+      validBody({ point_id: list.q2, readings: [reading({ ssid: 'Vecino 5G' })], measured_at: hoursAgo(1).toISOString() }),
+    );
+    expect(noSignal.status).toBe(201);
+    const { measurement } = elementOf((await listFloor(`?floor_id=${list.floor2}&phase=antes`)).body, list.q2);
+    expect(measurement).toMatchObject({ id: noSignal.body.id, category: 'sin_senal', best_rssi_dbm: null, readings: [] });
+  });
+
+  // points.test.ts crea puntos en el Piso 3 en paralelo: no se cuenta un total exacto.
+  test.each(['admin', 'tecnico', 'cliente'] as const)('%s ve el Piso 3 (con el P-07, ordenado por point_id)', async (role) => {
+    const res = await listFloor('?floor_id=1&phase=antes', auth[role]);
+    expect(res.status).toBe(200);
+    const pointIds: number[] = res.body.map((e: { point_id: number }) => e.point_id);
+    expect(pointIds).toContain(7);
+    expect(pointIds).toEqual([...pointIds].sort((a, b) => a - b));
+    expect(res.body.every((e: { measurement: unknown }) => e.measurement === null || typeof e.measurement === 'object')).toBe(true);
+  });
+
+  test.each([
+    ['falta floor_id', '?phase=antes', 'floor_id es obligatorio y debe ser entero'],
+    ['floor_id no entero', '?floor_id=abc&phase=antes', 'floor_id es obligatorio y debe ser entero'],
+    ['falta phase', '?floor_id=1', 'phase debe ser antes o despues'],
+    ['phase con tilde', '?floor_id=1&phase=despu%C3%A9s', 'phase debe ser antes o despues'],
+  ])('400: %s', async (_name, query, message) => {
+    expectError(await listFloor(query), 400, { message });
+  });
+
+  test('400: parámetro de consulta desconocido', async () => {
+    expectError(await listFloor('?floor_id=1&phase=antes&x=1'), 400);
+  });
+
+  test('401 sin token', async () => {
+    const res = await request(app).get('/api/v1/measurements?floor_id=1&phase=antes');
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Token requerido' });
+  });
+
+  test('404: piso inexistente, de otra organización y (cliente) de un edificio no asignado', async () => {
+    const notFound = { message: 'Piso no encontrado' };
+    expectError(await listFloor('?floor_id=2147483647&phase=antes'), 404, notFound);
+    expectError(await listFloor(`?floor_id=${ids.otherFloor}&phase=antes`), 404, notFound);
+    expect((await listFloor(`?floor_id=${list.floor}&phase=antes`)).status).toBe(200); // el admin sí lo ve
+    expectError(await listFloor(`?floor_id=${list.floor}&phase=antes`, auth.cliente), 404, notFound);
   });
 });

@@ -146,19 +146,20 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 - Los pisos no se crean ni se editan por la API, así que leer sus medidas y después escribir no abre una carrera.
 - Tests: `tests/points.test.ts`, con los mismos datos propios que edificios (otra organización, cliente sin asignaciones, asignación cruzada) más un edificio de la organización 1 **no asignado** al cliente, con piso y punto.
 
-## Mediciones (tercer recurso, Hito 3): registrar y leer una
+## Mediciones (tercer recurso, Hito 3): registrar, leer una y leer las de un piso
 
-`POST /api/v1/measurements` y `GET /api/v1/measurements/:id` (contrato §5 filas 15 y 17; la lista del piso y la anulación quedan para las filas 16 y 18).
+`POST /api/v1/measurements`, `GET /api/v1/measurements?floor_id=&phase=` y `GET /api/v1/measurements/:id` (contrato §5 filas 15 a 17; la anulación, fila 18, queda para T14).
 
 | Capa | Archivo | Qué hace |
 |---|---|---|
-| Ruta | `routes/measurements.ts` | `POST`: `requireRole('admin', 'tecnico')`; `GET /:id`: todos los roles. Orden: `authenticate` → `requireRole` → `validate` |
-| Schema | `schemas/measurements.ts` | `point_id` (`bodyId`), `phase` (`antes`/`despues`), `client_uuid` (UUID, a minúsculas), `measured_at` opcional (ISO 8601 con zona), `readings` (1 a 100; `bssid` a minúsculas y sin repetir, `ssid` de 0 a 32, `rssi_dbm` entero de −120 a 0, `frequency_mhz` entero de 2400 a 7125). Se validan **todas** las lecturas |
+| Ruta | `routes/measurements.ts` | `POST`: `requireRole('admin', 'tecnico')`; `GET /` y `GET /:id`: todos los roles. Orden: `authenticate` → `requireRole` → `validate` |
+| Schema | `schemas/measurements.ts` | `point_id` (`bodyId`), `phase` (`antes`/`despues`), `client_uuid` (UUID, a minúsculas), `measured_at` opcional (ISO 8601 con zona), `readings` (1 a 100; `bssid` a minúsculas y sin repetir, `ssid` de 0 a 32, `rssi_dbm` entero de −120 a 0, `frequency_mhz` entero de 2400 a 7125). Se validan **todas** las lecturas · `measurementsQuery` (`floor_id` y `phase`, obligatorios) |
 | Controller | `controllers/measurements.ts` | `201` + `Location`, o `200` si el `client_uuid` ya estaba |
 | Service | `services/measurements.ts`, `services/signal-category.ts` | Ver `services/README.md` |
 | Repositorio | `repositories/measurements.ts`, `repositories/organizations.ts` | `insert` guarda la medición y sus lecturas en **una sola sentencia** (`WITH … ON CONFLICT (client_uuid) DO NOTHING` + `jsonb_to_recordset`): entran juntas o no entra nada. Una medición es visible si lo es el edificio de su punto (`VISIBLE`) |
 
 - **Idempotencia (cola sin conexión de la app):** reenviar el mismo `client_uuid` devuelve `200` con la medición ya guardada, sin duplicar y sin comparar el cuerpo. Se resuelve **antes** del `404` y del `422`: un reenvío tardío no falla porque el punto o la fecha ya no sirvan. Un `client_uuid` de otra organización → `409`.
+- **Mediciones del piso (fila 16):** la web la usa para pintar el plano. Devuelve **un elemento por cada punto del piso**, ordenado por `point_id`, con su última medición válida de la fase o `measurement: null`. «Última» = `measured_at` más reciente y, a igual fecha, la de mayor `id`; una anulada no cuenta. Se resuelve en una consulta (`LEFT JOIN LATERAL`, apoyada en `measurements_point_phase_idx`) más una de lecturas para todas las mediciones encontradas. `floor_id` y `phase` son obligatorios; piso no visible → `404 "Piso no encontrado"`. Se declara `GET /` antes de `/:id`.
 - **Minimización de datos:** solo se guardan las lecturas del SSID de la organización (`organizations.wifi_ssid`, comparación exacta). Las de otras redes se validan y se descartan. Sin ninguna → `201` con `sin_senal`.
 - Tests: `tests/measurements.test.ts` (crea un edificio de la organización 1 no asignado al cliente y otra organización con su punto, y borra solo lo suyo) y `tests/signal-category.test.ts`.
 
