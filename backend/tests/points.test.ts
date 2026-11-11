@@ -8,7 +8,7 @@ import { signToken } from '../src/services/token.ts';
 // Pisos y puntos (contrato §5 filas 8 a 13, §6.8 a §6.13) contra la app real y signalmap_test.
 // Seed: org 1, Torre Norte (id 1, asignada al cliente id 3) con el Piso 3 (id 1, 40 x 25 m)
 // y 24 puntos (P-07 = id 7); Oficinas Centro (id 2) sin pisos ni asignación.
-const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04A23B1C5D8080' };
+const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04C7DC7FBF2A81' };
 const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25 };
 const FORBIDDEN = { message: 'No tiene permiso para esta acción' };
 const BAD_ID = { message: 'El id debe ser un número entero' };
@@ -72,7 +72,7 @@ beforeAll(async () => {
     [ids.annexFloor, ANNEX_NFC],
   );
 
-  ids.otherOrg = await insertId(`INSERT INTO organizations (name) VALUES ('Otra Org Puntos') RETURNING id`, []);
+  ids.otherOrg = await insertId(`INSERT INTO organizations (name, wifi_ssid) VALUES ('Otra Org Puntos', 'Otra Red') RETURNING id`, []);
   ids.otherBuilding = await insertId(`INSERT INTO buildings (org_id, name) VALUES ($1, 'Torre Norte') RETURNING id`, [
     ids.otherOrg,
   ]);

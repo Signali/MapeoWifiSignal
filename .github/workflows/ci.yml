@@ -45,6 +45,7 @@ jobs:
       SEED_ADMIN_PASSWORD: ci_admin_falsa
       SEED_TECNICO_PASSWORD: ci_tecnico_falsa
       SEED_CLIENTE_PASSWORD: ci_cliente_falsa
+      SEED_WIFI_SSID: SignalMap Demo
 
     defaults:
       run:

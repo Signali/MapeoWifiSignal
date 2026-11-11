@@ -1,5 +1,6 @@
 // `npm run seed`: deja la base con los datos de ejemplo. SOLO desarrollo y demo.
-// 1) Ejecuta db/seed.sql (resetea las tablas y carga los datos de dominio).
+// 1) Ejecuta db/seed.sql (resetea las tablas y carga los datos de dominio; el SSID de la
+//    organización sale de SEED_WIFI_SSID).
 // 2) Crea los 3 usuarios con las claves de SEED_*_PASSWORD (.env), hasheadas con bcrypt.
 // Todo en una transacción: si algo falla, la base queda como estaba.
 // Es un script de desarrollo, no parte del servicio: por eso su SQL no está en repositories/.
@@ -22,6 +23,8 @@ export async function seed(): Promise<void> {
       SEED_ADMIN_PASSWORD: z.string().min(1),
       SEED_TECNICO_PASSWORD: z.string().min(1),
       SEED_CLIENTE_PASSWORD: z.string().min(1),
+      // Nombre exacto de la red WiFi de la organización (1 a 32 caracteres, como en la base).
+      SEED_WIFI_SSID: z.string().min(1).max(32),
     })
     .parse(process.env);
 
@@ -35,6 +38,8 @@ export async function seed(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // db/seed.sql lo lee con current_setting('signalmap.wifi_ssid'); vale solo en esta transacción.
+    await client.query("SELECT set_config('signalmap.wifi_ssid', $1, true)", [passwords.SEED_WIFI_SSID]);
     await client.query(seedSql);
 
     // Prioridad del corporativo: los usuarios de la org usan su dominio corporativo.
