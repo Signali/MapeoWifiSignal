@@ -88,6 +88,9 @@ select, input[type='email'], input[type='password'] {
 
 /* Plano y leyenda */
 .plan-area { margin-top: 1.5rem; display: grid; gap: 1rem; }
+.plan-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+.summary { margin: 0; }
+.plan-wrap.refreshing { opacity: 0.45; }
 .plan { width: 100%; height: auto; display: block; overflow: visible; }
 .plan .border { fill: #fff; stroke: var(--acento); stroke-width: 0.15; }
 .plan .grid line { stroke: #E3E5EA; stroke-width: 0.06; }
