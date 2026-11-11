@@ -1,5 +1,5 @@
 import { request } from './client.ts'
-import type { Building, Floor, FloorMeasurement, LoginResponse, Phase, Point } from './types.ts'
+import type { Building, Emitter, Floor, FloorMeasurement, Heatmap, LoginResponse, Phase, Point, Recommendation } from './types.ts'
 
 const BASE = '/api/v1'
 
@@ -29,4 +29,19 @@ export function listPoints(floorId: number): Promise<Point[]> {
 // Contrato §6.16
 export function listMeasurements(floorId: number, phase: Phase): Promise<FloorMeasurement[]> {
   return request<FloorMeasurement[]>(`${BASE}/measurements?floor_id=${floorId}&phase=${phase}`)
+}
+
+// Contrato §6.19
+export function getHeatmap(floorId: number, phase: Phase): Promise<Heatmap> {
+  return request<Heatmap>(`${BASE}/heatmap?floor_id=${floorId}&phase=${phase}`)
+}
+
+// Contrato §6.20
+export function listEmitters(floorId: number, phase: Phase): Promise<Emitter[]> {
+  return request<Emitter[]>(`${BASE}/emitters?floor_id=${floorId}&phase=${phase}`)
+}
+
+// Contrato §6.21 (sin phase: siempre «antes»)
+export function getRecommendation(floorId: number): Promise<Recommendation> {
+  return request<Recommendation>(`${BASE}/recommendation?floor_id=${floorId}`)
 }

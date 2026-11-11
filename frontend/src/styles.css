@@ -130,3 +130,18 @@ select, input[type='email'], input[type='password'] {
   font-size: 0.8rem;
 }
 .swatch-empty { background: #fff; color: var(--c); border: 2px dashed var(--c); }
+
+/* Plano real: contorno, mapa de calor y marcadores estimados */
+.plan .outline-fill { fill: #fff; }
+.plan .outline { fill: none; stroke: var(--acento); stroke-width: 0.2; }
+.plan .marker { pointer-events: none; }
+.plan .marker.emitter polygon { fill: var(--titulo); stroke: #fff; stroke-width: 0.15; }
+.plan .marker.repeater rect { fill: var(--acento); stroke: #fff; stroke-width: 0.15; stroke-dasharray: 0.4 0.25; }
+.swatch-emitter { background: var(--titulo); border-radius: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.swatch-repeater { background: var(--acento); border-radius: 0.3rem; }
+.analysis { display: grid; gap: 1rem; }
+.analysis h3 { margin: 0 0 0.35rem; font-family: var(--f-titulo); font-size: 1rem; color: var(--titulo); }
+.analysis .layers { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
+.analysis .check { display: inline-flex; align-items: center; gap: 0.4rem; }
+.analysis ul.estimates { margin: 0; padding-left: 1.1rem; }
+.analysis p.estimates { margin: 0; }
