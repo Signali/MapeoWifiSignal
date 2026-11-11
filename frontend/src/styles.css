@@ -86,13 +86,44 @@ select, input[type='email'], input[type='password'] {
 .status-error button { margin-top: 0.5rem; }
 .status-loading, .status-empty { color: var(--acento); }
 
-/* Recuadro temporal del plano (T05 lo reemplaza) */
-.plan-placeholder {
-  margin-top: 1.5rem;
-  min-height: 16rem;
-  display: grid;
-  place-items: center;
-  border: 2px dashed var(--acento);
-  border-radius: 8px;
-  color: var(--acento);
+/* Plano y leyenda */
+.plan-area { margin-top: 1.5rem; display: grid; gap: 1rem; }
+.plan { width: 100%; height: auto; display: block; overflow: visible; }
+.plan .border { fill: #fff; stroke: var(--acento); stroke-width: 0.15; }
+.plan .grid line { stroke: #E3E5EA; stroke-width: 0.06; }
+.plan .point { cursor: pointer; outline: none; }
+.plan .dot { stroke-width: 0.15; }
+.plan .dot-empty { stroke-dasharray: 0.35 0.25; }
+.plan .ring { fill: none; stroke: var(--acento); stroke-width: 0.2; display: none; }
+.plan .point:focus-visible .ring, .plan .point.selected .ring { display: block; }
+.plan .letter {
+  font-family: var(--f-texto);
+  font-size: 1.1px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
 }
+.plan .code {
+  font-family: var(--f-mono);
+  font-size: 0.9px;
+  fill: var(--texto);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+.legend li { display: flex; align-items: center; gap: 0.4rem; }
+.swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.swatch-empty { background: #fff; color: var(--c); border: 2px dashed var(--c); }

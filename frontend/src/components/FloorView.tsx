@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { listBuildings, listFloors } from '../api/endpoints.ts'
+import { listBuildings, listFloors, listPoints } from '../api/endpoints.ts'
 import type { Session } from '../api/session.ts'
-import type { Floor, Phase } from '../api/types.ts'
+import type { Floor, Phase, Point } from '../api/types.ts'
 import { useRequest } from '../hooks/useRequest.ts'
 import { readSelection, writeSelection } from '../selection.ts'
 import type { Selection } from '../selection.ts'
+import { FloorPlan } from './FloorPlan.tsx'
+import { Legend } from './Legend.tsx'
 import { StatusMessage } from './StatusMessage.tsx'
 
 interface Props {
@@ -130,12 +132,35 @@ export function FloorView({ session, onLogout }: Props) {
           </fieldset>
         </section>
 
-        {floor && (
-          <div className="plan-placeholder">
-            Plano (T05) · {floor.name} · {floor.width_m} × {floor.height_m} m
-          </div>
-        )}
+        {/* key: cada piso parte con estado nuevo (sin puntos, error ni selección del anterior). */}
+        {floor && <PlanArea key={floor.id} floor={floor} />}
       </main>
     </>
+  )
+}
+
+// Hasta T13 no hay mediciones: todos los puntos salen «Sin medir».
+const noCategory = () => null
+
+function PlanArea({ floor }: { floor: Floor }) {
+  const [selectedId, setSelectedId] = useState<number>()
+  const points = useRequest<Point[]>(() => listPoints(floor.id), [floor.id])
+
+  return (
+    <section className="plan-area" aria-label={`Plano de ${floor.name}`}>
+      {points.loading && <StatusMessage kind="loading" message="Cargando el plano…" />}
+      {points.error && <StatusMessage kind="error" message={points.error} onRetry={points.reload} />}
+      {points.data?.length === 0 && <StatusMessage kind="empty" message="Este piso no tiene puntos de medición." />}
+      {points.data && points.data.length > 0 && (
+        <FloorPlan
+          floor={floor}
+          points={points.data}
+          categoryOf={noCategory}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+      )}
+      <Legend />
+    </section>
   )
 }

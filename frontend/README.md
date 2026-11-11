@@ -25,5 +25,6 @@ La web no tiene tests automatizados en este hito; el control es `typecheck`, `bu
 | `api/` | `client.ts` (único `fetch`, errores y `401`), `endpoints.ts` (rutas del contrato), `session.ts` (token en `sessionStorage`), `types.ts` |
 | `hooks/useRequest.ts` | Carga con estados de espera y error; ignora respuestas viejas |
 | `selection.ts` | Edificio, piso y fase en la URL (`?building_id=1&floor_id=1&phase=antes`): F5 conserva la selección |
-| `components/` | `LoginView`, `FloorView`, `StatusMessage` |
+| `categories.ts` | Nombre, letra y color de cada categoría (solo presentación; los umbrales viven en el servicio) |
+| `components/` | `LoginView`, `FloorView`, `FloorPlan` (plano SVG a escala), `Legend` (leyenda de categorías), `StatusMessage` |
 | `styles.css` | Paleta y fuentes del documento técnico (en `assets/fonts/`) |
