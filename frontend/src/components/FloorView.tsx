@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
-import { listBuildings, listFloors, listPoints } from '../api/endpoints.ts'
+import { listBuildings, listFloors, listMeasurements, listPoints } from '../api/endpoints.ts'
 import type { Session } from '../api/session.ts'
-import type { Floor, Phase, Point } from '../api/types.ts'
+import type { Category, Floor, FloorMeasurement, Phase, Point } from '../api/types.ts'
 import { useRequest } from '../hooks/useRequest.ts'
 import { readSelection, writeSelection } from '../selection.ts'
 import type { Selection } from '../selection.ts'
 import { FloorPlan } from './FloorPlan.tsx'
 import { Legend } from './Legend.tsx'
 import { StatusMessage } from './StatusMessage.tsx'
+import { Summary } from './Summary.tsx'
 
 interface Props {
   session: Session
@@ -133,32 +134,77 @@ export function FloorView({ session, onLogout }: Props) {
         </section>
 
         {/* key: cada piso parte con estado nuevo (sin puntos, error ni selección del anterior). */}
-        {floor && <PlanArea key={floor.id} floor={floor} />}
+        {floor && <PlanArea key={floor.id} floor={floor} phase={sel.phase} />}
       </main>
     </>
   )
 }
 
-// Hasta T13 no hay mediciones: todos los puntos salen «Sin medir».
-const noCategory = () => null
-
-function PlanArea({ floor }: { floor: Floor }) {
+function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
   const [selectedId, setSelectedId] = useState<number>()
   const points = useRequest<Point[]>(() => listPoints(floor.id), [floor.id])
+  const measurements = useRequest<FloorMeasurement[]>(() => listMeasurements(floor.id, phase), [floor.id, phase])
+
+  // useRequest vacía `data` en cada pedido; se conserva la última respuesta para que el plano no
+  // desaparezca al cambiar de fase o al pulsar «Actualizar» (los puntos no cambian con la fase).
+  const [shown, setShown] = useState<FloorMeasurement[] | null>(null)
+  useEffect(() => {
+    if (measurements.data) setShown(measurements.data)
+  }, [measurements.data])
+
+  const error = points.error ?? measurements.error
+  // Mientras llegan las mediciones, el plano sigue visible con las categorías anteriores, atenuado.
+  const refreshing = measurements.loading && shown !== null
+
+  // La categoría viene del servicio (ruta 16); la web no calcula umbrales.
+  const byPoint = new Map<number, Category | null>(
+    (shown ?? []).map((m) => [m.point_id, m.measurement?.category ?? null]),
+  )
+  const categoryOf = (pointId: number) => byPoint.get(pointId) ?? null
+  const phaseLabel = PHASES.find((p) => p.value === phase)?.label
+  const hasPoints = points.data !== null && points.data.length > 0
+  const ready = !error && hasPoints && shown !== null
 
   return (
     <section className="plan-area" aria-label={`Plano de ${floor.name}`}>
-      {points.loading && <StatusMessage kind="loading" message="Cargando el plano…" />}
-      {points.error && <StatusMessage kind="error" message={points.error} onRetry={points.reload} />}
-      {points.data?.length === 0 && <StatusMessage kind="empty" message="Este piso no tiene puntos de medición." />}
-      {points.data && points.data.length > 0 && (
-        <FloorPlan
-          floor={floor}
-          points={points.data}
-          categoryOf={noCategory}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
+      {(points.loading || measurements.loading) && <StatusMessage kind="loading" message="Cargando el plano…" />}
+      {error && (
+        <StatusMessage
+          kind="error"
+          message={error}
+          onRetry={() => {
+            points.reload()
+            measurements.reload()
+          }}
         />
+      )}
+      {!points.loading && !error && points.data?.length === 0 && (
+        <StatusMessage kind="empty" message="Este piso no tiene puntos de medición." />
+      )}
+      {ready && points.data && (
+        <>
+          <div className="plan-actions">
+            {!refreshing && <Summary categories={points.data.map((p) => categoryOf(p.id))} />}
+            <button type="button" onClick={measurements.reload}>
+              Actualizar
+            </button>
+          </div>
+          {!refreshing && points.data.every((p) => categoryOf(p.id) === null) && (
+            <StatusMessage
+              kind="empty"
+              message={`Todavía no hay mediciones en la fase «${phaseLabel}» en este piso.`}
+            />
+          )}
+          <div className={refreshing ? 'plan-wrap refreshing' : 'plan-wrap'} aria-busy={refreshing}>
+            <FloorPlan
+              floor={floor}
+              points={points.data}
+              categoryOf={categoryOf}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </div>
+        </>
       )}
       <Legend />
     </section>
