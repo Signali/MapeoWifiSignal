@@ -131,7 +131,7 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 
 ## Puntos (segundo recurso) y pisos (solo lectura)
 
-`/api/v1/points` con `GET ?floor_id=`, `GET /:id`, `POST`, `PATCH` y `DELETE`, y `GET /api/v1/floors?building_id=` (contrato §5, filas 8 a 13). Mismo molde que edificios:
+`/api/v1/points` con `GET ?floor_id=`, `GET /:id`, `GET /by-tag/:nfc_uid`, `POST`, `PATCH` y `DELETE`, y `GET /api/v1/floors?building_id=` (contrato §5, filas 8 a 14). Mismo molde que edificios:
 
 | Capa | Archivo | Qué hace |
 |---|---|---|
@@ -142,6 +142,7 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 | Repositorio | `repositories/points.ts`, `repositories/floors.ts` | `JOIN` con `buildings` y el filtro `VISIBLE` de edificios en lectura; `org_id` del edificio en `UPDATE`/`DELETE`. `code` repetido en el piso y `nfc_uid` repetido → `409` vía `query()` |
 
 - Orden de las respuestas: `401 → 403 → 400 → 404 → 422 → 409`. Si un punto queda fuera del piso y además está repetido, gana el `422` (se valida antes de escribir).
+- **Tira NFC → punto (Hito 3, fila 14):** `GET /api/v1/points/by-tag/:nfc_uid` lo usa la app al leer una tira. Devuelve el punto con su `floor` y su `building`. Se declara **antes** de `/:id` en `routes/points.ts` (si no, `by-tag` se leería como un id). El UID se acepta en minúsculas o mayúsculas, sin separadores (`400` si no es hexadecimal o pasa de 32); desconocido, de otra organización o de un edificio no asignado al cliente → `404 "Tira NFC no registrada"`. `findByTag` reutiliza la visibilidad de `findById` y arma `floor` y `building` con `json_build_object`.
 - Los pisos no se crean ni se editan por la API, así que leer sus medidas y después escribir no abre una carrera.
 - Tests: `tests/points.test.ts`, con los mismos datos propios que edificios (otra organización, cliente sin asignaciones, asignación cruzada) más un edificio de la organización 1 **no asignado** al cliente, con piso y punto.
 

@@ -3,13 +3,15 @@ import * as points from '../controllers/points.ts';
 import { authenticate, requireRole } from '../middlewares/auth.ts';
 import { validate } from '../middlewares/validate.ts';
 import { idParams, noQuery } from '../schemas/common.ts';
-import { createPointBody, pointsQuery, updatePointBody } from '../schemas/points.ts';
+import { byTagParams, createPointBody, pointsQuery, updatePointBody } from '../schemas/points.ts';
 
-// Contrato §5 filas 9 a 13. Leen todos los roles (el service filtra lo que ve el cliente);
+// Contrato §5 filas 9 a 14. Leen todos los roles (el service filtra lo que ve el cliente);
 // crean y editan admin y tecnico; borra solo admin. Orden: authenticate → requireRole → validate.
 export const pointsRouter = Router();
 
 pointsRouter.get('/', authenticate, validate({ query: pointsQuery }), points.list);
+// Antes de /:id: si no, "by-tag" se leería como un id.
+pointsRouter.get('/by-tag/:nfc_uid', authenticate, validate({ params: byTagParams, query: noQuery }), points.getByTag);
 pointsRouter.get('/:id', authenticate, validate({ params: idParams, query: noQuery }), points.getById);
 pointsRouter.post(
   '/',
