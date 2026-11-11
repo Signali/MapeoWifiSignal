@@ -27,6 +27,9 @@ Los repositorios consultan con `query()` de `db.ts`, no con `pool.query`. `query
 | `floors_building_id_fkey` | No se puede borrar: el edificio tiene pisos asociados |
 | `points_floor_code_key` | Ya existe un punto con ese código en el piso |
 | `points_nfc_uid_key` | La tira NFC ya está asociada a otro punto |
+| `measurements_point_id_fkey` | El punto tiene mediciones y no se puede borrar (**por llamada**, solo en `points.remove`) |
+
+`query(text, values, conflicts)` recibe un tercer parámetro opcional con constraints que valen solo para esa llamada, y se suman al mapa global. Se usa para una FK que sí se crea por la API: `measurements.point_id` salta al borrar un punto con mediciones (`409`), pero también al insertar una medición con un punto inexistente (que no es un conflicto), así que solo `points.remove` la mapea.
 
 El mapa usa solo el nombre de la constraint. Una FK da `23503` tanto al borrar el padre como al insertar un hijo con un padre inexistente, así que **solo se mapea una FK cuyo único caso posible por la API sea borrar el padre** (hoy `floors_building_id_fkey`: los pisos no se crean por la API). Para un hijo que sí se crea (`points.floor_id`), el service comprueba antes que el padre exista y sea visible (`404`), y la FK no va al mapa (aplicado en `services/points.ts`).
 

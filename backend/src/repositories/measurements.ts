@@ -55,6 +55,19 @@ export async function findById(id: number, scope: ReadScope): Promise<Measuremen
   return rows[0];
 }
 
+// Anula (no borra): false si no hay una medición vigente con ese id en la organización
+// (no existe, es de otra o ya estaba anulada: el service distingue).
+export async function voidMeasurement(id: number, orgId: number, userId: number, reason: string): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE measurements m SET voided_at = now(), void_reason = $3, voided_by = $4
+     FROM points p, floors f, buildings b
+     WHERE m.id = $1 AND p.id = m.point_id AND f.id = p.floor_id AND b.id = f.building_id
+       AND b.org_id = $2 AND m.voided_at IS NULL`,
+    [id, orgId, reason, userId],
+  );
+  return rowCount === 1;
+}
+
 // Un elemento por cada punto visible del piso, ordenado por punto, con su última medición
 // válida (no anulada) de esa fase: la de measured_at más reciente y, a igual fecha, la de mayor
 // id. Sin medición, todo salvo `point_id` llega null (LEFT JOIN).

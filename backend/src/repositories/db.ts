@@ -19,17 +19,25 @@ const CONFLICTS: Record<string, string> = {
 
 // pool.query + traducción de conflictos. Una constraint fuera del mapa sigue siendo
 // un error inesperado (500): agregar aquí la fila cuando el contrato la define.
-export async function query<R extends pg.QueryResultRow>(text: string, values: unknown[] = []): Promise<pg.QueryResult<R>> {
+// `conflicts` suma constraints solo para esa llamada: una FK como measurements_point_id_fkey
+// es un 409 al borrar el punto, pero también salta al insertar una medición con un punto
+// inexistente (ahí no es un conflicto), así que no puede ir al mapa global.
+export async function query<R extends pg.QueryResultRow>(
+  text: string,
+  values: unknown[] = [],
+  conflicts: Record<string, string> = {},
+): Promise<pg.QueryResult<R>> {
   try {
     return await pool.query<R>(text, values);
   } catch (error) {
+    const known = { ...CONFLICTS, ...conflicts };
     if (
       error instanceof pg.DatabaseError &&
       (error.code === '23505' || error.code === '23503') &&
       error.constraint !== undefined &&
-      Object.hasOwn(CONFLICTS, error.constraint)
+      Object.hasOwn(known, error.constraint)
     ) {
-      throw new AppError('conflict', CONFLICTS[error.constraint]);
+      throw new AppError('conflict', known[error.constraint]);
     }
     throw error;
   }
