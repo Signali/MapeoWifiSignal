@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { bodyId } from './common.ts';
+import { bodyId, textId } from './common.ts';
 
 const POINT_ID = 'point_id es obligatorio y debe ser entero';
 const PHASE = 'phase debe ser antes o despues';
@@ -22,6 +22,12 @@ const reading = z.strictObject({
   ssid: z.string({ error: SSID }).max(32, SSID),
   rssi_dbm: z.number({ error: RSSI }).int(RSSI).min(-120, RSSI).max(0, RSSI),
   frequency_mhz: z.number({ error: FREQUENCY }).int(FREQUENCY).min(2400, FREQUENCY).max(7125, FREQUENCY),
+});
+
+// GET /measurements?floor_id=&phase= (contrato §6.16): ambos obligatorios.
+export const measurementsQuery = z.strictObject({
+  floor_id: textId('floor_id es obligatorio y debe ser entero'),
+  phase: z.enum(['antes', 'despues'], { error: PHASE }),
 });
 
 // POST /measurements (contrato §6.15). `measured_at` es opcional; su rango (422) lo revisa el

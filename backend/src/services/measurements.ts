@@ -1,4 +1,5 @@
 import { AppError } from '../errors.ts';
+import * as floors from '../repositories/floors.ts';
 import * as measurements from '../repositories/measurements.ts';
 import * as organizations from '../repositories/organizations.ts';
 import * as points from '../repositories/points.ts';
@@ -87,6 +88,30 @@ export async function create(
   const raced = await alreadyRegistered(user, body.client_uuid);
   if (!raced) throw new Error('client_uuid en conflicto, pero la medición no existe');
   return { created: false, measurement: raced };
+}
+
+// Para pintar el plano: un elemento por cada punto del piso, con su última medición válida de
+// la fase o null. Piso no visible → 404 (el mismo que en puntos).
+export async function listByFloor(
+  user: TokenUser,
+  floorId: number,
+  phase: string,
+): Promise<{ point_id: number; measurement: MeasurementOut | null }[]> {
+  const scope = readScope(user);
+  if (!(await floors.findById(floorId, scope))) throw new AppError('not_found', 'Piso no encontrado');
+  const rows = await measurements.latestByFloor(floorId, phase, scope);
+  const found = rows.filter((row) => row.id !== null);
+  const readings = found.length > 0 ? await measurements.readingsOf(found.map((row) => row.id!)) : [];
+  return rows.map((row) => ({
+    point_id: row.point_id,
+    measurement:
+      row.id === null
+        ? null
+        : toOut(
+            { id: row.id, point_id: row.point_id, phase: row.phase!, measured_at: row.measured_at!, voided_at: row.voided_at, void_reason: row.void_reason },
+            readings.filter((r) => r.measurement_id === row.id),
+          ),
+  }));
 }
 
 export async function getById(user: TokenUser, id: number): Promise<MeasurementOut> {

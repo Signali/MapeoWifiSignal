@@ -55,6 +55,33 @@ export async function findById(id: number, scope: ReadScope): Promise<Measuremen
   return rows[0];
 }
 
+// Un elemento por cada punto visible del piso, ordenado por punto, con su última medición
+// válida (no anulada) de esa fase: la de measured_at más reciente y, a igual fecha, la de mayor
+// id. Sin medición, todo salvo `point_id` llega null (LEFT JOIN).
+export type FloorRow = {
+  point_id: number;
+  id: number | null;
+  phase: MeasurementRow['phase'] | null;
+  measured_at: Date | null;
+  voided_at: Date | null;
+  void_reason: string | null;
+};
+
+export async function latestByFloor(floorId: number, phase: string, scope: ReadScope): Promise<FloorRow[]> {
+  const { rows } = await query<FloorRow>(
+    `SELECT p.id AS point_id, m.id, m.phase, m.measured_at, m.voided_at, m.void_reason
+     FROM points p JOIN floors f ON f.id = p.floor_id JOIN buildings b ON b.id = f.building_id
+     LEFT JOIN LATERAL (
+       SELECT id, point_id, phase, measured_at, voided_at, void_reason FROM measurements
+       WHERE point_id = p.id AND phase = $4 AND voided_at IS NULL
+       ORDER BY measured_at DESC, id DESC LIMIT 1) m ON true
+     WHERE ${VISIBLE} AND p.floor_id = $3
+     ORDER BY p.id`,
+    [scope.orgId, scope.assignedTo, floorId, phase],
+  );
+  return rows;
+}
+
 export async function readingsOf(ids: number[]): Promise<ReadingRow[]> {
   const { rows } = await query<ReadingRow>(
     `SELECT measurement_id, bssid, ssid, rssi_dbm, frequency_mhz FROM network_readings
