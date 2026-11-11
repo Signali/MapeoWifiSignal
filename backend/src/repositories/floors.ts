@@ -1,11 +1,21 @@
 import { type ReadScope, VISIBLE } from './buildings.ts';
 import { query } from './db.ts';
 
-export type Floor = { id: number; building_id: number; name: string; width_m: number; height_m: number };
+// `outline`: vértices [[x, y], ...] en metros; null = el rectángulo completo (lo completa el service).
+// `plan_url`: imagen del plano (/plans/...); null = sin imagen.
+export type Floor = {
+  id: number;
+  building_id: number;
+  name: string;
+  width_m: number;
+  height_m: number;
+  outline: number[][] | null;
+  plan_url: string | null;
+};
 
 // Un piso es visible si lo es su edificio (VISIBLE, con $1 = orgId y $2 = assignedTo).
 const FROM_VISIBLE = `FROM floors f JOIN buildings b ON b.id = f.building_id WHERE ${VISIBLE}`;
-const COLUMNS = 'f.id, f.building_id, f.name, f.width_m, f.height_m';
+const COLUMNS = 'f.id, f.building_id, f.name, f.width_m, f.height_m, f.outline, f.plan_url';
 
 export async function listByBuilding(buildingId: number, scope: ReadScope): Promise<Floor[]> {
   const { rows } = await query<Floor>(`SELECT ${COLUMNS} ${FROM_VISIBLE} AND f.building_id = $3 ORDER BY f.id`, [

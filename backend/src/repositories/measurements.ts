@@ -60,6 +60,8 @@ export async function findById(id: number, scope: ReadScope): Promise<Measuremen
 // id. Sin medición, todo salvo `point_id` llega null (LEFT JOIN).
 export type FloorRow = {
   point_id: number;
+  x: number; // posición del punto en el piso (metros): la usa el análisis del piso
+  y: number;
   id: number | null;
   phase: MeasurementRow['phase'] | null;
   measured_at: Date | null;
@@ -69,7 +71,7 @@ export type FloorRow = {
 
 export async function latestByFloor(floorId: number, phase: string, scope: ReadScope): Promise<FloorRow[]> {
   const { rows } = await query<FloorRow>(
-    `SELECT p.id AS point_id, m.id, m.phase, m.measured_at, m.voided_at, m.void_reason
+    `SELECT p.id AS point_id, p.x, p.y, m.id, m.phase, m.measured_at, m.voided_at, m.void_reason
      FROM points p JOIN floors f ON f.id = p.floor_id JOIN buildings b ON b.id = f.building_id
      LEFT JOIN LATERAL (
        SELECT id, point_id, phase, measured_at, voided_at, void_reason FROM measurements

@@ -9,7 +9,9 @@ import { signToken } from '../src/services/token.ts';
 // Seed: org 1, Torre Norte (id 1, asignada al cliente id 3) con el Piso 3 (id 1, 40 x 25 m)
 // y 24 puntos (P-07 = id 7); Oficinas Centro (id 2) sin pisos ni asignación.
 const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04C7DC7FBF2A81' };
-const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25 };
+// Sin contorno cargado, el piso sale con su rectángulo completo y sin imagen de plano.
+const RECT_40_25 = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 25 }, { x: 0, y: 25 }];
+const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25, outline: RECT_40_25, plan_url: null };
 const FORBIDDEN = { message: 'No tiene permiso para esta acción' };
 const BAD_ID = { message: 'El id debe ser un número entero' };
 const BUILDING_NOT_FOUND = { message: 'Edificio no encontrado' };
@@ -176,7 +178,17 @@ describe('GET /api/v1/floors?building_id= (fila 8)', () => {
   test('técnico, edificio de la org no asignado al cliente → 200', async () => {
     const res = await request(app).get(`/api/v1/floors?building_id=${ids.annexBuilding}`).set('Authorization', auth.tecnico);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([{ id: ids.annexFloor, building_id: ids.annexBuilding, name: 'Piso 1', width_m: 10, height_m: 8 }]);
+    expect(res.body).toEqual([
+      {
+        id: ids.annexFloor,
+        building_id: ids.annexBuilding,
+        name: 'Piso 1',
+        width_m: 10,
+        height_m: 8,
+        outline: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 8 }, { x: 0, y: 8 }],
+        plan_url: null,
+      },
+    ]);
   });
 
   test.each([

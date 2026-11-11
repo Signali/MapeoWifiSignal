@@ -1,6 +1,6 @@
 # Contrato de la API — SignalMap (Hitos 2 y 3)
 
-> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), unido a `main` el 2026-11-11 tras la revisión de Maximiliano; **la revisión de Gabriel sigue pendiente** (cualquier ajuste entra por un PR nuevo). **Análisis del piso** (rutas 19 a 21: mapa de calor, emisores estimados y ubicación recomendada del repetidor): propuesto el 2026-11-11, **pendiente de acuerdo con Gabriel antes de programar**.
+> **Estado:** Hito 2 acordado y validado entre los integrantes del equipo (2026-11-04). **Hito 3** (rutas 14 a 18, recursos de medición y un caso nuevo en la ruta 13): propuesto el 2026-11-10 (con `measured_at` opcional para la cola sin conexión de la app, sumado el mismo día), unido a `main` el 2026-11-11 tras la revisión de Maximiliano; **la revisión de Gabriel sigue pendiente** (cualquier ajuste entra por un PR nuevo). **Análisis del piso** (rutas 19 a 21: mapa de calor, emisores estimados y ubicación recomendada del repetidor): acordadas las rutas con Gabriel el 2026-11-11 (PR #26, unido sin su aprobación en GitHub); el mismo día se agregó el **contorno real del piso** (`outline` y `plan_url`, §4), que **Gabriel debe revisar**.
 > Versión de la API: `v1`. Toda ruta lleva el prefijo `/api/v1` (salvo `/health`).
 
 ## 1. Convenciones generales
@@ -79,8 +79,10 @@ Todo error responde con el código HTTP que corresponde y este cuerpo:
 | `name` | texto | Ej. `"Piso 3"` · único dentro del edificio (lo garantiza la base) |
 | `width_m` | número | Ancho del piso en metros (> 0) |
 | `height_m` | número | Largo del piso en metros (> 0) |
+| `outline` | arreglo | **Contorno real del edificio**: vértices `{ "x": 0, "y": 0 }` en metros, con el mismo origen que los puntos (esquina superior izquierda, `y` hacia abajo), en orden alrededor del contorno, 3 o más, dentro de `[0, width_m] × [0, height_m]`. Un edificio con forma de L, con patios o con esquinas cortadas se describe aquí. **Siempre viene**: si el piso no tiene un contorno cargado, es el rectángulo completo (`(0,0)`, `(width_m,0)`, `(width_m,height_m)`, `(0,height_m)`) |
+| `plan_url` | texto o `null` | Imagen del plano (por ejemplo `"/plans/torre-norte-p3.svg"`), en la misma URL de la web. Debe empezar con `/plans/` (solo letras, números, `.`, `_` y `-` después) y cubre el rectángulo `width_m × height_m`, con esa proporción. `null` = el piso no tiene imagen: la web dibuja solo el contorno |
 
-Los pisos se cargan con los datos de prueba; no tienen creación, edición ni borrado en este hito.
+Los pisos se cargan con los datos de prueba; no tienen creación, edición ni borrado en este hito. **Los puntos se validan contra el rectángulo** (`0 ≤ x ≤ width_m`, `0 ≤ y ≤ height_m`), no contra el contorno: una tira fuera del contorno pero dentro del rectángulo se acepta. Los cálculos de §4 «Análisis del piso» sí usan el contorno.
 
 ### Punto de medición (`point`)
 | Campo | Tipo | Reglas |
@@ -142,9 +144,9 @@ Las rutas 19 a 21 **calculan** a partir de las mediciones; no guardan nada. Para
 
 **Mapa de calor (IDW, distancia inversa ponderada).** El valor de una celda es `Σ(vᵢ / dᵢ²) / Σ(1 / dᵢ²)` sobre las muestras a ≤ 8 m del centro de la celda, con `vᵢ` el `best_rssi_dbm` de cada punto (o −100 dBm si es `sin_senal`) y `dᵢ` la distancia en metros. Si una muestra está a menos de 1 cm del centro, su valor se toma tal cual. Una celda sin ninguna muestra a ≤ 8 m queda **sin datos** (`null`). El valor se redondea a 1 decimal y la categoría se calcula con esos umbrales (los mismos de la medición, aplicados al valor redondeado): `"buena"` (> −65), `"regular"` (−65 a −70, ambos incluidos), `"debil"` (< −70). Una celda interpolada **nunca** es `"sin_senal"`.
 
-**Emisor (trilateración).** La posición del teléfono se conoce por la tira NFC; lo desconocido es la posición del emisor. Con el modelo `RSSI(d) = P0 − 10·n·log10(d)` (`P0`: señal a 1 m; `n`: exponente de pérdida) se ajustan por mínimos cuadrados la posición `(x, y)` del emisor, `P0` y, con 4 o más puntos, `n`. Con 3 puntos hay más incógnitas que ecuaciones, así que `n` se fija en 3,0. La posición se limita al piso (si el emisor real está fuera, la estimación queda en el borde más cercano).
+**Emisor (trilateración).** La posición del teléfono se conoce por la tira NFC; lo desconocido es la posición del emisor. Con el modelo `RSSI(d) = P0 − 10·n·log10(d)` (`P0`: señal a 1 m; `n`: exponente de pérdida) se ajustan por mínimos cuadrados la posición `(x, y)` del emisor, `P0` y, con 4 o más puntos, `n`. Con 3 puntos hay más incógnitas que ecuaciones, así que `n` se fija en 3,0. La posición se limita al **contorno** del piso (`outline`; el rectángulo, si no tiene uno propio): si el emisor real está fuera, la estimación queda en el punto del contorno que mejor ajusta.
 
-**Ubicación recomendada del repetidor.** Se prueban como candidatas los centros de la grilla. Una candidata solo es válida si el modelo (con el `P0` y el `n` del emisor de referencia) predice, desde el emisor, señal `"buena"` en ese lugar: así el repetidor se alimenta bien. Entre las válidas se elige la que **más puntos mejora**: de los puntos medidos en «antes» cuya categoría **no** es `"buena"`, cuenta cuántos pasarían a `"buena"` con el repetidor (misma potencia y mismo entorno que el emisor). En empate gana la candidata con mayor señal predicha desde el emisor; luego la de menor `y`; luego la de menor `x`.
+**Ubicación recomendada del repetidor.** Se prueban como candidatas los centros de la grilla **que caen dentro del contorno del piso** (el repetidor se instala dentro del edificio). Una candidata solo es válida si el modelo (con el `P0` y el `n` del emisor de referencia) predice, desde el emisor, señal `"buena"` en ese lugar: así el repetidor se alimenta bien. Entre las válidas se elige la que **más puntos mejora**: de los puntos medidos en «antes» cuya categoría **no** es `"buena"`, cuenta cuántos pasarían a `"buena"` con el repetidor (misma potencia y mismo entorno que el emisor). En empate gana la candidata con mayor señal predicha desde el emisor; luego la de menor `y`; luego la de menor `x`.
 
 **Límites del modelo (por eso el resultado es una estimación).** No ve paredes ni pisos distintos; supone un repetidor con la misma potencia (`P0`) y el mismo exponente (`n`) que el emisor; con puntos en línea recta hay dos posiciones simétricas igual de buenas y el resultado no distingue cuál es la real; la precisión depende de cuántos puntos se midieron y de cuánto ruido hay en las lecturas (el error medido en el piso real se informa en el documento final, no aquí). Toda respuesta de las rutas 20 y 21 se presenta como **estimada**.
 
@@ -273,7 +275,9 @@ Comprueba que el servicio está arriba. No requiere token.
 ```json
 200 OK
 [
-  { "id": 1, "building_id": 1, "name": "Piso 3", "width_m": 40.0, "height_m": 25.0 }
+  { "id": 1, "building_id": 1, "name": "Piso 3", "width_m": 40.0, "height_m": 25.0,
+    "outline": [ { "x": 0, "y": 0 }, { "x": 40, "y": 0 }, { "x": 40, "y": 25 }, { "x": 0, "y": 25 } ],
+    "plan_url": null }
 ]
 ```
 | Caso | Respuesta |
@@ -452,7 +456,7 @@ Anula la medición (no la borra).
 | Ya estaba anulada | `409 { "message": "La medición ya está anulada" }` |
 
 ### 19. `GET /api/v1/heatmap?floor_id=1&phase=antes`
-Mapa de calor del piso en esa fase (IDW, ver «Análisis del piso» en §4). Devuelve **todas** las celdas de la grilla cuyo centro cae dentro del piso, ordenadas por fila (`y` ascendente) y, dentro de la fila, por `x` ascendente. El ejemplo es el Piso 3 (40 × 25 m) con 3 puntos medidos; `cells` se acorta aquí, pero la respuesta real trae las 1 000 celdas (40 × 25).
+Mapa de calor del piso en esa fase (IDW, ver «Análisis del piso» en §4). Devuelve **todas** las celdas de la grilla cuyo centro cae dentro del **contorno** del piso (`outline`), ordenadas por fila (`y` ascendente) y, dentro de la fila, por `x` ascendente. En un edificio que no es un rectángulo, las celdas de afuera no se devuelven: `cols` y `rows` describen la grilla del rectángulo completo, y la cantidad de celdas puede ser menor que `cols × rows`. El ejemplo es el Piso 3 (40 × 25 m, sin contorno propio, es decir rectángulo) con 3 puntos medidos; `cells` se acorta aquí, pero la respuesta real trae las 1 000 celdas (40 × 25).
 ```json
 200 OK
 {
@@ -490,7 +494,7 @@ Posición estimada de cada emisor (cada BSSID de la red de la organización) en 
     "rmse_db": 2.4, "points_used": 3, "estimated": true }
 ]
 ```
-- `x`, `y` (metros, 1 decimal): posición estimada, dentro del piso.
+- `x`, `y` (metros, 1 decimal): posición estimada, dentro del contorno del piso.
 - `p0_dbm` y `n` (1 decimal): parámetros del modelo ajustados. `n_fixed` es `true` cuando `n` se fijó en 3,0 por haber solo 3 puntos.
 - `rmse_db` (1 decimal): error cuadrático medio, en dB, entre las lecturas y lo que predice el modelo. Cuanto menor, mejor ajusta; el cliente puede mostrarlo como confianza.
 - `points_used`: puntos que aportaron una lectura de ese BSSID.
@@ -557,7 +561,7 @@ Ubicación recomendada para instalar el repetidor (ver «Análisis del piso» en
 ## 8. Fuera de este contrato (próximos hitos)
 
 - Creación y gestión de usuarios y de sus edificios asignados (hoy solo por datos de prueba).
-- Creación y edición de pisos y planos, y del SSID de la organización (hoy por datos de prueba).
+- Creación y edición de pisos, de su contorno (`outline`) y de la imagen del plano (`plan_url`), y del SSID de la organización (hoy por datos de prueba). Un contorno cóncavo con vértices que se cruzan no se valida: lo carga quien prepara los datos.
 - Reporte PDF del piso (se agrega al contrato solo si se implementa).
 - Parámetros de consulta para ajustar el análisis (radio, potencia del IDW, tamaño de celda): hoy son constantes fijas (§4).
 - Renovación de token (refresh) y vencimiento según turno laboral.

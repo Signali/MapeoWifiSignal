@@ -11,12 +11,20 @@ export interface Building {
   name: string
 }
 
+export interface Vertex {
+  x: number
+  y: number
+}
+
 export interface Floor {
   id: number
   building_id: number
   name: string
   width_m: number
   height_m: number
+  // Contorno real del edificio (siempre viene; el rectángulo si no tiene uno propio) e imagen del plano.
+  outline: Vertex[]
+  plan_url: string | null
 }
 
 export interface Point {

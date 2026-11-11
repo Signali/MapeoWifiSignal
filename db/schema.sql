@@ -93,6 +93,14 @@ CREATE TABLE floors (
         CHECK (name = btrim(name) AND char_length(name) >= 1),
     width_m     numeric(7,2) NOT NULL CHECK (width_m  > 0),
     height_m    numeric(7,2) NOT NULL CHECK (height_m > 0),
+    -- Contorno del piso: arreglo de vértices [[x, y], ...] en metros, mismo origen que los puntos, con 3 o
+    -- más vértices dentro de [0, width_m] x [0, height_m]. NULL = el rectángulo completo (lo completa la API).
+    outline     jsonb
+        CHECK (outline IS NULL OR (jsonb_typeof(outline) = 'array' AND jsonb_array_length(outline) >= 3)),
+    -- Imagen del plano, servida por la web desde /plans/ (frontend/public/plans/). NULL = sin imagen.
+    -- La imagen cubre el rectángulo width_m x height_m (misma proporción).
+    plan_url    varchar(200)
+        CHECK (plan_url IS NULL OR plan_url ~ '^/plans/[A-Za-z0-9._-]+$'),
     CONSTRAINT floors_building_name_key UNIQUE (building_id, name)
 );
 
