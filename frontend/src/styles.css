@@ -91,6 +91,37 @@ select, input[type='email'], input[type='password'] {
 .plan-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
 .summary { margin: 0; }
 .plan-wrap.refreshing { opacity: 0.45; }
+
+/* Plano y detalle: dos columnas desde 900 px, una en pantallas angostas */
+.plan-grid { display: grid; gap: 1rem; }
+.plan-grid > * { min-width: 0; }
+@media (min-width: 900px) {
+  .plan-grid { grid-template-columns: minmax(0, 1fr) 20rem; align-items: start; }
+}
+.detail { border: 1px solid var(--acento); border-radius: 6px; padding: 0.75rem 1rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.detail h2 { margin: 0; font-family: var(--f-mono); font-size: 1.25rem; color: var(--titulo); }
+.detail p { margin: 0; }
+.detail-category { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.detail-meta, .detail-empty { color: var(--acento); }
+.readings { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.readings caption { text-align: left; color: var(--titulo); font-weight: 500; padding-bottom: 0.25rem; }
+.readings th, .readings td { text-align: left; padding: 0.25rem 0.4rem 0.25rem 0; border-bottom: 1px solid #E3E5EA; overflow-wrap: anywhere; }
+.readings th { color: var(--titulo); }
+@media (min-width: 481px) and (max-width: 899px) {
+  .readings th, .readings td:not(:first-child) { white-space: nowrap; overflow-wrap: normal; }
+}
+/* Panel angosto (teléfono, o la columna de 20 rem en pantalla ancha): cada lectura es una ficha con sus
+   etiquetas, porque la tabla de 4 columnas no cabe. En el ancho intermedio el panel va bajo el plano y sí cabe. */
+@media (max-width: 480px), (min-width: 900px) {
+  .readings caption { display: block; }
+  .readings thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .readings, .readings tbody, .readings tr, .readings td { display: block; }
+  .readings tr { padding: 0.4rem 0; border-bottom: 1px solid #E3E5EA; }
+  .readings td { display: flex; gap: 0.5rem; border: 0; padding: 0.05rem 0; }
+  .readings td::before { content: attr(data-label); flex: 0 0 4.5rem; color: var(--titulo); font-weight: 500; }
+}
+.readings .mono { font-family: var(--f-mono); font-size: 0.75rem; }
 .plan { width: 100%; height: auto; display: block; overflow: visible; }
 .plan .border { fill: #fff; stroke: var(--acento); stroke-width: 0.15; }
 .plan .grid line { stroke: #E3E5EA; stroke-width: 0.06; }

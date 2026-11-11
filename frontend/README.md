@@ -26,5 +26,5 @@ La web no tiene tests automatizados en este hito; el control es `typecheck`, `bu
 | `hooks/useRequest.ts` | Carga con estados de espera y error; ignora respuestas viejas |
 | `selection.ts` | Edificio, piso y fase en la URL (`?building_id=1&floor_id=1&phase=antes`): F5 conserva la selección |
 | `categories.ts` | Nombre, letra y color de cada categoría (solo presentación; los umbrales viven en el servicio) |
-| `components/` | `LoginView`, `FloorView`, `FloorPlan` (plano SVG a escala), `Legend` (leyenda de categorías), `StatusMessage` |
+| `components/` | `LoginView`, `FloorView`, `FloorPlan` (plano SVG a escala), `Legend` (leyenda de categorías), `PointDetail` (detalle de un punto: categoría, nivel, fecha y redes captadas; Escape lo cierra), `StatusMessage` |
 | `styles.css` | Paleta y fuentes del documento técnico (en `assets/fonts/`) |
