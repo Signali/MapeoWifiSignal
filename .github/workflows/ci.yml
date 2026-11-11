@@ -57,7 +57,9 @@ jobs:
         with:
           node-version-file: backend/.nvmrc
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Crear rol y base de tests (db/README.md, paso 1)
         env:
@@ -71,6 +73,17 @@ jobs:
         env:
           PGPASSWORD: ${{ env.DB_PASSWORD }}
         run: psql -h localhost -U "$DB_USER" -d "$DB_NAME_TEST" -v ON_ERROR_STOP=1 -f ../db/schema.sql
+
+      # La web se compila antes de los tests: Express sirve frontend/dist (tests/web.test.ts).
+      - name: Web - instalar dependencias
+        working-directory: frontend
+        run: npm ci
+      - name: Web - revisar tipos
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Web - compilar
+        working-directory: frontend
+        run: npm run build
 
       - run: npm ci
       - run: npm run typecheck

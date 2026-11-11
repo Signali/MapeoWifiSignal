@@ -16,7 +16,7 @@ Autenticación (JWT), validación de entrada y manejo centralizado de errores. S
 
 `notFound` va después de todas las rutas: ruta o verbo inexistente → `404 "Ruta no encontrada"`.
 
-En `app.ts`, las rutas de la API van **antes** de `notFound` y `errorHandler`.
+En `app.ts`, las rutas de la API van **antes** de `notFound` y `errorHandler`. Después de ellas, `app.use('/api', notFound)` mantiene el `404` JSON de todo `/api` sin ruta y luego `express.static` sirve la web compilada.
 
 ## `validate.ts`: validación con Zod
 
