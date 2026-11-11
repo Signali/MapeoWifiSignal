@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { errorHandler, notFound } from './middlewares/error-handler.ts';
 import { authRouter } from './routes/auth.ts';
@@ -19,6 +20,11 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/buildings', buildingsRouter);
 app.use('/api/v1/floors', floorsRouter);
 app.use('/api/v1/points', pointsRouter);
+
+// Todo /api sin ruta sigue siendo 404 JSON, aunque exista la web compilada.
+app.use('/api', notFound);
+// La web compilada (frontend/dist). Si no existe (tests, desarrollo), no hace nada.
+app.use(express.static(fileURLToPath(new URL('../../frontend/dist', import.meta.url))));
 
 // Las rutas de la API van arriba de estas dos líneas.
 app.use(notFound);

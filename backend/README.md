@@ -87,6 +87,15 @@ Si una petición no termina en **8 s**, corta las conexiones y sale con código 
 | `tecnico@demo.cl` | `tecnico` | `SEED_TECNICO_PASSWORD` | Todos los de la organización |
 | `cliente@demo.cl` | `cliente` | `SEED_CLIENTE_PASSWORD` | Solo «Torre Norte» |
 
+## La web
+
+La web (`frontend/`) se usa de dos formas:
+
+- **En desarrollo:** `npm run dev` en `frontend/` (`http://localhost:5173`). Vite redirige `/api` al servicio, que debe estar en `:3000`.
+- **En la demo:** un solo proceso, sin CORS. `npm run build` en `frontend/` y `npm start` en `backend/` → `http://localhost:3000/` muestra la web y `/api/v1/...` la API.
+
+Express sirve `frontend/dist` después de las rutas de la API (`src/app.ts`). Si `dist/` no existe (tests, desarrollo), no hace nada. No hay fallback a `index.html`: la web no tiene rutas propias, la selección va en la URL como parámetros de consulta. Todo `/api` sin ruta sigue respondiendo `404` JSON.
+
 ## Autenticación (JWT)
 
 `POST /api/v1/auth/login` con `{ "email", "password" }` devuelve un token que se envía en cada petición como `Authorization: Bearer <token>` (contrato §6.2 y §7).
@@ -153,8 +162,9 @@ Cada push y cada Pull Request a `main` corre [`.github/workflows/ci.yml`](../.gi
 
 1. Levanta un **PostgreSQL 17** vacío. El superusuario solo crea el rol `signalmap_user` (sin superusuario) y la base `signalmap_test`, como en el paso 1 de [`db/README.md`](../db/README.md).
 2. Crea las tablas con `db/schema.sql` (`psql -v ON_ERROR_STOP=1`) como `signalmap_user`.
-3. Instala Node (versión de `.nvmrc`) y las dependencias con `npm ci` (exactas, desde `package-lock.json`).
-4. Corre `npm run typecheck` y `npm test`.
+3. Instala Node (versión de `.nvmrc`), y en `frontend/` corre `npm ci`, `npm run typecheck` y `npm run build` (la web compilada la sirve Express y la prueba `tests/web.test.ts`).
+4. Instala las dependencias del backend con `npm ci` (exactas, desde `package-lock.json`).
+5. Corre `npm run typecheck` y `npm test`.
 
 Las variables de entorno del CI están en el mismo YAML, con **valores falsos** (`ci_*_falsa`). La base existe solo durante el run, así que no hay nada que proteger y no se usan GitHub Secrets. Si `src/config.ts` o el seed empiezan a exigir una variable nueva, hay que agregarla también ahí (y en `.env.example`), o el CI falla al arrancar.
 
