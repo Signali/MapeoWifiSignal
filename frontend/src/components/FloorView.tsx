@@ -9,19 +9,20 @@ import type { Selection } from '../selection.ts'
 import { AnalysisPanel } from './AnalysisPanel.tsx'
 import { FloorPlan } from './FloorPlan.tsx'
 import { Legend } from './Legend.tsx'
+import { PhaseSwitch, PHASES } from './PhaseSwitch.tsx'
+import { PointChips } from './PointChips.tsx'
 import { PointDetail } from './PointDetail.tsx'
 import { StatusMessage } from './StatusMessage.tsx'
 import { Summary } from './Summary.tsx'
+import { ThemeToggle } from './ThemeToggle.tsx'
 
 interface Props {
   session: Session
   onLogout: () => void
 }
 
-const PHASES: { value: Phase; label: string }[] = [
-  { value: 'antes', label: 'Antes' },
-  { value: 'despues', label: 'Después' },
-]
+// Medida del piso para el cajetín: «40 × 25 m».
+const meters = (value: number) => value.toLocaleString('es-CL', { maximumFractionDigits: 2 })
 
 export function FloorView({ session, onLogout }: Props) {
   const [sel, setSel] = useState<Selection>(readSelection)
@@ -55,15 +56,6 @@ export function FloorView({ session, onLogout }: Props) {
     <>
       <header className="topbar">
         <strong className="brand">SignalMap</strong>
-        <span className="who">
-          {session.email} · {session.role}
-        </span>
-        <button type="button" onClick={onLogout}>
-          Cerrar sesión
-        </button>
-      </header>
-
-      <main className="floorview">
         <section className="controls" aria-label="Selección de piso">
           <div className="field">
             {buildings.data && buildings.data.length > 0 ? (
@@ -119,31 +111,40 @@ export function FloorView({ session, onLogout }: Props) {
             </div>
           )}
 
-          <fieldset className="field phase">
-            <legend>Fase</legend>
-            {PHASES.map((p) => (
-              <label key={p.value} className="radio">
-                <input
-                  type="radio"
-                  name="phase"
-                  value={p.value}
-                  checked={sel.phase === p.value}
-                  onChange={() => setSel({ ...sel, phase: p.value })}
-                />
-                {p.label}
-              </label>
-            ))}
-          </fieldset>
         </section>
+        <span className="who">
+          {session.email} · {session.role}
+        </span>
+        <ThemeToggle />
+        <button type="button" className="ghost" onClick={onLogout}>
+          Cerrar sesión
+        </button>
+      </header>
 
+      <main className="floorview">
         {/* key: cada piso parte con estado nuevo (sin puntos, error ni selección del anterior). */}
-        {floor && <PlanArea key={floor.id} floor={floor} phase={sel.phase} />}
+        {floor && (
+          <PlanArea
+            key={floor.id}
+            floor={floor}
+            buildingName={buildings.data?.find((b) => b.id === buildingId)?.name ?? ''}
+            phase={sel.phase}
+            onPhase={(phase) => setSel({ ...sel, phase })}
+          />
+        )}
       </main>
     </>
   )
 }
 
-function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
+interface PlanAreaProps {
+  floor: Floor
+  buildingName: string
+  phase: Phase
+  onPhase: (phase: Phase) => void
+}
+
+function PlanArea({ floor, buildingName, phase, onPhase }: PlanAreaProps) {
   const [selectedId, setSelectedId] = useState<number>()
   const points = useRequest<Point[]>(() => listPoints(floor.id), [floor.id])
   const measurements = useRequest<FloorMeasurement[]>(() => listMeasurements(floor.id, phase), [floor.id, phase])
@@ -188,11 +189,23 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
   const ready = !error && hasPoints && shown !== null
   const selectedPoint = points.data?.find((p) => p.id === selectedId)
   const planRef = useRef<HTMLDivElement>(null)
+  const analysisRef = useRef<HTMLDivElement>(null)
   // Al cerrar, el foco vuelve al punto seleccionado (el botón «Cerrar» desaparece y, si no, se perdería).
   const closeDetail = useCallback(() => {
     planRef.current?.querySelector<SVGGElement>('.point.selected')?.focus()
     setSelectedId(undefined)
   }, [])
+  // «Ver dónde instalar el repetidor»: lleva al análisis (donde está la ubicación estimada) y le da el foco.
+  const goToAnalysis = () => {
+    const el = analysisRef.current
+    if (!el) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    el.focus({ preventScroll: true })
+  }
+
+  const measuredCount = points.data ? points.data.filter((p) => categoryOf(p.id) !== null).length : 0
+  const detailShown = selectedPoint !== undefined && !refreshing
 
   return (
     <section className="plan-area" aria-label={`Plano de ${floor.name}`}>
@@ -211,62 +224,123 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
         <StatusMessage kind="empty" message="Este piso no tiene puntos de medición." />
       )}
       {ready && points.data && (
-        <>
-          <div className="plan-actions">
-            {!refreshing && <Summary categories={points.data.map((p) => categoryOf(p.id))} />}
-            <button
-              type="button"
-              onClick={() => {
-                measurements.reload()
-                reloadAnalysis()
-              }}
-            >
-              Actualizar
-            </button>
+        <div className="floor-layout">
+          <div className="phase-slot">
+            <PhaseSwitch phase={phase} onChange={onPhase} />
           </div>
-          {!refreshing && points.data.every((p) => categoryOf(p.id) === null) && (
-            <StatusMessage
-              kind="empty"
-              message={`Todavía no hay mediciones en la fase «${phaseLabel}» en este piso.`}
-            />
-          )}
-          <div className="plan-grid">
-            <div ref={planRef} className={refreshing ? 'plan-wrap refreshing' : 'plan-wrap'} aria-busy={refreshing}>
-              <FloorPlan
-                floor={floor}
-                points={points.data}
-                categoryOf={categoryOf}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                heat={showHeat && heatLayer ? { cells: heatLayer.cells, cellM: heatLayer.cell_m } : null}
-                emitters={showMarkers ? (emittersLayer ?? []) : []}
-                repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
-              />
+
+          <div className="main">
+            <div className="sheet">
+              <div ref={planRef} className={refreshing ? 'plan-wrap refreshing' : 'plan-wrap'} aria-busy={refreshing}>
+                <FloorPlan
+                  floor={floor}
+                  points={points.data}
+                  categoryOf={categoryOf}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  heat={showHeat && heatLayer ? { cells: heatLayer.cells, cellM: heatLayer.cell_m } : null}
+                  emitters={showMarkers ? (emittersLayer ?? []) : []}
+                  repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
+                />
+              </div>
+              <dl className="cajetin">
+                <div>
+                  <dt>Edificio y piso</dt>
+                  <dd>{buildingName ? `${buildingName}, ${floor.name}` : floor.name}</dd>
+                </div>
+                <div>
+                  <dt>Fase</dt>
+                  <dd>{phaseLabel}</dd>
+                </div>
+                <div>
+                  <dt>Puntos medidos</dt>
+                  <dd className="mono">
+                    {measuredCount} de {points.data.length}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Medida del piso</dt>
+                  <dd className="mono">
+                    {meters(floor.width_m)} × {meters(floor.height_m)} m
+                  </dd>
+                </div>
+              </dl>
+              <div className="sheet-foot">
+                <span className="rule">
+                  <span>
+                    <i />
+                    medido
+                  </span>
+                  <span>
+                    <i className="dashed" />
+                    estimado o sin medir
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    measurements.reload()
+                    reloadAnalysis()
+                  }}
+                >
+                  Actualizar
+                </button>
+              </div>
             </div>
-            {/* Mientras llegan las mediciones de la fase nueva, `shown` aún trae las de la anterior:
-                el panel espera para no mostrar una fase con los datos de otra. */}
-            {selectedPoint && !refreshing && (
-              <PointDetail
-                point={selectedPoint}
-                measurement={shown?.find((m) => m.point_id === selectedPoint.id)?.measurement ?? null}
-                phaseLabel={phaseLabel ?? ''}
-                onClose={closeDetail}
+
+            {!refreshing && points.data.every((p) => categoryOf(p.id) === null) && (
+              <StatusMessage
+                kind="empty"
+                message={`Todavía no hay mediciones en la fase «${phaseLabel}» en este piso.`}
               />
             )}
+            {analysisError && <StatusMessage kind="error" message={analysisError} onRetry={reloadAnalysis} />}
+
+            <div className={detailShown ? 'below two' : 'below'}>
+              {/* Mientras llegan las mediciones de la fase nueva, `shown` aún trae las de la anterior:
+                  el panel espera para no mostrar una fase con los datos de otra. */}
+              {detailShown && (
+                <PointDetail
+                  point={selectedPoint}
+                  measurement={shown?.find((m) => m.point_id === selectedPoint.id)?.measurement ?? null}
+                  phaseLabel={phaseLabel ?? ''}
+                  onClose={closeDetail}
+                />
+              )}
+              <div ref={analysisRef} className="analysis-wrap" tabIndex={-1}>
+                <AnalysisPanel
+                  emitters={emittersLayer}
+                  recommendation={recommendationLayer}
+                  loading={emitters.loading || recommendation.loading}
+                  showHeat={showHeat}
+                  showMarkers={showMarkers}
+                  onShowHeat={setShowHeat}
+                  onShowMarkers={setShowMarkers}
+                />
+              </div>
+            </div>
           </div>
-          {analysisError && <StatusMessage kind="error" message={analysisError} onRetry={reloadAnalysis} />}
-          <AnalysisPanel
-            emitters={emittersLayer}
-            recommendation={recommendationLayer}
-            loading={emitters.loading || recommendation.loading}
-            showHeat={showHeat}
-            showMarkers={showMarkers}
-            onShowHeat={setShowHeat}
-            onShowMarkers={setShowMarkers}
-          />
-        </>
+
+          <div className="side-rest">
+            <section aria-label="Leyenda de señal">
+              <h3>Leyenda de señal</h3>
+              <Legend />
+            </section>
+            <section aria-label="Resumen del piso">
+              <h3>Resumen de {floor.name}</h3>
+              {!refreshing && <Summary categories={points.data.map((p) => categoryOf(p.id))} />}
+            </section>
+            <section aria-label="Puntos del piso">
+              <h3>Puntos del piso</h3>
+              <PointChips points={points.data} categoryOf={categoryOf} selectedId={selectedId} onSelect={setSelectedId} />
+            </section>
+            <button type="button" className="cta" onClick={goToAnalysis}>
+              Ver dónde instalar el repetidor
+            </button>
+          </div>
+        </div>
       )}
-      <Legend />
     </section>
   )
 }
