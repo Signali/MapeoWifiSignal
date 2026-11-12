@@ -36,6 +36,12 @@ Dos formas de usar la app:
 | Cable USB | `http://127.0.0.1:3000` (por defecto) | `adb reverse tcp:3000 tcp:3000` |
 | WiFi, sin cable | `https://<IP del PC>:<puerto>` | Servicio con HTTPS: [`backend/README.md`](../backend/README.md), sección *HTTPS* |
 
+## Diseño
+
+Misma identidad que la web: paleta «aurora» en tema claro y oscuro según el sistema (sin color dinámico, para que se vea igual en todos los teléfonos), Lexend en el texto, Bricolage Grotesque en los títulos y JetBrains Mono en códigos y niveles. Las fuentes son variables (licencia OFL) y están en `app/src/main/res/font/`. Los colores de categoría están en `ui/theme/Color.kt` y las piezas de la pantalla en `ui/Components.kt`.
+
+Regla visual, igual que en la web: línea continua = medido; línea punteada = pendiente o por identificar. Por eso la ficha que espera una tira y la tarjeta de «Pendientes» llevan borde punteado. La letra de la categoría (B, R, D, ×) va siempre dentro del color.
+
 ## Versiones
 
 Son las de la plantilla «Empty Activity» de Android Studio, congeladas en `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` y `app/build.gradle.kts`. No se actualizan sin dejar nota.
