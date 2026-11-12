@@ -81,6 +81,9 @@ class MainActivity : ComponentActivity() {
                             showPermissionIntro = !hasLocation && !permissionAsked,
                             onPhase = viewModel::selectPhase,
                             onLogout = viewModel::logout,
+                            confirmingLogout = viewModel.confirmingLogout,
+                            onCancelLogout = viewModel::cancelLogout,
+                            onConfirmLogout = viewModel::confirmLogout,
                             onOpenNfcSettings = { startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) },
                             onRequestPermission = {
                                 permissionLauncher.launch(

@@ -6,8 +6,7 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Se respalda lo que tomó el técnico (la cola de mediciones), pero no el token de sesión. -->
+    <exclude domain="sharedpref" path="session.xml" />
+    <exclude domain="sharedpref" path="tags.xml" />
 </full-backup-content>

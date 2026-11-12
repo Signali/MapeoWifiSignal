@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
@@ -53,6 +54,9 @@ fun MeasureScreen(
     showPermissionIntro: Boolean,
     onPhase: (Phase) -> Unit,
     onLogout: () -> Unit,
+    confirmingLogout: Boolean,
+    onCancelLogout: () -> Unit,
+    onConfirmLogout: () -> Unit,
     onOpenNfcSettings: () -> Unit,
     onRequestPermission: () -> Unit,
     onMeasure: () -> Unit,
@@ -69,6 +73,15 @@ fun MeasureScreen(
             delay(1_000)
             onTick()
         }
+    }
+
+    if (confirmingLogout) {
+        AlertDialog(
+            onDismissRequest = onCancelLogout,
+            text = { Text(Messages.logoutWithPending(pending.size)) },
+            dismissButton = { TextButton(onClick = onCancelLogout) { Text(Messages.LOGOUT_CANCEL) } },
+            confirmButton = { TextButton(onClick = onConfirmLogout) { Text(Messages.LOGOUT_CONFIRM) } },
+        )
     }
 
     Column(

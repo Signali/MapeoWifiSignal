@@ -19,6 +19,11 @@ object Messages {
     const val SAVED_OFFLINE =
         "Sin conexión: la medición quedó guardada en el teléfono y se enviará sola cuando vuelva la conexión."
 
+    // No está en §3: aviso cuando el teléfono no pudo escribir la cola (p. ej. sin espacio).
+    const val NOT_SAVED =
+        "No se pudo enviar la medición ni guardarla en el teléfono (¿sin espacio?). " +
+            "Libera espacio y no cierres la app hasta que se envíe."
+
     const val NFC_MISSING = "Este teléfono no tiene NFC: no puede leer las tiras."
     const val NFC_OFF = "Activa NFC en los ajustes del teléfono para leer las tiras."
     const val OPEN_SETTINGS = "Abrir ajustes"
@@ -56,6 +61,16 @@ object Messages {
         "Se guardaron $saved lecturas de la red de la organización; se descartaron $discarded de otras redes."
 
     fun pending(n: Int) = "Pendientes: $n"
+
+    const val LOGOUT_CANCEL = "Cancelar"
+    const val LOGOUT_CONFIRM = "Cerrar sesión y borrar"
+
+    fun logoutWithPending(n: Int) =
+        if (n == 1) {
+            "Tienes 1 medición sin enviar. Si cierras sesión se borrará del teléfono."
+        } else {
+            "Tienes $n mediciones sin enviar. Si cierras sesión se borrarán del teléfono."
+        }
 
     fun tagName(nfcUid: String) = "Tira ${nfcUid.take(8)}…"
 
