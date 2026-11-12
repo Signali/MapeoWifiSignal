@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import type { Role } from './roles.ts';
 
@@ -21,6 +23,12 @@ const duration = z
   .transform((value) => Number(value.slice(0, -1)) * SECONDS_PER_UNIT[value.at(-1) as keyof typeof SECONDS_PER_UNIT])
   .refine((seconds) => seconds <= MAX_TOKEN_SECONDS, 'no puede superar 30 días');
 
+// Una variable vacía (TLS_CERT_FILE=) cuenta como no definida.
+const optionalPath = z
+  .string()
+  .transform((value) => (value.trim() === '' ? undefined : value.trim()))
+  .optional();
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']),
@@ -39,6 +47,12 @@ export const envSchema = z
     JWT_EXPIRES_IN_ADMIN: duration,
     JWT_EXPIRES_IN_TECNICO: duration,
     JWT_EXPIRES_IN_CLIENTE: duration,
+    // HTTPS opcional: sin estas dos variables el servicio habla HTTP (ver backend/README.md).
+    TLS_CERT_FILE: optionalPath,
+    TLS_KEY_FILE: optionalPath,
+  })
+  .refine((env) => (env.TLS_CERT_FILE === undefined) === (env.TLS_KEY_FILE === undefined), {
+    message: 'TLS_CERT_FILE y TLS_KEY_FILE van juntas: define las dos o ninguna',
   })
   // Los tests vacían su base: nunca pueden apuntar a la de desarrollo.
   .refine((env) => env.DB_NAME_TEST !== env.DB_NAME, {
@@ -51,9 +65,14 @@ if (!parsed.success) {
 }
 const env = parsed.data;
 
+// Las rutas de los certificados son relativas a la raíz del repositorio (donde vive el .env).
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+const fromRoot = (path: string) => resolve(repoRoot, path);
+
 export const config = {
   env: env.NODE_ENV,
   port: env.PORT,
+  tls: env.TLS_CERT_FILE && env.TLS_KEY_FILE ? { certFile: fromRoot(env.TLS_CERT_FILE), keyFile: fromRoot(env.TLS_KEY_FILE) } : null,
   db: {
     host: env.DB_HOST,
     port: env.DB_PORT,

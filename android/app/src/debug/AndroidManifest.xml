@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- Solo depuración: la demo usa HTTP en la red local. El APK de release no lo permite. -->
-    <application android:usesCleartextTraffic="true" />
-
-</manifest>
