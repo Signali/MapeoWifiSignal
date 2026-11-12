@@ -71,7 +71,7 @@ Reglas:
   - **Acceso a datos:** `pg` con SQL explícito y parámetros, sin ORM; las consultas viven solo en `repositories/`.
   - **`db/`:** `schema.sql` + `seed.sql` (datos de dominio, sin usuarios ni claves) + diagrama ER en Mermaid. Los usuarios los crea `npm run seed` con las claves del `.env`, que también ejecuta `seed.sql`.
 - **Bloques 1, 2 y 3 validados** con el compañero (2026-11-04).
-- **Dirección hacia Docker (Hito 3):** ~~se migrará a Docker real~~. **Revisado 2026-11-10: por ahora sin Docker** (la rúbrica del Hito 3 no le da puntos y Pc-Portatil no tiene WSL2); se vuelve a analizar el 12/11 (plan del Hito 3 en el vault). Lo de abajo sigue valiendo. En el Hito 2 se diseña "listo para Docker", sin escribir aún `Dockerfile` ni `docker-compose.yml`:
+- **Dirección hacia Docker (Hito 3):** ~~se migrará a Docker real~~. **Decidido fuera el 2026-11-11** (la rúbrica del Hito 3 no le da puntos, Pc-Portatil no tiene WSL2 y el análisis del 11/11 en el vault confirmó dejarlo; se declara como limitación). Lo de abajo sigue valiendo como diseño «listo para Docker». En el Hito 2 se diseña "listo para Docker", sin escribir aún `Dockerfile` ni `docker-compose.yml`:
   - Toda configuración por variables de entorno (host de la base incluido); nada de `localhost` ni rutas fijas en el código.
   - `db/schema.sql` ejecutable tal cual por el `initdb` de la imagen oficial de PostgreSQL; seed idempotente.
   - Fijar versión de Node (`.nvmrc` / `engines`) y versión mínima de PostgreSQL.
