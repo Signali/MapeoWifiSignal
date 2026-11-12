@@ -374,6 +374,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun endSession(message: String?) {
         tagJob?.cancel()
         store.clear()
+        tagCache.clear()
         session = null
         tag = TagState.Idle
         currentUuid = null
