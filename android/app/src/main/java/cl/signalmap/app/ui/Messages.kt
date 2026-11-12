@@ -55,12 +55,14 @@ object Messages {
     fun scanBlocked(seconds: Int) =
         "Android permite 4 búsquedas de WiFi cada 2 minutos. Podrás medir de nuevo en $seconds s."
 
-    fun saved(point: String?, phaseLabel: String) = "Medición guardada · ${point ?: "tira sin identificar"} · $phaseLabel"
+    // El punto ya está en la ficha de arriba; aquí solo se confirma la fase.
+    fun saved(phaseLabel: String) = "Medición guardada, fase «$phaseLabel»."
 
     fun savedReadings(saved: Int, discarded: Int) =
         "Se guardaron $saved lecturas de la red de la organización; se descartaron $discarded de otras redes."
 
     fun pending(n: Int) = "Pendientes: $n"
+    const val PENDING_HINT = "Se envían con la app abierta."
 
     const val LOGOUT_CANCEL = "Cancelar"
     const val LOGOUT_CONFIRM = "Cerrar sesión y borrar"

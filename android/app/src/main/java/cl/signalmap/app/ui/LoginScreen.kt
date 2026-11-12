@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,12 +36,20 @@ fun LoginScreen(
         modifier = modifier.padding(24.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("SignalMap", style = MaterialTheme.typography.headlineLarge)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("SignalMap", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Mide la señal WiFi punto por punto.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -51,6 +58,7 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
@@ -60,12 +68,11 @@ fun LoginScreen(
             onValueChange = { server = it },
             label = { Text("Servidor") },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             modifier = Modifier.fillMaxWidth(),
         )
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = { onLogin(email, password, server) }, enabled = !loggingIn) {
-            Text("Iniciar sesión")
-        }
+        PrimaryButton("Iniciar sesión", onClick = { onLogin(email, password, server) }, enabled = !loggingIn)
     }
 }
