@@ -25,6 +25,7 @@ La web no tiene tests automatizados en este hito; el control es `typecheck`, `bu
 | `api/` | `client.ts` (único `fetch`, errores y `401`), `endpoints.ts` (rutas del contrato), `session.ts` (token en `sessionStorage`), `types.ts` |
 | `hooks/useRequest.ts` | Carga con estados de espera y error; ignora respuestas viejas |
 | `selection.ts` | Edificio, piso y fase en la URL (`?building_id=1&floor_id=1&phase=antes`): F5 conserva la selección |
-| `categories.ts` | Nombre, letra y color de cada categoría (solo presentación; los umbrales viven en el servicio) |
-| `components/` | `LoginView`, `FloorView`, `FloorPlan` (plano SVG a escala), `Legend` (leyenda de categorías), `PointDetail` (detalle de un punto: categoría, nivel, fecha y redes captadas; Escape lo cierra), `StatusMessage` |
-| `styles.css` | Paleta y fuentes del documento técnico (en `assets/fonts/`) |
+| `categories.ts` | Nombre, letra, color (variable de tema) y umbral de texto de cada categoría (solo presentación; el cálculo vive en el servicio, y el texto de los umbrales repite a mano `backend/src/services/signal-category.ts`) |
+| `theme.ts` | Tema claro u oscuro: sigue al sistema y el botón del encabezado guarda la elección en el navegador |
+| `components/` | `LoginView`, `FloorView` (cabecera y pantalla del piso), `FloorPlan` (plano SVG a escala, con ejes en metros), `PhaseSwitch` (antes o después), `Legend` (leyenda con umbrales), `Summary` (cobertura buena y zonas débiles), `PointChips` (elegir un punto), `PointDetail` (detalle de un punto; Escape lo cierra), `AnalysisPanel`, `ThemeToggle`, `StatusMessage` |
+| `styles.css` | Paleta «aurora» del documento técnico en tema claro y oscuro, con Lexend (texto), Bricolage Grotesque (títulos) y JetBrains Mono (códigos), autoalojadas en `assets/fonts/` |
