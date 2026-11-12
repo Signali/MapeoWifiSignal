@@ -69,6 +69,13 @@ class PendingQueue(context: Context) {
         return true
     }
 
+    /** Olvida los puntos ya resueltos: al enviar, cada tira se resuelve de nuevo contra el servidor actual. */
+    @Synchronized fun forgetPointIds() {
+        if (items.none { it.pointId != null }) return
+        items.replaceAll { it.copy(pointId = null) }
+        save()
+    }
+
     private fun save() {
         val json = JSONObject()
             .put("owner", owner ?: JSONObject.NULL)
