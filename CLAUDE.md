@@ -102,7 +102,8 @@ Reglas:
   - **Base y CI:** las bases se **recrean** en cada PC al cambiar el esquema (`schema.sql` es el único script desde cero); el job `test` suma la web (typecheck y build) y el job `android` no es obligatorio.
 - **Reparto (2026-11-10):** Maximiliano hace la mayoría; Gabriel revisa y acuerda el contrato, el plan y cada PR, y además tiene 4 tareas propias con commits suyos (banco de preguntas del Hito 2, ensayo en equipo limpio, datos personales del documento y revisión cruzada). Cada uno sube su parte con su cuenta (A5 y factor individual).
 - **PostGIS (revisado 2026-11-11):** con el mapa de calor y la recomendación sí hay consultas espaciales (puntos dentro de un radio de una celda, cobertura de cada posición candidata). Decisión: se implementan primero en TypeScript, detrás de un repositorio que permita cambiarlas por consultas PostGIS (`ST_DWithin`, `ST_Distance`); se instala PostGIS solo con el núcleo cerrado y verde (migración: columna `geometry(Point, 0)` generada desde `x`/`y`, imagen `postgis/postgis:17` en el CI, recrear bases). Si no se llega, queda como «no hizo falta». Nunca como adorno.
-- Plan con fechas, recortes y riesgos: vault, `SignalMap\Hito 3\Plan del Hito 3 - 2026-11-10.md`.
+- Plan con fechas, recortes y riesgos: vault, `SignalMap\Hito 3\Plan del Hito 3 · 2026-11-10.md`.
+- **Demo sin repetidor real (2026-11-11):** no hay repetidor ni tiempo de conseguirlo. La demo y el video muestran solo la fase «antes» más la ubicación recomendada del repetidor, rotulada «estimada». La fase «después» existe en base, contrato y web, pero no se simula ni se comprobó con un repetidor real; se declara como limitación.
 - Detalle y supuestos pendientes: vault, `SignalMap\Propuesta Back-End\Propuesta Back-End.md`.
 
 ## Estructura del repositorio (exigida por la rúbrica del Hito 2)
