@@ -23,6 +23,10 @@ export type EmitterOut = EmitterFit & { bssid: string; ssid: string; frequency_m
 // `readings` llega ordenado de la más fuerte a la más débil (lo hace el repositorio).
 const bestRssi = (readings: measurements.ReadingRow[]): number | null => (readings.length > 0 ? readings[0].rssi_dbm : null);
 
+// Los puntos del piso que tienen medición, con su mejor lectura (null si fue `sin_senal`).
+const measuredOf = (points: PointData[]) =>
+  points.filter((p) => p.readings !== null).map((p) => ({ x: p.x, y: p.y, rssi: bestRssi(p.readings!) }));
+
 async function loadFloor(user: TokenUser, floorId: number, phase: string) {
   const scope = readScope(user);
   const floor = await floors.findById(floorId, scope);
@@ -32,7 +36,11 @@ async function loadFloor(user: TokenUser, floorId: number, phase: string) {
   const readings = found.length > 0 ? await measurements.readingsOf(found.map((row) => row.id!)) : [];
   // Se agrupan una sola vez por medición; dentro de cada una se conserva el orden (la más fuerte primero).
   const byMeasurement = new Map<number, measurements.ReadingRow[]>();
-  for (const r of readings) byMeasurement.set(r.measurement_id, [...(byMeasurement.get(r.measurement_id) ?? []), r]);
+  for (const r of readings) {
+    const list = byMeasurement.get(r.measurement_id);
+    if (list) list.push(r);
+    else byMeasurement.set(r.measurement_id, [r]);
+  }
   const points: PointData[] = rows.map((row) => ({
     x: row.x,
     y: row.y,
@@ -63,10 +71,7 @@ function estimateEmitters(floor: floors.Floor, points: PointData[]): EmitterOut[
 
 export async function heatmapOf(user: TokenUser, floorId: number, phase: string): Promise<{ floor_id: number; phase: string } & Heatmap> {
   const { floor, points } = await loadFloor(user, floorId, phase);
-  const samples = points
-    .filter((p) => p.readings !== null)
-    .map((p) => ({ x: p.x, y: p.y, rssi: bestRssi(p.readings!) }));
-  return { floor_id: floor.id, phase, ...buildHeatmap(floor, samples) };
+  return { floor_id: floor.id, phase, ...buildHeatmap(floor, measuredOf(points)) };
 }
 
 export async function emittersOf(user: TokenUser, floorId: number, phase: string): Promise<EmitterOut[]> {
@@ -84,9 +89,7 @@ export async function recommendationOf(
   const reference = estimateEmitters(floor, points).sort(
     (a, b) => b.points_used - a.points_used || a.rmse_db - b.rmse_db || (a.bssid < b.bssid ? -1 : 1),
   )[0];
-  const measured = points
-    .filter((p) => p.readings !== null)
-    .map((p) => ({ x: p.x, y: p.y, category: categoryOf(bestRssi(p.readings!)) }));
+  const measured = measuredOf(points).map(({ x, y, rssi }) => ({ x, y, category: categoryOf(rssi) }));
   const result = recommend(floor, reference ?? null, measured);
   return { floor_id: floor.id, position: result.position, emitter_bssid: reference?.bssid ?? null, target_points: result.target_points, covered_points: result.covered_points, reason: result.reason, estimated: true };
 }
