@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
 import android.location.LocationManager
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
@@ -82,12 +84,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val api = ApiClient(baseUrl = { store.baseUrl }, token = { session?.token })
     private val scanner = WifiScanner(application)
     private val scanBudget = ScanBudget { SystemClock.elapsedRealtime() }
-    private val queue = PendingQueue()
+    private val queue = PendingQueue(application)
     private val flushLock = Mutex()
     private var tagJob: Job? = null
     private var currentUuid: String? = null
-    /** Email de quien tomó lo que hay en la cola: otra persona no la hereda al iniciar sesión. */
-    private var queueOwner: String? = null
+    private val connectivity = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    /** Vuelve la red: se envía lo pendiente (con la app abierta; sin segundo plano). */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = flush()
+    }
 
     var screen by mutableStateOf(if (session != null) Screen.Measure else Screen.Login)
         private set
@@ -103,10 +108,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var measureState by mutableStateOf<MeasureState>(MeasureState.Idle)
         private set
-    var pending by mutableStateOf<List<PendingMeasurement>>(emptyList())
+    var pending by mutableStateOf(queue.all())
+        private set
+    /** Se muestra el diálogo «Cerrar sesión con pendientes». */
+    var confirmingLogout by mutableStateOf(false)
         private set
 
     val savedBaseUrl: String get() = store.baseUrl
+
+    init {
+        // Lo que dejó otra persona (p. ej. un respaldo restaurado) no se hereda.
+        session?.let { if (queue.clearIfNotOwnedBy(it.email)) refreshPending() }
+        connectivity.registerDefaultNetworkCallback(networkCallback)
+        flush() // la app se abrió con sesión válida
+    }
+
+    override fun onCleared() {
+        connectivity.unregisterNetworkCallback(networkCallback)
+    }
 
     fun login(emailText: String, password: String, serverText: String) {
         val emailValue = emailText.trim()
@@ -129,11 +148,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     session = store.current()
                     email = result.value.email
                     tag = TagState.Idle
-                    if (queueOwner != null && queueOwner != result.value.email) {
-                        queue.clear()
-                        queueOwner = null
-                        refreshPending()
-                    }
+                    if (queue.clearIfNotOwnedBy(result.value.email)) refreshPending()
                     screen = Screen.Measure
                     flush()
                 }
@@ -148,11 +163,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Cierra sesión. Con la cola en memoria, lo pendiente se pierde (T15 pregunta antes). */
+    /** «Cerrar sesión»: con mediciones pendientes pregunta antes, porque se borran del teléfono. */
     fun logout() {
+        if (queue.all().isEmpty()) endSession(message = null) else confirmingLogout = true
+    }
+
+    fun cancelLogout() {
+        confirmingLogout = false
+    }
+
+    fun confirmLogout() {
         queue.clear()
-        queueOwner = null
-        refreshPending()
         endSession(message = null)
     }
 
@@ -231,8 +252,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             measuredAt = PendingMeasurement.nowIso(),
                             readings = readings,
                         )
-                        queueOwner = email
-                        queue.add(m)
+                        queue.add(m, email)
                         refreshPending()
                         currentUuid = m.clientUuid
                         measureState = MeasureState.Sending
@@ -266,7 +286,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Envía lo pendiente en orden. Se detiene ante la primera falta de conexión o error del servidor. */
     fun flush() {
-        viewModelScope.launch { flushNow(notify = false) }
+        // La comprobación va dentro del launch (hilo principal): onAvailable llega desde otro hilo.
+        viewModelScope.launch {
+            if (session != null && queue.all().isNotEmpty()) flushNow(notify = false)
+        }
     }
 
     /** Botón «Enviar ahora»: igual que [flush], pero avisa si no pudo enviar. */
@@ -331,7 +354,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         refreshPending()
         val state = measureState
         val quiet = state is MeasureState.Idle || state is MeasureState.Notice
-        if (state is MeasureState.Sending || (notify && quiet)) measureState = MeasureState.Notice(message)
+        // Si el archivo no se pudo escribir, «guardada en el teléfono» no sería cierto.
+        val text = if (queue.saveFailed) Messages.NOT_SAVED else message
+        if (state is MeasureState.Sending || (notify && quiet)) measureState = MeasureState.Notice(text)
     }
 
     private fun refreshPending() {
@@ -347,6 +372,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         measureState = MeasureState.Idle
         refreshPending()
         loginMessage = message
+        confirmingLogout = false
         screen = Screen.Login
     }
 }
