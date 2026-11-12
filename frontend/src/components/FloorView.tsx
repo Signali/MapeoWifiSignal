@@ -148,16 +148,18 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
   const points = useRequest<Point[]>(() => listPoints(floor.id), [floor.id])
   const measurements = useRequest<FloorMeasurement[]>(() => listMeasurements(floor.id, phase), [floor.id, phase])
   // Análisis del piso (rutas 19 a 21). Son capas auxiliares: si fallan, el plano con sus puntos sigue visible.
-  const heatmap = useRequest<Heatmap>(() => getHeatmap(floor.id, phase), [floor.id, phase])
-  const emitters = useRequest<Emitter[]>(() => listEmitters(floor.id, phase), [floor.id, phase])
+  // Cada respuesta lleva la fase con que se pidió, para no dibujar la capa de otra fase como si valiera.
+  const heatmap = useRequest(() => getHeatmap(floor.id, phase).then((data) => ({ phase, data })), [floor.id, phase])
+  const emitters = useRequest(() => listEmitters(floor.id, phase).then((data) => ({ phase, data })), [floor.id, phase])
   const recommendation = useRequest<Recommendation>(() => getRecommendation(floor.id), [floor.id])
-  // Última respuesta de cada capa (no desaparece al recargar), pero una capa cuyo pedido falló se oculta:
-  // no debe quedar dibujada la de otra fase como si valiera.
+  // Última respuesta de cada capa (no desaparece al recargar la misma fase). Una capa cuyo pedido falló,
+  // o que es de la otra fase mientras llega la nueva, se oculta.
   const heatShown = useLatest(heatmap.data)
   const emittersShown = useLatest(emitters.data)
   const recommendationShown = useLatest(recommendation.data)
-  const heatLayer = heatmap.error ? null : heatShown
-  const emittersLayer = emitters.error ? null : emittersShown
+  const ofPhase = <T,>(layer: { phase: Phase; data: T } | null) => (layer?.phase === phase ? layer.data : null)
+  const heatLayer: Heatmap | null = heatmap.error ? null : ofPhase(heatShown)
+  const emittersLayer: Emitter[] | null = emitters.error ? null : ofPhase(emittersShown)
   const recommendationLayer = recommendation.error ? null : recommendationShown
   const [showHeat, setShowHeat] = useState(true)
   const [showMarkers, setShowMarkers] = useState(true)
