@@ -568,3 +568,15 @@ describe('GET /api/v1/measurements?floor_id=&phase= (fila 16)', () => {
     expectError(await listFloor(`?floor_id=${list.floor}&phase=antes`, auth.cliente), 404, notFound);
   });
 });
+
+describe('repositorio: punto borrado antes del INSERT', () => {
+  test('la violación de measurements_point_id_fkey sale como 404 «Punto no encontrado», no como 500', async () => {
+    const { insert } = await import('../src/repositories/measurements.ts');
+    await expect(
+      insert(
+        { point_id: 2147483647, user_id: ids.adminUser, phase: 'antes', client_uuid: randomUUID(), measured_at: new Date() },
+        [],
+      ),
+    ).rejects.toMatchObject({ kind: 'not_found', message: 'Punto no encontrado' });
+  });
+});

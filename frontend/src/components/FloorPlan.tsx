@@ -63,7 +63,7 @@ export function FloorPlan({ floor, points, categoryOf, selectedId, onSelect, hea
       </g>
 
       {heat && (
-        <g className="heat" aria-hidden="true" shapeRendering="crispEdges">
+        <g className="heat" aria-hidden="true" shapeRendering="crispEdges" clipPath={`url(#${clipId})`}>
           {heat.cells.map((c) =>
             c.category === null ? null : (
               <rect

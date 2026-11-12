@@ -137,18 +137,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             else -> null
         }
         if (loginMessage != null || server == null) return
+        // El cliente HTTP lee la dirección guardada, así que se prueba guardándola; si el login no
+        // resulta, se vuelve a la anterior (una dirección equivocada no debe quedar como la del servidor).
+        val previousServer = store.baseUrl
         store.baseUrl = server
         loggingIn = true
         viewModelScope.launch {
+            var loggedIn = false
             when (val result = api.login(emailValue, password)) {
                 is ApiResult.Ok -> if (result.value.role == "cliente") {
                     loginMessage = Messages.ROLE_CLIENT
                 } else {
+                    loggedIn = true
                     store.save(result.value)
                     session = store.current()
                     email = result.value.email
                     tag = TagState.Idle
                     if (queue.clearIfNotOwnedBy(result.value.email)) refreshPending()
+                    // Los ids de punto son de cada servidor: lo pendiente de otro se resuelve de nuevo por su tira.
+                    if (server != previousServer) queue.forgetPointIds()
                     screen = Screen.Measure
                     flush()
                 }
@@ -159,6 +166,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 ApiResult.Offline -> loginMessage = Messages.OFFLINE_LOGIN
             }
+            if (!loggedIn) store.baseUrl = previousServer
             loggingIn = false
         }
     }
