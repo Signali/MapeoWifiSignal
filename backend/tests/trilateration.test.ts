@@ -50,6 +50,19 @@ describe('fitEmitter', () => {
     expect(fit?.rmse_db).toBeLessThanOrEqual(0.1);
   });
 
+  test('4 puntos a igual distancia del emisor: el exponente no se pudo ajustar, así que n_fixed es true', () => {
+    // Cuatro puntos en un círculo de 5 m con la misma señal: el óptimo es el centro, donde la distancia no varía.
+    const c = { x: 20, y: 12 };
+    const samples = [
+      { x: c.x + 5, y: c.y, rssi: -60 },
+      { x: c.x - 5, y: c.y, rssi: -60 },
+      { x: c.x, y: c.y + 5, rssi: -60 },
+      { x: c.x, y: c.y - 5, rssi: -60 },
+    ];
+    const fit = fitEmitter(samples, FLOOR);
+    expect(fit).toMatchObject({ x: c.x, y: c.y, n: 3, n_fixed: true, points_used: 4 });
+  });
+
   test('6 puntos sin ruido (n libre): recupera la posición, P0 y el exponente', () => {
     const emitter = { x: 22.3, y: 11.7 };
     const fit = fitEmitter(readingsFrom(emitter, -41, 3.4, [P07, P08, P09, ...OTROS.slice(0, 3)]), FLOOR);
