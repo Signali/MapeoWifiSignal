@@ -107,9 +107,7 @@ jobs:
           distribution: temurin
           java-version: 25
 
-      # Instala las herramientas de línea de comandos del SDK y acepta sus licencias.
-      - uses: android-actions/setup-android@v3
-
+      # Sin setup-android: el runner ya trae el SDK de Android (ANDROID_HOME) y Gradle descarga lo que falte.
       - uses: gradle/actions/setup-gradle@v4
 
       - run: ./gradlew assembleDebug testDebugUnitTest
