@@ -36,3 +36,6 @@ android/local.properties
 android/.gradle/
 android/.kotlin/
 *.apk
+
+# Certificados y claves de HTTPS local (los genera backend/scripts/tls-certs.sh)
+certs/
