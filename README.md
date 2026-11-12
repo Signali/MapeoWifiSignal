@@ -35,7 +35,7 @@ Manual completo, con datos de prueba y fallas frecuentes: `docs/manual.md` (se p
 5. **Web:** `cd ../frontend`, `npm install` y `npm run build`.
 6. **Servicio:** `cd ../backend` y `npm start`. Un solo proceso sirve la web y la API: abrir `http://localhost:3000/` (y `/health` para comprobar). Detalle y solución de problemas: [`backend/README.md`](backend/README.md).
 7. **App Android:** instalar el APK de depuración (el de la sección *Releases* del repositorio, que se publica antes de la entrega) o compilarlo: [`android/README.md`](android/README.md).
-8. **Conectar el teléfono:** con el cable USB, `adb reverse tcp:3000 tcp:3000`; la app trae por defecto el servidor `http://127.0.0.1:3000`.
+8. **Conectar el teléfono:** con el cable USB, `adb reverse tcp:3000 tcp:3000`; la app trae por defecto el servidor `http://127.0.0.1:3000`. Para usarla por WiFi, sin cable, el servicio habla HTTPS: [`backend/README.md`](backend/README.md), sección *HTTPS*.
 
 Para probar solo la API con Postman: [`postman/README.md`](postman/README.md).
 
