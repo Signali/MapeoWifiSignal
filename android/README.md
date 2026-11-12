@@ -22,6 +22,20 @@ Debe terminar con `BUILD SUCCESSFUL`. El APK queda en `app/build/outputs/apk/deb
 
 Para instalarlo en un teléfono conectado por USB: `./gradlew installDebug` o arrastrar el APK al teléfono. En Windows, si `./gradlew` no encuentra Java, define `JAVA_HOME` con la carpeta `jbr` de Android Studio.
 
+## Conexión con el servidor
+
+La política de red está en `app/src/main/res/xml/network_security_config.xml`:
+
+- **HTTPS** hacia cualquier dirección. Además de las autoridades del sistema, la app confía en la CA propia de la demo (`res/raw/signalmap_ca.crt`, solo el certificado público; la clave privada queda en el PC).
+- **HTTP sin cifrar solo hacia `127.0.0.1` y `localhost`:** es el uso por cable con `adb reverse`. Cualquier otra dirección en HTTP se bloquea (el APK ya no permite HTTP «hacia cualquier lado»).
+
+Dos formas de usar la app:
+
+| Forma | Servidor en la app | Qué hace falta |
+|---|---|---|
+| Cable USB | `http://127.0.0.1:3000` (por defecto) | `adb reverse tcp:3000 tcp:3000` |
+| WiFi, sin cable | `https://<IP del PC>:<puerto>` | Servicio con HTTPS: [`backend/README.md`](../backend/README.md), sección *HTTPS* |
+
 ## Versiones
 
 Son las de la plantilla «Empty Activity» de Android Studio, congeladas en `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` y `app/build.gradle.kts`. No se actualizan sin dejar nota.

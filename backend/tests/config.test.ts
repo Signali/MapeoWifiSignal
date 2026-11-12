@@ -64,3 +64,28 @@ describe('config: JWT_SECRET', () => {
     expect(result.error?.issues[0].message).toContain('.env.example');
   });
 });
+
+describe('config: HTTPS opcional (TLS_CERT_FILE y TLS_KEY_FILE)', () => {
+  test('sin ninguna de las dos se acepta (HTTP)', () => {
+    expect(envSchema.safeParse(base).success).toBe(true);
+  });
+
+  test('vacías cuentan como no definidas', () => {
+    const result = envSchema.safeParse({ ...base, TLS_CERT_FILE: '', TLS_KEY_FILE: '  ' });
+    expect(result.success).toBe(true);
+    expect(result.data?.TLS_CERT_FILE).toBeUndefined();
+  });
+
+  test('las dos juntas se aceptan', () => {
+    expect(envSchema.safeParse({ ...base, TLS_CERT_FILE: 'certs/server.crt', TLS_KEY_FILE: 'certs/server.key' }).success).toBe(true);
+  });
+
+  test.each([
+    ['solo el certificado', { TLS_CERT_FILE: 'certs/server.crt' }],
+    ['solo la clave', { TLS_KEY_FILE: 'certs/server.key' }],
+  ])('%s se rechaza', (_name, extra) => {
+    const result = envSchema.safeParse({ ...base, ...extra });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toContain('van juntas');
+  });
+});

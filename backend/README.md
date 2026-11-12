@@ -79,6 +79,26 @@ Servicio cerrado
 
 Si una petición no termina en **8 s**, corta las conexiones y sale con código 1 (Docker mata el proceso a los 10 s). Un **segundo `Ctrl+C`** durante el cierre corta al instante (código 1). El test automático de esto (`tests/shutdown.test.ts`) corre solo en Linux (el CI): en Windows una señal enviada por código termina el proceso sin pasar por el manejador, así que ahí se prueba a mano con `Ctrl+C`.
 
+### HTTPS (opcional): usar la app por WiFi, sin cable
+
+Por defecto el servicio habla HTTP. Eso basta con el cable (`adb reverse`), porque el tráfico llega a `127.0.0.1` y no sale del cable. Para que el teléfono use la red WiFi sin cable, el tráfico sale del equipo y debe ir cifrado. Para eso el servicio puede hablar HTTPS con una autoridad certificadora (CA) propia de la demo:
+
+1. **Requisito:** `openssl` (viene con Git Bash).
+2. **Certificados** (desde la raíz, con la IP del PC en esa red; se ve con `ipconfig`):
+   ```bash
+   bash backend/scripts/tls-certs.sh 192.168.1.16
+   ```
+   La primera vez crea la CA (`certs/ca.key` y `certs/ca.crt`) y copia su certificado **público** a la app (`android/app/src/main/res/raw/signalmap_ca.crt`). Cada vez emite `certs/server.crt` y `certs/server.key`, válidos 30 días para `localhost`, `127.0.0.1` y esa IP. Si cambias de red, se vuelve a correr con la IP nueva: la app no cambia. Solo si la CA es nueva (cambió `signalmap_ca.crt`) hay que recompilar e instalar la app.
+3. **`.env`:** `TLS_CERT_FILE=certs/server.crt` y `TLS_KEY_FILE=certs/server.key` (las dos juntas; rutas desde la raíz). Al arrancar, el servicio dice `(development, HTTPS)`.
+4. **App:** en el campo «servidor», `https://<IP>:3000`. El teléfono y el PC deben estar en la misma red, y el firewall de Windows debe dejar entrar el puerto (si la red es «pública», `netsh advfirewall firewall add rule name="SignalMap" dir=in action=allow protocol=TCP localport=3000`, en un PowerShell de administrador).
+
+Cosas que conviene saber:
+
+- La carpeta `certs/` **no se versiona** (`.gitignore`): las claves privadas nunca van al repositorio. Solo el PC que tiene `certs/ca.key` puede emitir certificados que la app acepte. Otro integrante que quiera probar sin cable corre el script en su PC (crea su propia CA) y recompila la app.
+- Con TLS activo, el mismo puerto habla solo HTTPS; el navegador avisará de un certificado no confiable en `https://localhost:3000`. Para usar la web y el teléfono a la vez, levanta dos instancias: `PORT=3000` sin TLS (web y cable) y `PORT=3443 TLS_CERT_FILE=... TLS_KEY_FILE=... npm start` para el teléfono.
+- `curl` en Windows pide además `--ssl-no-revoke` con una CA propia: `curl --ssl-no-revoke --cacert certs/ca.crt https://127.0.0.1:3443/health`.
+- Qué protege y qué no: cifra la conexión y comprueba que el servidor es el nuestro. No reemplaza un despliegue real (certificado de una autoridad pública, HTTPS en un proxy y APK de producción), que queda fuera de este hito.
+
 ### Usuarios de prueba (creados por `npm run seed`)
 
 | Email | Rol | Clave | Edificios que ve |
