@@ -30,6 +30,13 @@ export const measurementsQuery = z.strictObject({
   phase: z.enum(['antes', 'despues'], { error: PHASE }),
 });
 
+// DELETE /measurements/:id?reason= (contrato §6.18): anula con un motivo de la lista.
+export const voidQuery = z.strictObject({
+  reason: z.enum(['punto_equivocado', 'fase_equivocada', 'condiciones_anomalas'], {
+    error: 'reason es obligatorio: punto_equivocado, fase_equivocada o condiciones_anomalas',
+  }),
+});
+
 // POST /measurements (contrato §6.15). `measured_at` es opcional; su rango (422) lo revisa el
 // service, que es quien conoce la hora.
 export const createMeasurementBody = z.strictObject({
