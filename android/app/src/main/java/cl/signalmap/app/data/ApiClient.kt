@@ -21,6 +21,9 @@ data class PointInfo(val id: Int, val code: String, val floorName: String, val b
     val label: String get() = "$code · $floorName · $buildingName"
 }
 
+/** Respuesta de `POST /measurements`: lo que la API calculó y guardó. */
+data class MeasurementResult(val category: String, val bestRssiDbm: Int?, val savedReadings: Int)
+
 /** Dirección del servidor sin espacios ni «/» final, o `null` si no empieza con http:// o https://. */
 fun normalizeBaseUrl(text: String): String? {
     val url = text.trim().trimEnd('/')
@@ -50,6 +53,16 @@ class ApiClient(private val baseUrl: () -> String, private val token: () -> Stri
                 code = json.getString("code"),
                 floorName = json.getJSONObject("floor").getString("name"),
                 buildingName = json.getJSONObject("building").getString("name"),
+            )
+        }
+
+    /** `201` (creada) y `200` (ya estaba guardada, reenvío) son éxito. */
+    suspend fun sendMeasurement(body: JSONObject): ApiResult<MeasurementResult> =
+        call("POST", "/api/v1/measurements", body, withToken = true) { json ->
+            MeasurementResult(
+                category = json.getString("category"),
+                bestRssiDbm = if (json.isNull("best_rssi_dbm")) null else json.getInt("best_rssi_dbm"),
+                savedReadings = json.getJSONArray("readings").length(),
             )
         }
 
