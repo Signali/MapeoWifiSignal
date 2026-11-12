@@ -311,7 +311,11 @@ input[type='checkbox'] { accent-color: var(--acento); width: 1rem; height: 1rem;
 .kpi small { display: block; color: var(--muted); font-size: 0.8rem; }
 .kpi strong { font-family: var(--f-titulo); font-size: 1.6rem; line-height: 1.1; color: var(--texto); }
 .kpi .of { color: var(--muted); font-size: 0.8rem; margin-left: 0.4rem; }
-.summary { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--muted); }
+
+.point-list summary { cursor: pointer; display: flex; align-items: center; min-height: 2rem; font-family: var(--f-titulo); font-weight: 600; font-size: 1rem; color: var(--titulo); }
+.point-list summary::after { content: '+'; margin-left: auto; font-family: var(--f-mono); font-weight: 500; color: var(--acento); }
+.point-list[open] summary::after { content: '−'; }
+.point-list[open] summary { margin-bottom: 0.6rem; }
 
 .point-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .point-chips button {
@@ -330,7 +334,8 @@ input[type='checkbox'] { accent-color: var(--acento); width: 1rem; height: 1rem;
 .cta { width: 100%; min-height: 3.25rem; border-radius: 12px; font-weight: 600; }
 
 /* Análisis */
-.analysis h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+.analysis h3 { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.35rem; font-size: 1rem; }
+.analysis h3 .swatch { width: 1.25rem; height: 1.25rem; font-size: 0.7rem; }
 .analysis .layers { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .analysis .check { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--linea); border-radius: 10px; background: var(--bg); font-size: 0.875rem; }
 .analysis ul.estimates { margin: 0; padding-left: 1.1rem; font-size: 0.8125rem; display: grid; gap: 0.35rem; }

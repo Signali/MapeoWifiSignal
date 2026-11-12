@@ -332,8 +332,11 @@ function PlanArea({ floor, buildingName, phase, onPhase }: PlanAreaProps) {
               {!refreshing && <Summary categories={points.data.map((p) => categoryOf(p.id))} />}
             </section>
             <section aria-label="Puntos del piso">
-              <h3>Puntos del piso</h3>
-              <PointChips points={points.data} categoryOf={categoryOf} selectedId={selectedId} onSelect={setSelectedId} />
+              {/* Plegada: repite los códigos del plano, así que solo ocupa lugar y paradas de Tab si se abre. */}
+              <details className="point-list">
+                <summary>Lista de puntos ({points.data.length})</summary>
+                <PointChips points={points.data} categoryOf={categoryOf} selectedId={selectedId} onSelect={setSelectedId} />
+              </details>
             </section>
             <button type="button" className="cta" onClick={goToAnalysis}>
               Ver dónde instalar el repetidor
