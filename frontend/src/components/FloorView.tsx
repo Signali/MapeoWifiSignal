@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getHeatmap, getRecommendation, listBuildings, listEmitters, listFloors, listMeasurements, listPoints } from '../api/endpoints.ts'
 import type { Session } from '../api/session.ts'
 import type { Category, Emitter, Floor, FloorMeasurement, Heatmap, Phase, Point, Recommendation } from '../api/types.ts'
@@ -9,6 +9,7 @@ import type { Selection } from '../selection.ts'
 import { AnalysisPanel } from './AnalysisPanel.tsx'
 import { FloorPlan } from './FloorPlan.tsx'
 import { Legend } from './Legend.tsx'
+import { PointDetail } from './PointDetail.tsx'
 import { StatusMessage } from './StatusMessage.tsx'
 import { Summary } from './Summary.tsx'
 
@@ -183,6 +184,13 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
   const phaseLabel = PHASES.find((p) => p.value === phase)?.label
   const hasPoints = points.data !== null && points.data.length > 0
   const ready = !error && hasPoints && shown !== null
+  const selectedPoint = points.data?.find((p) => p.id === selectedId)
+  const planRef = useRef<HTMLDivElement>(null)
+  // Al cerrar, el foco vuelve al punto seleccionado (el botón «Cerrar» desaparece y, si no, se perdería).
+  const closeDetail = useCallback(() => {
+    planRef.current?.querySelector<SVGGElement>('.point.selected')?.focus()
+    setSelectedId(undefined)
+  }, [])
 
   return (
     <section className="plan-area" aria-label={`Plano de ${floor.name}`}>
@@ -220,17 +228,29 @@ function PlanArea({ floor, phase }: { floor: Floor; phase: Phase }) {
               message={`Todavía no hay mediciones en la fase «${phaseLabel}» en este piso.`}
             />
           )}
-          <div className={refreshing ? 'plan-wrap refreshing' : 'plan-wrap'} aria-busy={refreshing}>
-            <FloorPlan
-              floor={floor}
-              points={points.data}
-              categoryOf={categoryOf}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              heat={showHeat && heatLayer ? { cells: heatLayer.cells, cellM: heatLayer.cell_m } : null}
-              emitters={showMarkers ? (emittersLayer ?? []) : []}
-              repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
-            />
+          <div className="plan-grid">
+            <div ref={planRef} className={refreshing ? 'plan-wrap refreshing' : 'plan-wrap'} aria-busy={refreshing}>
+              <FloorPlan
+                floor={floor}
+                points={points.data}
+                categoryOf={categoryOf}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                heat={showHeat && heatLayer ? { cells: heatLayer.cells, cellM: heatLayer.cell_m } : null}
+                emitters={showMarkers ? (emittersLayer ?? []) : []}
+                repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
+              />
+            </div>
+            {/* Mientras llegan las mediciones de la fase nueva, `shown` aún trae las de la anterior:
+                el panel espera para no mostrar una fase con los datos de otra. */}
+            {selectedPoint && !refreshing && (
+              <PointDetail
+                point={selectedPoint}
+                measurement={shown?.find((m) => m.point_id === selectedPoint.id)?.measurement ?? null}
+                phaseLabel={phaseLabel ?? ''}
+                onClose={closeDetail}
+              />
+            )}
           </div>
           {analysisError && <StatusMessage kind="error" message={analysisError} onRetry={reloadAnalysis} />}
           <AnalysisPanel

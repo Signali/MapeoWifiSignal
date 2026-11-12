@@ -6,7 +6,7 @@ const NO_EMITTER = 'Faltan puntos medidos para estimar el emisor (mínimo 3).'
 const number = (value: number, digits = 1) => value.toLocaleString('es-CL', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 // Banda según la frecuencia (MHz): 2,4 GHz, 5 GHz o 6 GHz.
-function bandOf(frequencyMhz: number): string {
+export function bandOf(frequencyMhz: number): string {
   if (frequencyMhz < 2500) return '2,4 GHz'
   if (frequencyMhz < 5925) return '5 GHz'
   return '6 GHz'
