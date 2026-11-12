@@ -89,3 +89,27 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # Avisa si la app deja de compilar. No es obligatorio: no está en los checks de main.
+  android:
+    runs-on: ubuntu-26.04
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # JDK 25: el que exige android/gradle/gradle-daemon-jvm.properties (así Gradle no descarga otro).
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Instala las herramientas de línea de comandos del SDK y acepta sus licencias.
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: ./gradlew assembleDebug testDebugUnitTest
