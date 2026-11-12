@@ -1,3 +1,5 @@
+import pg from 'pg';
+import { AppError } from '../errors.ts';
 import { type ReadScope, VISIBLE } from './buildings.ts';
 import { query } from './db.ts';
 
@@ -41,8 +43,17 @@ export async function insert(m: NewMeasurement, readings: NewReading[]): Promise
        FROM m, jsonb_to_recordset($6::jsonb) AS x(bssid text, ssid text, rssi_dbm smallint, frequency_mhz integer))
      SELECT * FROM m`,
     [m.point_id, m.user_id, m.phase, m.client_uuid, m.measured_at, JSON.stringify(readings)],
-  );
+  ).catch(pointGone);
   return rows[0];
+}
+
+// Si el punto se borró entre la comprobación del service y el INSERT, la FK salta aquí: es un
+// 404 (el punto ya no existe), no un 500 que la cola de la app reintentaría para siempre.
+function pointGone(error: unknown): never {
+  if (error instanceof pg.DatabaseError && error.code === '23503' && error.constraint === 'measurements_point_id_fkey') {
+    throw new AppError('not_found', 'Punto no encontrado');
+  }
+  throw error;
 }
 
 // Visible si lo es el edificio de su punto; también devuelve las anuladas.
