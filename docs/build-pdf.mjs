@@ -1,6 +1,7 @@
-// `node docs/build-pdf.mjs [salida.pdf]`: genera docs/SignalMap-Hito2-Documento-Tecnico.pdf (u otra
-// ruta, si se indica) desde
-// docs/documento-tecnico.md, con Edge o Chrome en modo headless. Sin dependencias del repo:
+// `node docs/build-pdf.mjs [fuente.md] [salida.pdf]`: sin argumentos genera
+// docs/SignalMap-Hito2-Documento-Tecnico.pdf desde docs/documento-tecnico.md; con ellos, el PDF de
+// otra fuente (p. ej. docs/documento-final.md) y/o en otra ruta (cada argumento se reconoce por su
+// extensión, así que `salida.pdf` solo sigue valiendo). Usa Edge o Chrome en modo headless. Sin dependencias del repo:
 // Markdown (marked) y diagramas (mermaid) se cargan del CDN, con versión fija, al generar; las
 // fuentes (Bricolage Grotesque, IBM Plex Sans y JetBrains Mono), de Google Fonts.
 // El navegador se maneja por el protocolo de DevTools para escribir en el índice la página de
@@ -10,13 +11,19 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const DOCS = new URL('.', import.meta.url);
-const SOURCE = new URL('documento-tecnico.md', DOCS);
-const OUTPUT = process.argv[2] ?? new URL('SignalMap-Hito2-Documento-Tecnico.pdf', DOCS);
+const args = process.argv.slice(2);
+const sourceArg = args.find((a) => a.endsWith('.md'));
+const outputArg = args.find((a) => a.endsWith('.pdf'));
+const SOURCE = resolve(sourceArg ?? fileURLToPath(new URL('documento-tecnico.md', DOCS)));
+const OUTPUT = outputArg ?? new URL('SignalMap-Hito2-Documento-Tecnico.pdf', DOCS);
+// El pie de página nombra el hito (lo que va antes de « — » en el h1) y el tipo de documento.
+const KINDS = { 'documento-final.md': 'Documento final', 'manual-pdf.md': 'Manual' };
+
 const PORT = 9333;
 const BROWSERS = [
   process.env.BROWSER,
@@ -27,9 +34,16 @@ const BROWSERS = [
   '/usr/bin/chromium',
 ];
 
+const FOOTER = (() => {
+  const h1 = readFileSync(SOURCE, 'utf8').match(/^# (.+)$/m)?.[1];
+  if (!h1) throw new Error('La fuente no tiene un título (línea que empiece con "# ")');
+  const kind = KINDS[basename(SOURCE)] ?? 'Documento técnico';
+  return h1.split(' — ')[0] + ' · ' + kind;
+})();
+
 const CSS = `
 @page { size: letter; margin: 25mm;
-  @bottom-left { content: 'SignalMap · Hito 2 · Documento técnico'; font: 8pt 'IBM Plex Sans', sans-serif; color: #5A6272; }
+  @bottom-left { content: '${FOOTER}'; font: 8pt 'IBM Plex Sans', sans-serif; color: #5A6272; }
   @bottom-right { content: counter(page); font: 8pt 'IBM Plex Sans', sans-serif; color: #5A6272; } }
 /* Tapa e índice: sin pie y sin contar, así la introducción es la página 1. */
 @page cover { margin: 0; counter-increment: page 0; @bottom-left { content: none; } @bottom-right { content: none; } }
@@ -79,8 +93,11 @@ p:has(+ pre), p:has(+ .mermaid), p:has(+ .stack), p:has(+ .bars), p:has(+ table)
 .cap code { font-style: normal; }
 .mermaid .note { fill: #F2F5EF !important; stroke: #709491 !important; }
 hr { display: none; }
+.shots { display: flex; justify-content: center; gap: 4mm; margin: 0 0 5mm; }
+.shots img { display: block; max-width: 100%; max-height: 100mm; object-fit: contain; border: .25mm solid var(--line); }
 .mermaid { display: flex; justify-content: center; margin: 0 0 5mm; break-inside: avoid; }
 .mermaid svg { max-width: 100%; max-height: 82mm; height: auto; }
+.mermaid.grande svg { max-height: 195mm; }
 .ref { padding-left: 8mm; text-indent: -8mm; }
 .bars { margin: 0 0 5mm; break-inside: avoid; }
 .bars div { display: grid; grid-template-columns: 22mm 1fr 20mm; align-items: center; gap: 3mm; margin: 0 0 1.6mm; }
@@ -129,8 +146,8 @@ const COVER_SVG = (() => {
     + `<text x='28.7' y='12.92' text-anchor='end' font-family='IBM Plex Sans' font-weight='600' font-size='1.05' fill='#131521'>P-25</text></svg>`;
 })();
 
-const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta charset="utf-8">
-<title>SignalMap · Hito 2 · Documento técnico</title>
+const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta charset="utf-8"><base href="${BASE}">
+<title>${TITLE}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>${CSS}</style>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -182,11 +199,13 @@ const PAGE = (markdown, tocPages) => `<!doctype html><html lang="es"><head><meta
   // Referencias con sangría francesa (APA).
   const refs = [...doc.querySelectorAll('h2')].find((h) => h.textContent === 'Bibliografía');
   for (let el = refs?.nextElementSibling; el?.tagName === 'P'; el = el.nextElementSibling) el.classList.add('ref');
-  // Diagramas.
+  // Diagramas. Los de los anexos pueden ocupar casi toda la página (los demás, 82 mm).
+  const anexos = [...doc.querySelectorAll('h2')].find((h) => h.textContent === 'Anexos');
   doc.querySelectorAll('pre code.language-mermaid').forEach((code) => {
     const div = document.createElement('div');
     div.className = 'mermaid';
     div.textContent = code.textContent;
+    if (anexos && anexos.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING) div.classList.add('grande');
     code.parentElement.replaceWith(div);
   });
   // Leyendas: un párrafo "Figura N. Título" o "Tabla N. Título" justo antes de la figura o la
@@ -253,6 +272,10 @@ function headingPages(pdf) {
 }
 
 const markdown = readFileSync(SOURCE, 'utf8');
+// Las imágenes (img/…) se resuelven desde la carpeta de la fuente, aunque el HTML se arme en otra.
+const BASE = pathToFileURL(dirname(SOURCE)).href + '/';
+if (/PENDIENTE/.test(markdown)) console.warn('Aviso: la fuente tiene marcas PENDIENTE; el PDF no es el definitivo.');
+const TITLE = markdown.match(/^# (.+)$/m)[1].replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
 const work = mkdtempSync(join(tmpdir(), 'signalmap-pdf-'));
 const html = join(work, 'documento.html');
 
@@ -310,7 +333,7 @@ try {
   if (final.pages.join() !== first.pages.join()) throw new Error('La paginación cambió entre pasadas: revisar el índice');
   writeFileSync(OUTPUT, final.pdf);
   const pagesCount = (readFileSync(OUTPUT, 'latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-  console.log(`PDF generado: ${process.argv[2] ?? 'docs/SignalMap-Hito2-Documento-Tecnico.pdf'} (${pagesCount} páginas)`);
+  console.log(`PDF generado: ${outputArg ?? 'docs/SignalMap-Hito2-Documento-Tecnico.pdf'} (${pagesCount} páginas)`);
   ws.close();
 } finally {
   child.kill();
