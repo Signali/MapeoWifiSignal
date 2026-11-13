@@ -55,7 +55,7 @@ export function FloorView({ session, onLogout }: Props) {
   return (
     <>
       <header className="topbar">
-        <strong className="brand">SignalMap</strong>
+        <h1 className="brand">SignalMap</h1>
         <section className="controls" aria-label="Selección de piso">
           <div className="field">
             {buildings.data && buildings.data.length > 0 ? (
