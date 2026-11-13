@@ -161,8 +161,20 @@ input[type='checkbox'] { accent-color: var(--acento); width: 1rem; height: 1rem;
   border-radius: 50%;
   background: radial-gradient(circle, transparent 38%, var(--acento) 40%, var(--acento) 52%, transparent 54%);
 }
-.who { margin-left: auto; color: var(--acento); font-family: var(--f-mono); font-size: 0.8rem; }
+.topbar-end { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+.who { color: var(--acento); font-family: var(--f-mono); font-size: 0.8rem; }
 .topbar button { min-height: 2.5rem; }
+/* Pantallas medianas (proyector, portátil chico): el correo se oculta para que la cabecera quepa en una fila. */
+@media (max-width: 1100px) { .who { display: none; } }
+/* Teléfono: marca y botones arriba, el selector de edificio y piso en su propia fila. */
+@media (max-width: 640px) {
+  .topbar { padding: 0.5rem 0.75rem; gap: 0.5rem; }
+  .topbar-end { gap: 0.5rem; }
+  .topbar button { padding: 0.3rem 0.65rem; font-size: 0.875rem; }
+  .controls { order: 3; flex: 1 1 100%; flex-wrap: nowrap; }
+  .field { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: stretch; gap: 0.15rem; }
+  .field select { min-width: 0; width: 100%; }
+}
 
 /* Selector de edificio y piso (en la cabecera) */
 .controls { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; }
@@ -182,6 +194,7 @@ input[type='checkbox'] { accent-color: var(--acento); width: 1rem; height: 1rem;
 .floor-layout { display: grid; gap: 1rem 1.5rem; grid-template-columns: minmax(0, 1fr); align-items: start; }
 .floor-layout > * { min-width: 0; }
 .main { display: grid; gap: 1rem; }
+.main > * { min-width: 0; }
 .phase-slot { order: -1; }
 @media (min-width: 960px) {
   .floor-layout { grid-template-columns: minmax(0, 1fr) 19rem; grid-template-areas: 'main phase' 'main rest'; grid-template-rows: auto 1fr; }
@@ -205,6 +218,13 @@ input[type='checkbox'] { accent-color: var(--acento); width: 1rem; height: 1rem;
 .sheet { border: 1px solid var(--linea); border-radius: 2px; background: var(--sheet); }
 .plan-wrap { padding: 0.5rem 0.75rem 0.25rem; }
 .plan-wrap.refreshing { opacity: 0.45; }
+.plan-hint { display: none; margin: 0; padding: 0 0.85rem 0.5rem; font-size: 0.8rem; color: var(--muted); }
+/* Teléfono: el plano conserva un ancho mínimo para que los puntos y los códigos se lean, y se desliza de lado. */
+@media (max-width: 640px) {
+  .plan-wrap { overflow-x: auto; }
+  .plan-wrap .plan { min-width: 40rem; }
+  .plan-hint { display: block; }
+}
 .cajetin { display: grid; grid-template-columns: 1.4fr 0.8fr 1fr 1fr; margin: 0; border-top: 1px solid var(--linea); }
 .cajetin > div { padding: 0.55rem 0.85rem; border-right: 1px solid var(--linea); min-width: 0; }
 .cajetin > div:last-child { border-right: 0; }
