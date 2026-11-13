@@ -112,13 +112,15 @@ export function FloorView({ session, onLogout }: Props) {
           )}
 
         </section>
-        <span className="who">
-          {session.email} · {session.role}
-        </span>
-        <ThemeToggle />
-        <button type="button" className="ghost" onClick={onLogout}>
-          Cerrar sesión
-        </button>
+        <div className="topbar-end">
+          <span className="who">
+            {session.email} · {session.role}
+          </span>
+          <ThemeToggle />
+          <button type="button" className="ghost" onClick={onLogout}>
+            Cerrar sesión
+          </button>
+        </div>
       </header>
 
       <main className="floorview">
@@ -243,6 +245,7 @@ function PlanArea({ floor, buildingName, phase, onPhase }: PlanAreaProps) {
                   repeater={showMarkers ? (recommendationLayer?.position ?? null) : null}
                 />
               </div>
+              <p className="plan-hint">Desliza el plano hacia los lados para verlo completo.</p>
               <dl className="cajetin">
                 <div>
                   <dt>Edificio y piso</dt>
