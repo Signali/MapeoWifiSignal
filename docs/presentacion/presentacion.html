@@ -78,7 +78,7 @@ body[data-theme="dark"] .chrome { display: none; }
 .rail i { flex: none; width: 44px; text-align: center; color: var(--pool-texto); font: 700 30px var(--f-text); font-style: normal; }
 .rail span.on { background: var(--astral); color: #fff; border-bottom-color: var(--surf); }
 .rail span.done { color: var(--champlain); border-bottom-color: var(--pool); }
-.player { display: grid; grid-template-columns: 1090px 1fr; gap: 40px; height: 500px; }
+.player { display: grid; grid-template-columns: 1090px 1fr; gap: 40px; height: 560px; }
 .code { background: var(--kuroi); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .code .tab { font: 500 24px var(--f-mono); color: var(--surf); padding: 14px 28px; border-bottom: 2px solid var(--astral); }
 .code pre { margin: 0; padding: 18px 0; flex: 1; font-size: 25px; line-height: 1.55; color: #fff; white-space: pre-wrap; overflow: hidden; }
@@ -95,6 +95,15 @@ body[data-theme="dark"] .chrome { display: none; }
 .card .badge { align-self: flex-start; font: 500 28px var(--f-mono); color: #fff; background: var(--champlain); padding: 3px 18px; border-radius: 6px; }
 .card pre { margin: 0; font-size: 23px; line-height: 1.4; white-space: pre-wrap; color: var(--ink); }
 .fade { transition: opacity .17s; }
+.cards { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.cards .card { flex: 1; min-height: 0; }
+.card.mini { flex: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-left-color: var(--line); }
+.card.mini .qn { grid-template-columns: 40px 1fr; column-gap: 12px; }
+.card.mini .qn b { width: 40px; height: 40px; font-size: 22px; background: var(--champlain); }
+.card.mini .qn span { font-size: 26px; color: var(--champlain); }
+.card.mini .badge { flex: none; align-self: center; font-size: 22px; padding: 2px 12px; }
+.card.enter { animation: card-in .25s ease-out; }
+@keyframes card-in { from { opacity: 0; transform: translateY(14px); } }
 .prog { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
 .prog i { flex: 1; height: 8px; background: var(--line); border-radius: 4px; }
 .prog i.on { background: var(--pool); }
@@ -170,7 +179,9 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
   .slide { display: flex !important; position: relative; width: 1920px; height: 1080px; break-after: page; }
   .zone, #ayuda, #negro, #laser { display: none !important; }
   .chrome { display: none !important; }
+  .slide.print-hide { display: none !important; }
 }
+@media screen { .slide.print-only { display: none !important; } }
 </style>
 </head>
 <body data-theme="dark">
@@ -203,8 +214,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </ol>
     <div class="chrome"><div class="secs"><span>Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>0:20 a 0:30.</b> Decí el orden sin leer la diapositiva: primero lo ves funcionando, después por qué estas tecnologías, al final por qué un solo servicio.</p>
-      <p>Pasá directo a Postman. Si querés sacar la diapositiva mientras mostrás Postman, tocá <b>B</b> (pantalla en negro).</p>
+      <p><b>0:20 a 0:30.</b> Di el orden sin leer la diapositiva: primero lo ves funcionando, después por qué estas tecnologías, al final por qué un solo servicio.</p>
+      <p>Pasa directo a Postman. Si quieres sacar la diapositiva mientras muestras Postman, toca <b>B</b> (pantalla en negro).</p>
     </aside>
   </section>
 
@@ -226,12 +237,12 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
       <p><b>0:30 a 2:30.</b> Antes de arrancar (ya hecho): <code>npm run seed</code> (el P-25 queda con id 25), <code>npm start</code>, <code>/health</code> en ok, Postman con el environment «SignalMap local (plantilla)» y el login hecho. El login no cuenta entre las 4 peticiones.</p>
-      <p><b>Pasá a Postman</b> (alt+tab, o <b>B</b> para negro) y corré en orden:</p>
+      <p><b>Pasa a Postman</b> (alt+tab, o <b>B</b> para negro) y corre en orden:</p>
       <p><b>1 · POST → 201.</b> «Crear devuelve dónde quedó lo creado»: cabecera <code>Location: /api/v1/points/25</code> (RFC 9110 §15.3.2). Es el P-25: 30 m desde el borde izquierdo, 12,5 m desde el superior, en el piso 3 de la Torre Norte (40 × 25 m).</p>
       <p><b>2 · PATCH → 200.</b> Mandamos solo <code>{ "x": 13, "y": 8.5 }</code>: corregir no obliga a reenviar todo (RFC 5789). No hay PUT.</p>
       <p><b>3 · DELETE → 204.</b> Sin cuerpo. Borrar es irreversible y queda para el administrador.</p>
       <p><b>4 · GET → 404.</b> <code>{ "message": "Punto no encontrado" }</code>. Es el error y a la vez la prueba de que el borrado fue real.</p>
-      <p>Cerrá con los tests en verde (391, uno por respuesta del contrato; en Windows pasan 388 y se saltean 3) y volvé a las diapositivas.</p>
+      <p>Cierra con los tests en verde (391, uno por respuesta del contrato; en Windows pasan 388 y se saltan 3) y vuelve a las diapositivas.</p>
     </aside>
   </section>
 
@@ -242,20 +253,14 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     <div class="rail" id="rail"><span>middlewares</span><i>→</i><span>controller</span><i>→</i><span>service</span><i>→</i><span>repository</span></div>
     <div class="player">
       <div class="code"><div class="tab fade" id="pfile"></div><pre class="fade" id="pcode"></pre></div>
-      <div class="card fade" id="pcard">
-        <div class="qn"><b id="pn"></b><span id="pq"></span></div>
-        <p class="say" id="psay"></p>
-        <p class="lbl" id="plbl"></p>
-        <span class="badge" id="pst"></span>
-        <pre id="pbody"></pre>
-      </div>
+      <div class="cards fade" id="pcards"></div>
     </div>
     <div class="prog"><div id="pprog" style="display:contents"></div><span id="phint"></span></div>
     <div class="chrome"><div class="secs"><span class="on">Demostración</span><span>Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>2:30 a 3:20.</b> La diapositiva avanza sola, un paso cada 6 segundos (8 pasos, unos 48 s). Hablá acompañando el código que va apareciendo; no lo leas.</p>
-      <p><b>Con el lápiz o las flechas:</b> en esta diapositiva, siguiente y anterior mueven el código paso a paso (y pausan el avance automático). Cuando ya no quedan pasos, siguiente pasa a la diapositiva 5. <b>D</b> retoma el avance automático.</p>
-      <p><b>Pasos 1 a 3 (middlewares):</b> «Lo que acabamos de ver pasó por capas, y cada una hace una sola pregunta. Si la respuesta es no, corta ahí con su código.» ¿Quién sos? → 401. ¿Podés crear puntos? → 403. ¿El cuerpo tiene forma? → 400. <b>Primero quién pide y después qué pide:</b> por eso un cliente con cuerpo mal formado recibe 403 y no 400.</p>
+      <p><b>2:30 a 3:20.</b> La diapositiva avanza solo con el lápiz o las flechas, capa por capa: middlewares (3 pasos), controller (1), service (2), repository (1) y la verificación. Son 8 toques en unos 50 s, unos 6 s por paso. Habla acompañando el código que va apareciendo; no lo leas.</p>
+      <p><b>Con el lápiz o las flechas:</b> siguiente agrega el paso que sigue a la capa actual (el anterior queda resumido con su código de respuesta); después del último paso de una capa, pasa a la capa siguiente. Anterior recorre el camino al revés. Después de la verificación, siguiente pasa a la diapositiva 5.</p>
+      <p><b>Pasos 1 a 3 (middlewares):</b> «Lo que acabamos de ver pasó por capas, y cada una hace una sola pregunta. Si la respuesta es no, corta ahí con su código.» ¿Quién eres? → 401. ¿Puedes crear puntos? → 403. ¿El cuerpo tiene forma? → 400. <b>Primero quién pide y después qué pide:</b> por eso un cliente con cuerpo mal formado recibe 403 y no 400.</p>
       <p><b>Paso 4 (controller):</b> dos líneas: le pide al servicio que cree y responde 201 con <code>Location</code>. Ninguna decisión de negocio vive ahí.</p>
       <p><b>Pasos 5 y 6 (service):</b> ¿lo ve este usuario? → 404 (un recurso ajeno responde igual que uno inexistente). ¿Cae dentro de 40 × 25 m? → 422; con <code>"x": 45</code> corta acá, sin llegar a la base.</p>
       <p><b>Paso 7 (repository):</b> el INSERT con parámetros; si el código o la tira ya existen, la base lo impide con UNIQUE → 409. Con el P-25 las seis respuestas son sí y vuelve 201.</p>
@@ -283,9 +288,9 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </div>
     <div class="chrome"><div class="secs"><span>Demostración</span><span class="on">Tecnologías</span><span>Arquitectura</span></div><div class="count"></div></div>
     <aside class="notes">
-      <p><b>3:20 a 4:20.</b> Empezá por los criterios (arriba): son los mismos para todas las decisiones y es lo que evita justificar «por moda».</p>
+      <p><b>3:20 a 4:20.</b> Empieza por los criterios (arriba): son los mismos para todas las decisiones y es lo que evita justificar «por moda».</p>
       <p>El Hito 1 comparó Express con Spring Boot; al empezar el Hito 2 se amplió la comparación con Fastify, NestJS y Hono, sin cambiar la decisión.</p>
-      <p>Recorré las cuatro alternativas en una línea cada una (están en pantalla). La más probable en preguntas es NestJS: estructura impuesta con módulos, decoradores e inyección de dependencias; para 2 personas y 2 recursos cuesta más de lo que ordena.</p>
+      <p>Recorre las cuatro alternativas en una línea cada una (están en pantalla). La más probable en preguntas es NestJS: estructura impuesta con módulos, decoradores e inyección de dependencias; para 2 personas y 2 recursos cuesta más de lo que ordena.</p>
       <p><b>El costo asumido</b> (decilo sin que te lo pidan): Express no impone capas. Lo compensamos con reglas que se comprueban en el código, las cuatro búsquedas de la diapositiva anterior. Si el equipo o el proyecto crecieran, el candidato para revisar la decisión sería NestJS.</p>
     </aside>
   </section>
@@ -398,7 +403,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     </div>
     <aside class="notes">
       <p><b>6:25 a 6:40.</b> Las cuatro cifras, rápido: 13 endpoints, 7 tablas, 391 tests, y las 86 fallas que rompimos a propósito en reglas críticas: las 86 hicieron fallar al menos un test.</p>
-      <p>Cerrá con «¿preguntas?». El guion termina en 6:40: quedan 20 segundos de colchón. <b>A los 7:00 se corta, sin minutos de gracia.</b></p>
+      <p>Cierra con «¿preguntas?». El guion termina en 6:40: quedan 20 segundos de colchón. <b>A los 7:00 se corta, sin minutos de gracia.</b></p>
       <p>Después, hasta 2 minutos de preguntas al integrante sorteado. El banco de preguntas está en el vault (Paso 11).</p>
     </aside>
   </section>
@@ -415,8 +420,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
   <kbd>1</kbd> a <kbd>8</kbd> saltar a una diapositiva · <kbd>Inicio</kbd> <kbd>Fin</kbd><br>
   <kbd>F</kbd> pantalla completa · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro<br>
   <kbd>P</kbd> ventana de presentador · <kbd>T</kbd> iniciar o pausar el cronómetro · <kbd>R</kbd> reiniciarlo<br>
-  <b>Lápiz o control remoto:</b> <kbd>Av Pág</kbd> <kbd>Re Pág</kbd> siguiente y anterior (en la diapositiva 4 recorren el código paso a paso) · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro · <kbd>F5</kbd> pantalla completa<br>
-  <kbd>L</kbd> puntero láser · <kbd>D</kbd> retoma el avance automático de la diapositiva 4<br>
+  <b>Lápiz o control remoto:</b> <kbd>Av Pág</kbd> <kbd>Re Pág</kbd> siguiente y anterior (en la diapositiva 4 recorren los pasos de cada capa y luego la capa siguiente) · <kbd>B</kbd> o <kbd>.</kbd> pantalla en negro · <kbd>F5</kbd> pantalla completa<br>
+  <kbd>L</kbd> puntero láser<br>
   <kbd>?</kbd> esta ayuda
 </div>
 
@@ -457,7 +462,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     });
     document.body.setAttribute('data-theme', slides[cur].classList.contains('dark') ? 'dark' : 'light');
     try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) { /* file:// restringido: no pasa nada */ }
-    if (cur === 3) startPlayer(); else stopPlayer();
+    if (cur === 3) startPlayer(false);
     renderPresenter();
   }
 
@@ -511,13 +516,12 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
   }
   setInterval(renderPresenter, 250);
 
-  /* Diapositiva 4: reproductor de código. Código real de backend/src; avanza solo cada STEP_MS. */
-  var STEP_MS = 6000;
+  /* Diapositiva 4: reproductor de código por capas. Código real de backend/src; avanza solo con siguiente y anterior. */
   var ROUTE = ['pointsRouter.post(', "  '/',", '  authenticate,', "  requireRole('admin', 'tecnico'),", '  validate({ query: noQuery, body: createPointBody }),', '  points.create,', ');'];
   function route(i) { return ROUTE.map(function (t, n) { return n === i ? [t, 'hl'] : [t]; }); }
   var STEPS = [
-    { file: 'routes/points.ts', layer: 0, n: '1', q: '¿Quién sos?', say: 'Lee el token. Sin token, o con uno falso, corta acá.', lbl: 'Si la respuesta es no:', st: '401 · sin sesión', body: '{ "message": "Token requerido" }', lines: route(2) },
-    { file: 'routes/points.ts', layer: 0, n: '2', q: '¿Podés crear puntos?', say: 'El rol del token tiene que ser admin o técnico. Un cliente solo mira.', lbl: 'Si la respuesta es no:', st: '403 · sin permiso', body: '{ "message": "No tiene permiso para esta acción" }', lines: route(3) },
+    { file: 'routes/points.ts', layer: 0, n: '1', q: '¿Quién eres?', say: 'Lee el token. Sin token, o con uno falso, corta acá.', lbl: 'Si la respuesta es no:', st: '401 · sin sesión', body: '{ "message": "Token requerido" }', lines: route(2) },
+    { file: 'routes/points.ts', layer: 0, n: '2', q: '¿Puedes crear puntos?', say: 'El rol del token tiene que ser admin o técnico. Un cliente solo mira.', lbl: 'Si la respuesta es no:', st: '403 · sin permiso', body: '{ "message": "No tiene permiso para esta acción" }', lines: route(3) },
     { file: 'routes/points.ts', layer: 0, n: '3', q: '¿El cuerpo tiene forma?', say: 'Zod revisa el formato: x e y son números con hasta 2 decimales.', lbl: 'Si la respuesta es no:', st: '400 · mal formado', body: '{ "message": "x debe ser un número con hasta 2 decimales" }', lines: route(4) },
     { file: 'controllers/points.ts (sin tipos)', layer: 1, n: '→', q: 'Dos líneas, ninguna decisión', say: 'Le pide al servicio que cree el punto y responde. Nada más.', lbl: 'Si todo salió bien:', st: '201 · creado', body: 'Location: /api/v1/points/25', lines: [['export async function create(req, res) {'], ['  const point = await pointsService.create(req.user!, req.body);', 'hl'], ['  res.status(201).location(`${req.baseUrl}/${point.id}`).json(point);', 'hl'], ['}']] },
     { file: 'services/points.ts (sin tipos)', layer: 2, n: '4', q: '¿Lo ve este usuario?', say: 'Busca el piso solo dentro de la organización del usuario. Si no lo ve, es como si no existiera.', lbl: 'Si la respuesta es no:', st: '404 · no lo ve', body: '{ "message": "Piso no encontrado" }', lines: [['export async function create(user, point) {'], ['  const floor = await floors.findById(point.floor_id, readScope(user));', 'hl'], ['  if (!floor) throw floorNotFound();', 'hl'], ['  assertInside(floor, point.x, point.y);'], ['  return points.create(point);'], ['}']] },
@@ -525,7 +529,8 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     { file: 'repositories/points.ts (sin tipos)', layer: 3, n: '6', q: '¿Ya existe P-25 o esa tira?', say: 'La base lo impide sola con UNIQUE. Los valores viajan como parámetros ($1, $2…), nunca pegados al SQL.', lbl: 'Si la respuesta es sí:', st: '409 · duplicado', body: '{ "message": "La tira NFC ya está asociada a otro punto" }', lines: [['const { rows } = await query('], ['  `INSERT INTO points (floor_id, code, x, y, nfc_uid) VALUES ($1, $2, $3, $4, $5)', 'hl', 'str'], ['   RETURNING id, floor_id, code, x, y, nfc_uid`,', 'hl', 'str'], ['  [point.floor_id, point.code, point.x, point.y, point.nfc_uid],'], [');']] },
     { file: 'terminal · desde backend/src', layer: -1, n: '✓', q: '¿Capas o solo carpetas?', say: 'Cuatro búsquedas en el código: ningún service conoce Express, ningún controller toca la base y no hay SQL fuera de repositories/.', lbl: 'Resultado:', st: '4 de 4 en «ninguno»', body: '', lines: [['$ grep -l "from \'express\'" services/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -l "res\\.\\|\\.status(" services/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -l "repositories/" controllers/*.ts schemas/*.ts'], ['(ninguno)', 'hl', 'ok'], ['$ grep -rl "SELECT \\|INSERT \\|UPDATE \\|DELETE FROM" . | grep -v repositories/'], ['(ninguno)', 'hl', 'ok']] }
   ];
-  var step = 0, auto = true, stepTimer = null;
+  var step = 0;
+  var LAYER_NAMES = ['middlewares', 'controller', 'service', 'repository'];
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var KW = /(\/\/.*|^\$ .*)|(`[^`]*`?|'[^']*'?|"[^"]*"?)|\b(const|await|async|function|export|return|throw|new|if)\b/g;
   function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -544,37 +549,56 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     return '<span class="' + cls + '">' + inner + '</span>';
   }
   var $p = function (id) { return document.getElementById(id); };
+  /* Los pasos se agrupan por capa (pasos seguidos con el mismo layer): las tarjetas de la capa se acumulan
+     y la anterior queda resumida; al pasar a otra capa se empieza de nuevo. */
+  function groupStart(i) { while (i > 0 && STEPS[i - 1].layer === STEPS[i].layer) i--; return i; }
+  function groupEnd(i) { while (i < STEPS.length - 1 && STEPS[i + 1].layer === STEPS[i].layer) i++; return i; }
+  function cardHtml(d, full, enter) {
+    var qn = '<div class="qn"><b>' + esc(d.n) + '</b><span>' + esc(d.q) + '</span></div>';
+    if (!full) return '<div class="card mini">' + qn + '<span class="badge">' + esc(d.st) + '</span></div>';
+    return '<div class="card' + (enter ? ' enter' : '') + '">' + qn + '<p class="say">' + esc(d.say) + '</p><p class="lbl">' + esc(d.lbl) + '</p>'
+      + '<span class="badge">' + esc(d.st) + '</span>' + (d.body ? '<pre>' + esc(d.body) + '</pre>' : '') + '</div>';
+  }
+  var shownLayer = null;
   function renderStep(animate) {
-    var d = STEPS[step], fades = [$p('pfile'), $p('pcode'), $p('pcard')];
+    var d = STEPS[step], start = groupStart(step), end = groupEnd(step), newLayer = shownLayer !== start;
+    shownLayer = start;
     var rail = $p('rail').querySelectorAll('span');
     Array.prototype.forEach.call(rail, function (el, i) { el.className = i === d.layer ? 'on' : (d.layer === -1 || i < d.layer) ? 'done' : ''; });
     $p('pprog').innerHTML = STEPS.map(function (_, i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('');
-    $p('phint').textContent = (step + 1) + ' / ' + STEPS.length + (auto ? '' : ' · en pausa (D para seguir)');
+    $p('phint').textContent = (d.layer === -1 ? 'verificación' : LAYER_NAMES[d.layer]) + ' · paso ' + (step - start + 1) + ' de ' + (end - start + 1);
+    var move = animate && !reduceMotion;
+    $p('pcards').innerHTML = STEPS.slice(start, step + 1).map(function (s, i, all) { return cardHtml(s, i === all.length - 1, move && !newLayer); }).join('');
+    var fades = newLayer ? [$p('pfile'), $p('pcode'), $p('pcards')] : [$p('pfile'), $p('pcode')];
     var apply = function () {
       $p('pfile').textContent = d.file;
       $p('pcode').innerHTML = d.lines.map(lineHtml).join('');
-      $p('pn').textContent = d.n; $p('pq').textContent = d.q; $p('psay').textContent = d.say;
-      $p('plbl').textContent = d.lbl; $p('pst').textContent = d.st;
-      $p('pbody').textContent = d.body; $p('pbody').style.display = d.body ? '' : 'none';
       fades.forEach(function (el) { el.style.opacity = 1; });
     };
-    if (animate && !reduceMotion) { fades.forEach(function (el) { el.style.opacity = 0; }); setTimeout(apply, 170); } else apply();
+    if (move) { fades.forEach(function (el) { el.style.opacity = 0; }); setTimeout(apply, 170); } else apply();
   }
-  function scheduleStep() {
-    clearTimeout(stepTimer);
-    if (!auto) return;
-    stepTimer = setTimeout(function () { if (step < STEPS.length - 1) { step++; renderStep(true); scheduleStep(); } }, STEP_MS);
-  }
-  function startPlayer() { step = 0; auto = true; renderStep(false); scheduleStep(); }
-  function stopPlayer() { clearTimeout(stepTimer); }
-  function moveStep(delta) { auto = false; clearTimeout(stepTimer); step = Math.max(0, Math.min(STEPS.length - 1, step + delta)); renderStep(true); }
-  function resumeAuto() { auto = true; renderStep(false); scheduleStep(); }
-  /* Siguiente y anterior (lápiz, flechas, clic en los bordes): en la diapositiva 4 recorren los pasos del código. */
+  function startPlayer(atEnd) { step = atEnd ? STEPS.length - 1 : 0; shownLayer = null; renderStep(false); }
+  function moveStep(delta) { step = Math.max(0, Math.min(STEPS.length - 1, step + delta)); renderStep(true); }
+  /* Siguiente y anterior (lápiz, flechas, clic en los bordes): en la diapositiva 4 recorren los pasos de cada capa
+     y, al terminar una capa, pasan a la siguiente. Sin avance automático. */
   function next() { if (cur === 3 && step < STEPS.length - 1) moveStep(1); else show(cur + 1); }
   function prev() {
     if (cur === 3 && step > 0) { moveStep(-1); return; }
     show(cur - 1);
-    if (cur === 3) { stopPlayer(); auto = false; step = STEPS.length - 1; renderStep(false); }
+    if (cur === 3) startPlayer(true);
+  }
+  /* Impresión (PDF de respaldo): una copia fija de la diapositiva 4 por capa, con todas sus tarjetas. */
+  function buildPrintLayers() {
+    var s4 = slides[3], after = s4;
+    for (var i = 0; i < STEPS.length; i = groupEnd(i) + 1) {
+      step = groupEnd(i); shownLayer = null; renderStep(false);
+      var c = s4.cloneNode(true);
+      c.classList.add('print-only'); c.classList.remove('active');
+      Array.prototype.forEach.call(c.querySelectorAll('[id]'), function (el) { el.removeAttribute('id'); });
+      after.parentNode.insertBefore(c, after.nextSibling); after = c;
+    }
+    s4.classList.add('print-hide');
+    startPlayer(false);
   }
 
   function toggleFullscreen() {
@@ -596,7 +620,6 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
     else if (k === 'p' || k === 'P') openPresenter();
     else if (k === 't' || k === 'T') toggleTimer();
     else if (k === 'r' || k === 'R') resetTimer();
-    else if ((k === 'd' || k === 'D') && cur === 3) resumeAuto();
     else if (k === '?' || k === 'h' || k === 'H') ayuda.hidden = !ayuda.hidden;
     else if (k === 'Escape') { negro.classList.remove('on'); ayuda.hidden = true; }
     else handled = false;
@@ -623,6 +646,7 @@ body.laser, body.laser *, body.idle, body.idle * { cursor: none; }
   window.addEventListener('resize', fit);
   window.addEventListener('beforeunload', function () { if (pw && !pw.closed) pw.close(); });
 
+  buildPrintLayers();
   fit();
   var h = parseInt(location.hash.slice(1), 10);
   show(h >= 1 && h <= slides.length ? h - 1 : 0);
