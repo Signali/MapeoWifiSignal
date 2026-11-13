@@ -268,7 +268,32 @@ PENDIENTE T22: fila del ensayo en equipo limpio de PC-Gabriel, con su fecha y lo
 
 ## 8. Datos personales
 
-PENDIENTE T26: sección a cargo de Gabriel.
+SignalMap trata datos de personas aunque no pida nombres: quién midió, cuándo y dónde. Esta sección dice cuáles son, por qué se guardan, cómo se protegen y qué falta. Todo el trabajo se hizo con datos ficticios (la organización de prueba y usuarios con dominio `@demo.cl`), de modo que no hay titulares reales. La Ley 21.719 (2024) se usó como criterio de diseño: sus artículos 3, 4 y 7 son los de la Ley 19.628 tal como los sustituye el artículo primero de la Ley 21.719, que entra en vigencia el día primero del mes vigésimo cuarto posterior a su publicación (artículo primero transitorio), es decir, el 1 de diciembre de 2026.
+
+**Qué datos se tratan y para qué.**
+
+- **La cuenta.** La tabla `users` guarda el email (partido en `email_local` y el dominio), el hash bcrypt de la clave (nunca la clave) y el rol. Los usuarios con rol `cliente` tienen además los edificios que se les asignaron (`user_buildings`). Sirven para iniciar sesión y decidir qué puede ver o hacer cada persona.
+- **El trabajo de cada persona.** Cada fila de `measurements` guarda `user_id`, `measured_at` y el punto medido, que a su vez tiene un código y unas coordenadas dentro de un piso. Juntos describen dónde estuvo una persona y cuándo. Al anular una medición también se guardan quién la anuló y cuándo (`voided_by`, `voided_at`). Sirven para la trazabilidad: saber quién midió y quién anuló. La API no devuelve `user_id`; solo se lee en la base.
+- **El token.** El login entrega un JWT firmado cuyo contenido es el id del usuario, el id de la organización, el rol y el vencimiento; la firma impide alterarlo, pero no lo cifra. La app Android guarda el token, el email, el rol y el vencimiento en preferencias privadas de la aplicación. La web guarda los mismos datos en `sessionStorage`, que se borra al cerrar la pestaña; `localStorage` solo guarda el tema claro u oscuro.
+
+**Por qué esos datos y no otros.** Conforme al principio de proporcionalidad, que limita el tratamiento a lo necesario, adecuado y pertinente (Ley 21.719, 2024, art. 3, letra c), no hay nombres ni teléfonos: la cuenta se reduce al email, la clave y el rol. De las redes WiFi que ve el teléfono, el servicio guarda solo las lecturas del SSID de la organización, que se comparan de forma exacta con el valor cargado por seed, y descarta las demás; así no quedan en la base los BSSID de redes de vecinos o de puntos de acceso personales, que podrían identificar personas. El filtro lo aplica el servicio, no la app: la app envía todas las redes que Android le entrega (hasta 100) y su cola de pendientes las conserva en el teléfono hasta que la medición se confirma. La app pide el permiso de ubicación porque lo necesita para buscar redes WiFi, pero su código solo revisa que el permiso esté concedido y que el ajuste de ubicación esté encendido: no lee la posición del teléfono ni la guarda. Las coordenadas de la base son las de los puntos del plano, no las de una persona.
+
+**Medidas de seguridad.** El principio de seguridad exige estándares adecuados contra el tratamiento no autorizado, la pérdida o la filtración (Ley 21.719, 2024, art. 3, letra f). El proyecto aplicó estas:
+
+- **Acceso por rol y por organización.** Toda consulta filtra por `org_id` y un recurso de otra organización responde `404`. Un usuario `cliente` solo ve los edificios que se le asignaron. Registrar mediciones y puntos lo hacen `admin` y `tecnico`; anular mediciones y borrar puntos o edificios, solo `admin`.
+- **Claves y sesión.** Las claves se guardan con bcrypt (costo 10) y el login las compara siempre, también cuando el email no existe, con el mismo mensaje de error. El token vence según el rol: 8 horas para `admin`, 10 para `tecnico` y 2 para `cliente` (valores de `.env.example`).
+- **Logs sin datos.** El servicio no registra cada petición. Ante un error inesperado escribe solo el método, la ruta y el stack, nunca el cuerpo de la petición (el login trae la clave) ni el objeto completo del error, que en PostgreSQL puede traer valores de la fila. En la app, los avisos al log de Android describen fallas de la cola sin copiar su contenido.
+- **Secretos fuera del repositorio.** `.env` y las claves privadas (`*.pem`, `*.key`) están en `.gitignore`; el repositorio solo trae `.env.example` con valores de ejemplo. El respaldo automático de Android excluye el token y las tiras en caché.
+- **Datos ficticios.** El seed crea una organización de prueba y tres usuarios `@demo.cl`, con las claves del `.env`; no se corre en un entorno real.
+- **Conexión cifrada.** La app usa HTTPS y solo admite HTTP hacia `127.0.0.1` y `localhost` (sección 9).
+
+Lo que no hay, y queda declarado:
+
+- **Registro de accesos.** Ninguna tabla ni log dice quién consultó qué. Solo hay `user_id` en las mediciones y `voided_by` en las anulaciones.
+- **Cifrado del token en el teléfono.** El token, el email y la cola de mediciones quedan en el espacio privado de la app, protegidos por el aislamiento de Android pero sin cifrar, y la cola entra en el respaldo automático de Android (`allowBackup`). No se hizo porque quedó fuera del alcance de la demostración; el riesgo se acota porque el token vence en un máximo de 10 horas y la sesión se excluye del respaldo.
+- **Plazo de conservación.** El principio de proporcionalidad pide conservar los datos solo el tiempo necesario y luego suprimirlos o anonimizarlos (Ley 21.719, 2024, art. 3, letra c). El proyecto no define ese plazo: las mediciones no se borran, se anulan.
+
+**Si alguien pide eliminar sus datos.** La ley reconoce el derecho de supresión (Ley 21.719, 2024, arts. 4 y 7). El producto no lo atiende por sí mismo: no existe un endpoint de usuarios ni de borrado de cuentas, y las cuentas solo se crean por seed. El procedimiento es manual y lo haría quien administre la base de datos. Además, las mediciones y las anulaciones referencian al usuario con `ON DELETE RESTRICT`, de modo que la base no deja borrar una cuenta que tenga mediciones; solo sus asignaciones de edificios (`user_buildings`) se borran en cascada. Borrar las mediciones tampoco es una opción prevista, porque se anulan y no se borran (sección 7). Tampoco hay un procedimiento definido ni probado para anonimizar la cuenta. Por eso la atención de este derecho queda como pendiente.
 
 ---
 
@@ -312,7 +337,7 @@ Alvarado, M. y Díaz, G. (2026). *SignalMap. Hito 1: propuesta de producto y arq
 
 Android Developers. (s. f.). *Wi-Fi scanning overview*. Google. Recuperado el 12 de noviembre de 2026, de https://developer.android.com/develop/connectivity/wifi/wifi-scan
 
-PENDIENTE T26: agregar aquí la Ley 21.719, solo si se cita en la sección 8.
+Ley 21.719 de 2024. Regula la protección y el tratamiento de los datos personales y crea la Agencia de Protección de Datos Personales. *Diario Oficial de la República de Chile*, 13 de diciembre de 2024. Biblioteca del Congreso Nacional de Chile. Recuperado el 13 de noviembre de 2026, de https://www.bcn.cl/leychile/navegar?idNorma=1209272
 
 ---
 
