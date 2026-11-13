@@ -495,7 +495,7 @@ Posición estimada de cada emisor (cada BSSID de la red de la organización) en 
 ]
 ```
 - `x`, `y` (metros, 1 decimal): posición estimada, dentro del contorno del piso.
-- `p0_dbm` y `n` (1 decimal): parámetros del modelo ajustados. `n_fixed` es `true` cuando `n` se fijó en 3,0 por haber solo 3 puntos.
+- `p0_dbm` y `n` (1 decimal): parámetros del modelo ajustados. `n_fixed` es `true` cuando `n` se fijó en 3,0, ya sea por haber solo 3 puntos o porque con 4 o más no se pudo ajustar (todos a igual distancia del emisor estimado).
 - `rmse_db` (1 decimal): error cuadrático medio, en dB, entre las lecturas y lo que predice el modelo. Cuanto menor, mejor ajusta; el cliente puede mostrarlo como confianza.
 - `points_used`: puntos que aportaron una lectura de ese BSSID.
 - `frequency_mhz` y `ssid`: los de la lectura más fuerte de ese BSSID.

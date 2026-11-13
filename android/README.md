@@ -64,6 +64,7 @@ Son las de la plantilla «Empty Activity» de Android Studio, congeladas en `gra
 - **Rechazos:** si la API rechaza una medición (p. ej. tira no registrada, `422`), queda en la lista con el mensaje y solo se puede «Descartar»; no se reintenta.
 - **Dueño de la cola:** el archivo guarda el email de quien tomó las mediciones. Si inicia sesión otra persona, la cola se vacía.
 - **Cerrar sesión con pendientes:** pide confirmación y, si se acepta, borra las mediciones del teléfono. Un `401` (sesión vencida) conserva la cola.
+- **Caché de tiras:** `tags.xml` guarda tira → punto para rotular sin conexión. Se borra al terminar la sesión (cierre, cambio de usuario o `401`), para que el siguiente usuario del teléfono no vea rótulos de puntos que no le corresponden. Se vuelve a llenar al escanear con conexión. Se probó a mano (no hay test automático: usa `SharedPreferences`).
 - **Respaldo de Android:** `allowBackup` sigue activo para que viaje lo que tomó el técnico (la cola), pero `session.xml` (token, email, rol y servidor) y `tags.xml` (caché de tiras, que depende de la base) están excluidos en `backup_rules.xml` y `data_extraction_rules.xml`.
 - **Prueba sin cable** (`adb reverse` se pierde al desconectar): modo avión con el WiFi encendido, para poder medir sin salida a la API.
 - **Sin prueba automática:** el archivo usa `AtomicFile` (Android), así que no se prueba con JUnit puro; se prueba a mano.

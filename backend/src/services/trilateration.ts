@@ -39,6 +39,7 @@ interface Profile {
   sse: number;
   p0: number;
   n: number;
+  nFixed: boolean; // true si n quedó en FIXED_N (pocos puntos o distancia sin variación)
 }
 
 type Found = { x: number; y: number } & Profile;
@@ -54,6 +55,7 @@ function profileAt(x: number, y: number, samples: EmitterSample[], freeN: boolea
   const meanL = loss.reduce((a, b) => a + b, 0) / m;
   const meanR = samples.reduce((a, s) => a + s.rssi, 0) / m;
   let n = FIXED_N;
+  let nFixed = true;
   if (freeN) {
     let varL = 0;
     let cov = 0;
@@ -61,15 +63,19 @@ function profileAt(x: number, y: number, samples: EmitterSample[], freeN: boolea
       varL += (loss[i] - meanL) ** 2;
       cov += (loss[i] - meanL) * (samples[i].rssi - meanR);
     }
-    if (varL > EPSILON) n = clamp(cov / varL, N_MIN, N_MAX);
+    if (varL > EPSILON) {
+      n = clamp(cov / varL, N_MIN, N_MAX);
+      nFixed = false;
+    }
   }
   const p0 = meanR - n * meanL;
   let sse = 0;
   for (let i = 0; i < m; i++) sse += (samples[i].rssi - (p0 + n * loss[i])) ** 2;
-  return { sse, p0, n };
+  return { sse, p0, n, nFixed };
 }
 
-// null si hay menos de 3 puntos. Con 3 puntos n = 3,0 (n_fixed); con 4 o más se ajusta entre 2,0 y 5,0.
+// null si hay menos de 3 puntos. Con 3 puntos n = 3,0 (n_fixed); con 4 o más se ajusta entre 2,0 y 5,0
+// (si la distancia no varía entre los puntos no hay con qué ajustar: n = 3,0 y n_fixed).
 // La posición queda dentro del contorno del piso (el rectángulo, si no tiene contorno propio).
 // Valores redondeados a 1 decimal, como en el contrato.
 export function fitEmitter(samples: EmitterSample[], floor: FloorShape): EmitterFit | null {
@@ -115,7 +121,7 @@ export function fitEmitter(samples: EmitterSample[], floor: FloorShape): Emitter
     y: round1(current.y),
     p0_dbm: round1(current.p0),
     n: round1(current.n),
-    n_fixed: !freeN,
+    n_fixed: current.nFixed,
     rmse_db: round1(Math.sqrt(current.sse / samples.length)),
     points_used: samples.length,
   };

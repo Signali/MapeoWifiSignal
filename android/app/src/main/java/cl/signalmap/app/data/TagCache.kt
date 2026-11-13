@@ -17,4 +17,9 @@ class TagCache(context: Context) {
         val id = parts.getOrNull(0)?.toIntOrNull() ?: return null
         return CachedTag(id, parts.getOrNull(1).orEmpty())
     }
+
+    /** Al cerrar sesión: los rótulos son de puntos que el usuario siguiente podría no poder ver. */
+    fun clear() {
+        prefs.edit().clear().apply()
+    }
 }
