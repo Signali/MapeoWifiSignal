@@ -14,9 +14,9 @@ Santiago, noviembre de 2026
 
 Las empresas que instalan o amplían su red WiFi rara vez saben con certeza si la señal llega a cada puesto de trabajo ni si el repetidor que agregan mejoró algo. El informe del Hito 1 (Alvarado y Díaz, 2026) planteó ese problema y propuso una solución con tres piezas: tiras NFC pegadas en puntos fijos del edificio, una app Android que mide la señal WiFi al acercarle el teléfono a una tira, y una plataforma web que muestra el resultado sobre el plano del piso. El Hito 2 construyó el servidor que las une.
 
-Este documento describe **el producto tal como quedó construido en el Hito 3**: la app del técnico, la web y el servicio funcionando juntos, de punta a punta. Un técnico acerca el teléfono a la tira del punto P-07, la app mide las redes WiFi y envía la medición, el servicio la guarda en PostgreSQL y la web pinta el punto en el plano del piso 3 de la Torre Norte como Buena, Regular o Débil. Si se recarga la página, el punto sigue pintado, porque el dato vive en la base y no en la pantalla. Sobre esas mediciones, la web también estima dónde está cada emisor de la red y dónde convendría instalar un repetidor.
+Este documento describe el producto tal como quedó construido en el Hito 3: la app del técnico, la web y el servicio funcionando juntos, de punta a punta. Un técnico acerca el teléfono a la tira del punto P-07, la app mide las redes WiFi y envía la medición, el servicio la guarda en PostgreSQL y la web pinta el punto en el plano del piso 3 de la Torre Norte como Buena, Regular o Débil. Si se recarga la página, el punto sigue pintado, porque el dato vive en la base y no en la pantalla. Sobre esas mediciones, la web también estima dónde está cada emisor de la red y dónde convendría instalar un repetidor.
 
-**Qué encontrará el lector.** La sección 2 recorre el producto como lo recorrió el docente en la revisión: web, app y web otra vez. La sección 3 muestra la arquitectura final en tres figuras (componentes, una medición con conexión y una medición sin conexión). La sección 4 explica cómo se integraron las capas y dónde vive cada regla, y la sección 5, cómo se validaron los datos y cómo se muestran los errores y los estados de la interfaz. La sección 6 resume cómo se instala y se ejecuta el proyecto en otro equipo y qué se trabó al hacerlo. Las secciones siguientes recogen la evolución de las decisiones, las limitaciones y la conclusión; los anexos incluyen el modelo de datos completo.
+**Qué encontrará el lector.** La sección 2 recorre el producto como lo recorrerá el docente en la revisión: web, app y web otra vez. La sección 3 muestra la arquitectura final en tres figuras (componentes, una medición con conexión y una medición sin conexión). La sección 4 explica cómo se integraron las capas y dónde vive cada regla, y la sección 5, cómo se validaron los datos y cómo se muestran los errores y los estados de la interfaz. La sección 6 resume cómo se instala y se ejecuta el proyecto en otro equipo y qué se trabó al hacerlo. Las secciones siguientes recogen la evolución de las decisiones (sección 7), los datos personales (8), las limitaciones (9) y la conclusión (10); los anexos incluyen el modelo de datos completo, la tabla de la API y la declaración de uso de inteligencia artificial.
 
 ---
 
@@ -34,7 +34,7 @@ Figura 1. Inicio de sesión de la web
 
 ### 2.2 Medir con la app
 
-En el teléfono, el técnico inició sesión en la app y acercó el teléfono a la tira del P-07. La app identificó el punto, mostró su código y su ubicación («Piso 3, Torre Norte») y habilitó el botón «Medir WiFi». Al pulsarlo buscó las redes cercanas y envió la medición. El resultado apareció como un bloque del color de la categoría, con su letra, su nombre y el nivel de señal, y un texto que indicó cuántas lecturas de la red de la organización se guardaron y cuántas de otras redes se descartaron (Figura 2). El sistema solo guarda las lecturas de la red WiFi de la organización; las demás se validan y se descartan, porque no son de interés para el cliente.
+En el teléfono, el técnico inició sesión en la app y acercó el teléfono a la tira del P-07. La app identificó el punto, mostró su código y su ubicación («Piso 3, Torre Norte») y habilitó el botón «Medir WiFi». Al pulsarlo buscó las redes cercanas y envió la medición. El resultado apareció como un bloque del color de la categoría, con su letra, su nombre y el nivel de señal, y un texto que indicó cuántas lecturas de la red de la organización se guardaron y cuántas de otras redes se descartaron (Figura 2). El sistema solo guarda las lecturas de la red WiFi de la organización; las demás se descartan (sección 4).
 
 Figura 2. La app: el punto identificado por la tira y el resultado de la medición
 
@@ -42,7 +42,7 @@ Figura 2. La app: el punto identificado por la tira y el resultado de la medici�
 
 ### 2.3 Ver el resultado en la web
 
-De vuelta en la web, al pulsar «Actualizar» el P-07 apareció pintado según su categoría (Figura 3): **Buena** con una señal más fuerte que −65 dBm, **Regular** entre −65 y −70 dBm y **Débil** con una más débil que −70 dBm. El resumen pasó a «Puntos medidos 1 de 24». Cada categoría lleva color y una letra (B, R, D), de modo que no depende solo del color. Al hacer clic en el punto se abrió su detalle: categoría, nivel de señal, fecha de la medición y las redes captadas (Figura 4).
+De vuelta en la web, al pulsar «Actualizar» el P-07 apareció pintado según su categoría (Figura 3): Buena con una señal más fuerte que −65 dBm, Regular entre −65 y −70 dBm y Débil con una más débil que −70 dBm. El resumen pasó a «Puntos medidos 1 de 24». Cada categoría lleva color y una letra (B, R, D), de modo que no depende solo del color. Al hacer clic en el punto se abrió su detalle: categoría, nivel de señal, fecha de la medición y las redes captadas (Figura 4).
 
 Figura 3. El plano del piso 3 en la fase «Antes», con los puntos medidos y el análisis
 
@@ -56,13 +56,13 @@ Figura 4. Detalle de un punto medido
 
 Al recargar la página con `F5`, el punto siguió pintado: la selección de edificio, piso y fase está en la dirección de la página y el dato viene de la base de datos. Esa fue la comprobación de que el dato persiste.
 
-Con más puntos medidos, el panel de análisis bajo el plano ofreció tres resultados, todos calculados en el servicio a partir de las mediciones: un **mapa de calor** que interpola la señal entre los puntos medidos, la **posición probable de cada emisor** de la red (trilateración, con un mínimo de tres puntos que lo hayan captado) y la **ubicación recomendada del repetidor**. Esta última se rotuló siempre como «estimada», porque es un cálculo y no una comprobación con un repetidor real. La fase «Después» existe en la base de datos, en la API y en la web, pero no se probó con un repetidor real (sección 5.3).
+Con más puntos medidos, el panel de análisis bajo el plano ofreció tres resultados, todos calculados en el servicio a partir de las mediciones: un mapa de calor que interpola la señal entre los puntos medidos, la posición probable de cada emisor de la red (trilateración, con un mínimo de tres puntos que lo hayan captado) y la ubicación recomendada del repetidor. Esta última se rotuló siempre como «estimada», porque es un cálculo y no una comprobación con un repetidor real (sección 9).
 
 ---
 
 ## 3. Arquitectura final
 
-El sistema quedó como un monolito en capas con tres clientes de una misma API. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido; cada pieza adicional habría sido algo más que mantener y explicar.
+El sistema quedó como un monolito en capas con tres clientes de una misma API. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido.
 
 Figura 5. Componentes del sistema: app Android, web y API sobre PostgreSQL
 
@@ -90,7 +90,7 @@ flowchart TB
   EXP -->|"SQL parametrizado (pg)"| DB
 ```
 
-La Figura 6 sigue una medición con conexión, desde que el técnico acerca el teléfono a la tira hasta que la web la muestra en el plano. La app primero le pregunta a la API a qué punto corresponde la tira (`GET /points/by-tag`); luego mide, guarda la medición en su cola local con un identificador propio (`client_uuid`) y la envía. La API responde `201` si la medición es nueva y `200` si ese identificador ya existía, de modo que un reenvío no duplica nada. Recién entonces la app quita la medición de la cola. La web consulta después `GET /measurements` y recibe la última medición válida de cada punto.
+La Figura 6 sigue una medición con conexión, desde que el técnico acerca el teléfono a la tira hasta que la web la muestra en el plano. La app primero le pregunta a la API a qué punto corresponde la tira (`GET /points/by-tag`); luego mide, guarda la medición en su cola local con un identificador propio (`client_uuid`) y la envía. La API responde `201` si la medición es nueva y `200` si ese identificador ya existía, de modo que un reenvío no duplica nada. Solo entonces la app quita la medición de la cola. La web consulta después `GET /measurements` y recibe la última medición válida de cada punto.
 
 Figura 6. Una medición con conexión: de la tira NFC al plano de la web
 
@@ -117,7 +117,7 @@ sequenceDiagram
   API-->>W: última medición válida de cada punto
 ```
 
-La Figura 7 muestra qué pasa cuando falta la conexión, una situación frecuente en terreno. La medición no se pierde: queda en un archivo del espacio privado de la app (`pending-measurements.json`) con el `nfc_uid` de la tira, y la app la envía cuando vuelve la red, cuando se abre de nuevo o cuando el técnico pulsa «Enviar ahora». Si la tira no se había podido identificar, se identifica al enviar. La cola funciona solo con la app abierta; no hay envío en segundo plano.
+La Figura 7 muestra qué ocurre cuando falta la conexión. La medición no se pierde: queda en un archivo del espacio privado de la app (`pending-measurements.json`) con el `nfc_uid` de la tira, y la app la envía cuando vuelve la red, cuando se abre de nuevo o cuando el técnico pulsa «Enviar ahora». Si la tira no se había podido identificar, se identifica al enviar.
 
 Figura 7. Una medición sin conexión: la cola de la app y el reenvío
 
@@ -142,7 +142,7 @@ sequenceDiagram
   A->>Q: remove(client_uuid)
 ```
 
-La base de datos tiene nueve tablas: las siete del Hito 2 (organizaciones, dominios de email, usuarios, edificios, pisos, puntos y asignaciones usuario–edificio) más `measurements` y `network_readings`, que guardan cada medición y las redes que captó. El Hito 3 también agregó al piso su contorno real (`outline`) y la imagen de su plano (`plan_url`). El diagrama completo es la Figura 10, en el Anexo A; es el mismo de `db/er-diagram.md` y coincide con `db/schema.sql`.
+La base de datos tiene nueve tablas: las siete del Hito 2 (organizaciones, dominios de email, usuarios, edificios, pisos, puntos y asignaciones usuario–edificio) más `measurements` y `network_readings`, que guardan cada medición y las redes que captó. El Hito 3 también agregó al piso su contorno real (`outline`) y la imagen de su plano (`plan_url`). El diagrama completo está en el Anexo A; es el mismo de `db/er-diagram.md` y coincide con `db/schema.sql`.
 
 ---
 
@@ -150,7 +150,7 @@ La base de datos tiene nueve tablas: las siete del Hito 2 (organizaciones, domin
 
 El servicio mantuvo la arquitectura en capas del Hito 2: una petición entra por `routes/` (donde se declara qué rol puede llamar a cada ruta y qué validación aplica), pasa a `controllers/`, que traducen la petición HTTP a una llamada de negocio y la respuesta a un código de estado, luego a `services/`, donde viven las reglas, y por último a `repositories/`, el único lugar donde hay SQL. Los controladores no deciden nada: la medición, por ejemplo, la recibe `controllers/measurements.ts`, que solo elige entre `201` y `200` según lo que le informe el servicio. El Hito 3 agregó a esas capas las mediciones y el análisis del piso (`heatmap.ts`, `trilateration.ts` y `recommendation.ts`, funciones puras sin acceso a la base) sin cambiar su forma.
 
-La Tabla 1 muestra dónde vive cada regla del producto. El criterio fue que cada regla tenga **un solo lugar**, y que los clientes muestren el resultado sin recalcularlo.
+La Tabla 1 muestra dónde vive cada regla del producto. El criterio fue que cada regla tenga un solo lugar, y que los clientes muestren el resultado sin recalcularlo.
 
 Tabla 1. Dónde vive cada regla
 
@@ -204,7 +204,7 @@ Figura 8. Estado vacío de la web en la fase «Después»
 
 <div class="shots"><img src="img/web-despues-vacio.png" alt="La web en la fase Después, sin mediciones, con el mensaje de estado vacío"></div>
 
-La app tuvo sus propios estados: «Buscando el punto…», «Buscando redes WiFi…» y «Enviando la medición…» mientras trabajaba, avisos específicos cuando faltaba algo en el teléfono (NFC apagado, WiFi apagado, ubicación apagada o permiso denegado) y la tarjeta de pendientes de borde punteado (Figura 9) cuando una medición no pudo enviarse. La fase «Después» está construida de punta a punta, pero se probó solo hasta el estado vacío; no se comprobó con un repetidor real.
+La app tuvo sus propios estados: «Buscando el punto…», «Buscando redes WiFi…» y «Enviando la medición…» mientras trabajaba, avisos específicos cuando faltaba algo en el teléfono (NFC apagado, WiFi apagado, ubicación apagada o permiso denegado) y la tarjeta de pendientes de borde punteado (Figura 9) cuando una medición no pudo enviarse. La fase «Después» solo se probó hasta el estado vacío (sección 9).
 
 Figura 9. La app con una medición pendiente por falta de conexión
 
@@ -246,20 +246,20 @@ Tabla 3. Bitácora de decisiones
 | 04-11 | TypeScript ejecutado directamente por Node 26, sin compilar; `tsc` solo revisa tipos | Compilar a `dist/` con `tsc` | Sin dependencias ni paso de build | Costo asumido: no se pueden usar `enum`, `namespace` ni propiedades de parámetro, y el proyecto depende de la versión de Node. Quedó fijada en `.nvmrc` y `engines` |
 | 04-11 | `pg` con SQL explícito y parámetros, sin ORM, solo en `repositories/` (comparación escrita el 06-11) | Prisma; Knex o Kysely | El SQL se ve y se explica tal cual; menos capas con dos personas | `numeric` se entrega como texto en `pg`: se fijó un único `setTypeParser` global y un test recorre todas las columnas `numeric` |
 | 04-11 | Errores con forma `{ "message": "..." }`; el código HTTP da la clase del error (el Hito 1 usaba códigos con nombre, como `TAG_UNKNOWN`) | Un campo `code` por error | El código HTTP y el mensaje bastan a los clientes | La app y la web traducen por código HTTP a mensajes propios (Tabla 2). Agregar un `code` sigue siendo un cambio compatible |
-| 04-11 | JWT HS256 propio con `node:crypto` | Librería de JWT | Cero dependencias nuevas | La verificación pasó a ser responsabilidad del proyecto: tests para `alg` distinto de HS256 (incluido `none`), firma alterada, secreto distinto, token vencido y token deforme, siempre `401` |
+| 04-11 | JWT HS256 propio con `node:crypto` | Librería de JWT | Sin dependencias nuevas | La verificación pasó a ser responsabilidad del proyecto: tests para `alg` distinto de HS256 (incluido `none`), firma alterada, secreto distinto, token vencido y token deforme, siempre `401` |
 | 04-11 (medido el 09-11) | `bcryptjs` para las claves | `bcrypt` nativo | No compila al instalarse; igual en cualquier equipo | El documento del Hito 2 decía entre 60 y 100 ms por hash; en la prueba de carga un login costó unos 183 ms y, al ejecutarse en el único hilo de Node, con tres logins simultáneos `GET /health` subió de 2 ms a cerca de 180 ms. Se declaró como límite conocido; no se cambió el código (sección 9) |
-| 04-11 | PostgreSQL 17 instalado en cada equipo, sin contenedores | Docker; servicio en la nube | Menos piezas que explicar y probar | El ensayo del 06-11 en un equipo nuevo (Windows 11) se trabó en tres pasos que los README no traían: codificación UTF-8 de `psql`, `PATH` de PostgreSQL y política de ejecución de PowerShell. Los tres se agregaron a los README |
+| 04-11 | PostgreSQL 17 instalado en cada equipo, sin contenedores | Docker; servicio en la nube | Menos piezas que explicar y probar | El ensayo del 06-11 en un equipo nuevo se trabó en tres pasos que los README no traían; los tres se agregaron (sección 6.1) |
 | 04-11 y 11-11 | PostGIS: el Hito 1 la declaraba y decía que se implementaría en el Hito 2; el 04-11 se difirió al Hito 3 con la condición de escribir antes la consulta espacial que la justificara; el 11-11 se acordó hacer el cálculo en TypeScript y evaluar PostGIS solo con el núcleo cerrado. **No se instaló** | (a) PostGIS para el mapa de calor y la cobertura; (b) todo en memoria; (c) memoria primero y PostGIS después, si sobraba tiempo | Con unos 24 puntos por piso el cálculo en memoria rinde igual y es más fácil de probar con datos sintéticos. Instalarla exigía la extensión en los tres equipos, otra imagen en el CI y recrear las bases, con riesgo para el arranque en el equipo del docente | Al revisar el alcance el 11-11 apareció que el mapa de calor y la recomendación sí hacen consultas espaciales (puntos dentro de un radio, cobertura por posición candidata), de modo que la razón original, «no hay consulta espacial», dejó de valer. La razón que quedó fue el costo y el riesgo; el cálculo vive en funciones puras (`heatmap.ts`, `trilateration.ts`, `recommendation.ts`) |
-| 10-11 | Flujo principal con el sistema real del Hito 1: app Android que lee la tira por NFC (`enableReaderMode`, solo con «Medir» visible) y mide con `WifiManager` | Solo puntos cargados desde la web; emulador; despacho en primer plano; filtro en el manifiesto | El enunciado evalúa el recorrido completo; con un emulador la medición habría sido simulada | Era el riesgo principal del plan (permisos y límites de Android). Android permite 4 búsquedas cada 2 minutos: la app lleva su propio contador con cuenta regresiva y no guarda nada si el sistema devuelve resultados viejos. El UID de la tira se normaliza a hexadecimal en mayúsculas |
-| 10-11 | Solo se guardan las lecturas de la red WiFi de la organización (SSID cargado por seed); las demás se descartan sin guardarse | Colorear por la red más fuerte de todas; guardar todas las redes | Para comparar el efecto de un repetidor importa la red de la empresa, y los BSSID de vecinos o de puntos de acceso personales podrían identificar personas (minimización) | El 12-11 una sola mayúscula de diferencia entre `Wifi_Sala` (en `.env`) y `WiFi_Sala` (la red real) dejó todos los puntos en «Sin señal». Se documentó en el manual como una de las tres fallas frecuentes |
+| 10-11 | Flujo principal con el sistema real del Hito 1: app Android que lee la tira por NFC (`enableReaderMode`, solo con «Medir» visible) y mide con `WifiManager` | Solo puntos cargados desde la web; emulador; despacho en primer plano; filtro en el manifiesto | El enunciado evalúa el recorrido completo; con un emulador la medición habría sido simulada | Era el riesgo principal del plan (permisos y límites de Android). El límite de 4 búsquedas cada 2 minutos de Android (sección 9) obligó a un contador propio con cuenta regresiva; la app no guarda nada si el sistema devuelve resultados viejos. El UID de la tira se normaliza a hexadecimal en mayúsculas |
+| 10-11 | Solo se guardan las lecturas de la red WiFi de la organización (SSID cargado por seed); las demás se descartan sin guardarse | Colorear por la red más fuerte de todas; guardar todas las redes | Para comparar el efecto de un repetidor importa la red de la empresa, y los BSSID de vecinos o de puntos de acceso personales podrían identificar personas (minimización) | El 12-11 una mayúscula de diferencia en el SSID del `.env` dejó todos los puntos en «Sin señal» (sección 6.1). Se documentó en el manual como una de las tres fallas frecuentes |
 | 10-11 (implementada el 11-11) | Una medición se anula, con un motivo de una lista fija; no se borra. Borrar un punto con mediciones responde `409` | Borrar mediciones; «medir de nuevo y vale la última» | Conserva el historial y quién anuló y cuándo; `ON DELETE RESTRICT` ya protegía la jerarquía | Sin incidentes registrados |
 | 10-11 | `measured_at` lo envía la app (hora del escaneo); `received_at` lo pone siempre el servidor | Usar solo la fecha de recepción | Con la cola sin conexión, una medición antigua enviada tarde quedaría como «la última» | El reloj del teléfono pasó a definir la fecha: en la prueba iba unos 47 segundos adelantado. El servicio acepta entre los últimos 30 días y 5 minutos hacia adelante, y responde `422` fuera de eso |
 | 10-11 | Cola sin conexión en un archivo JSON del espacio privado de la app, con reenvío mientras la app está abierta y `client_uuid` para no duplicar (el Hito 1 decía Room) | Room (tres dependencias y un procesador de anotaciones para pocas filas); WorkManager (envío en segundo plano); solo un botón | Cumple lo que se le informó al docente con el menor costo | El mismo 10-11 la cola quedó fuera del alcance y se retomó porque se le había informado al docente que las mediciones se enviarían al volver la conexión. La revisión del 11-11 halló que una medición pendiente podía conservar el punto de otro servidor al cambiar la dirección; se corrigió ese día |
 | 10-11 | `HttpURLConnection` y `org.json`, en un solo `ApiClient.kt` | OkHttp; Retrofit | Tres llamadas no justifican dependencias ni un plugin | El primer inicio de sesión por HTTPS del 11-11 falló sin causa visible, porque la app mostraba el error real como «no se pudo conectar»; el segundo intento funcionó y no se estableció la causa del primero |
 | 10-11 (rediseño el 12-11) | La web no copia el prototipo de Figma del Hito 1: se rediseñó con la paleta «aurora», plano como hoja de levantamiento y tema claro y oscuro. La app adoptó la misma identidad | Copiar el prototipo | El prototipo tenía pestañas y salas que el modelo de datos no contempla; se retomaron solo la leyenda con umbrales, el resumen del piso, los chips de puntos y el botón del repetidor | La revisión de calidad del 12-11 halló la cabecera en dos filas a 1024 px, el plano ilegible en teléfono, la falta de `h1`, un favicon inexistente y objetivos táctiles de 30 px. Se corrigieron ese mismo día |
 | 10-11 y 11-11 | Docker queda fuera (el Hito 1 lo incluía para el volumen de planos). Se mantiene el diseño «listo para Docker» | Escribir `Dockerfile` y `docker-compose.yml` sin probarlos; dejar la decisión abierta | No suma puntos de rúbrica, el equipo de desarrollo no tiene WSL2 y no quedaba medio día libre sin tocar lo obligatorio | El 10-11 se había dejado «por ahora no» con un nuevo análisis el 12-11; el análisis se adelantó al 11-11 y confirmó la exclusión |
-| 10-11 y 11-11 | Mapa de calor, trilateración y recomendación del repetidor vuelven al alcance: el 10-11 se habían recortado y el 11-11 se decidió incluirlos, con el reporte PDF como última pieza y primera en recortarse | Declararlos como limitación | Se prometieron en el Hito 1 | No había repetidor real ni tiempo de conseguir uno, por lo que la demostración muestra solo la fase «Antes» y la ubicación recomendada, rotulada «estimada». La prueba real del 12-11 con tres puntos produjo un emisor de 5 GHz pegado al borde del plano, con tres puntos casi alineados (sección 9). El reporte PDF no se entregó |
-| 11-11 | HTTPS opcional con una autoridad certificadora propia y HTTP sin cifrar solo hacia `127.0.0.1` y `localhost` | HTTP sin cifrar en todo el APK de depuración (decisión del 10-11) | Permite usar la app por WiFi, sin cable, sin aceptar tráfico sin cifrar hacia cualquier dirección | En la prueba real del 12-11 la medición por WiFi no llegaba: el teléfono estaba en la red de la universidad sin haber iniciado sesión en su portal y Android enviaba el tráfico por datos móviles. Se resolvió iniciando sesión en el portal y apagando los datos móviles; quedó en el manual |
+| 10-11 y 11-11 | Mapa de calor, trilateración y recomendación del repetidor vuelven al alcance: el 10-11 se habían recortado y el 11-11 se decidió incluirlos, con el reporte PDF como última pieza y primera en recortarse | Declararlos como limitación | Se prometieron en el Hito 1 | No había repetidor real ni tiempo de conseguir uno, por lo que la demostración muestra solo la fase «Antes» y la ubicación recomendada, rotulada «estimada». La prueba real del 12-11 con tres puntos produjo un emisor de 5 GHz junto al borde del plano, con tres puntos casi alineados (sección 9). El reporte PDF no se entregó |
+| 11-11 | HTTPS opcional con una autoridad certificadora propia y HTTP sin cifrar solo hacia `127.0.0.1` y `localhost` | HTTP sin cifrar en todo el APK de depuración (decisión del 10-11) | Permite usar la app por WiFi, sin cable, sin aceptar tráfico sin cifrar hacia cualquier dirección | En la prueba real del 12-11 la medición por WiFi no llegaba por el portal sin abrir y los datos móviles (sección 6.1); quedó en el manual |
 | 11-11 | Revisión integral (`/code-review` y `/security-review`) antes de congelar el producto | — | Un criterio de calidad más alto que el mínimo de la rúbrica | La revisión de código dio siete hallazgos. Se corrigieron ese día el análisis de otra fase al cambiar de fase, un `500` al medir un punto recién borrado, la cola con el punto de otro servidor y el mapa de calor sin recorte por el contorno. Los otros tres (`n_fixed` con distancias iguales, caché de tiras y repeticiones del análisis) se resolvieron o declararon en un PR posterior. La revisión de seguridad no halló nada |
 
 PENDIENTE T22: fila del ensayo en equipo limpio de PC-Gabriel, con su fecha y lo que se corrigió en el README o el manual.
@@ -281,13 +281,38 @@ Estas son las limitaciones del producto entregado, tal como estaba al cierre.
 - **Login con límite de rendimiento.** `bcryptjs` calcula el hash en el hilo único de Node y el servicio no limita los intentos (sección 7).
 - **La web no tiene pruebas automatizadas.** El servicio sí las tiene, con integración continua; la web se verificó con revisión de tipos, compilación y recorrido manual.
 - **Sin Docker ni nube.** El proyecto se instala en cada equipo con los pasos de la sección 6.
-- **Límite de 4 búsquedas WiFi cada 2 minutos.** Es una restricción de Android; la app lleva su propio contador y la demostración debe respetarla.
+- **Límite de 4 búsquedas WiFi cada 2 minutos.** Es una restricción de Android (cada aplicación en primer plano puede buscar cuatro veces en un período de 2 minutos; Android Developers, s. f.); la app lleva su propio contador y la demostración debe respetarla.
 - **La fecha de una medición la define el reloj del teléfono** (`measured_at`). El servicio solo rechaza lo que cae fuera de los últimos 30 días y los próximos 5 minutos.
 - **La fase «Después» y la mejora tras instalar un repetidor no se comprobaron con un repetidor real.** La fase existe en la base, la API y la web, pero solo se probó hasta el estado vacío y con datos de prueba.
 - **La ubicación recomendada es una estimación.** En la prueba real del 12 de noviembre solo se observó el caso «todos los puntos tienen señal buena», en que no hay posición que recomendar; una recomendación con posición no se vio en una prueba real.
 - **La posición de un emisor puede ser poco fiable con pocos puntos o casi alineados.** En esa prueba, el emisor de 5 GHz quedó en el borde del plano con tres puntos casi en línea. Con tres puntos el exponente de pérdida se fija en 3,0 y no se ajusta.
 - **Una red mesh se estima por BSSID.** Los nodos de una misma red no se agrupan en un solo equipo físico.
 - **No se entregó el reporte en PDF del piso.** Era la última pieza del análisis y la primera en recortarse; el contrato no incluye una ruta para él.
+
+---
+
+## 10. Conclusión
+
+**Qué se logró.** El producto que el Hito 1 propuso existe y funciona de punta a punta, con un teléfono real, tiras reales y la web servida por el mismo proceso que la API (secciones 2 y 6). La medición sobrevive a la falta de conexión porque queda en la cola de la app y se reenvía sin duplicarse, y sobre los datos la web estima la posición de los emisores y la del repetidor.
+
+**Qué quedó pendiente.** No se comprobó la promesa central del producto, que un repetidor mejora la señal: la fase «Después» no se probó con un repetidor real y la ubicación recomendada es una estimación. Tampoco se entregó el reporte en PDF, y el envío en segundo plano, la gestión de usuarios y la renovación del token quedaron fuera (sección 9). Falta medir la precisión de los emisores estimados con más de tres tiras.
+
+**Qué aprendimos.**
+
+- **Probar en el aparato real encontró lo que las pruebas automáticas no podían.** Una red del campus con portal sin abrir, los datos móviles que desviaban el tráfico y una mayúscula distinta en el nombre de la red se descubrieron con el teléfono real, no con el CI (sección 7).
+- **Un producto que funciona todavía puede tener errores.** La revisión de código previa al congelamiento halló siete problemas, entre ellos un `500` al medir un punto recién borrado (sección 7).
+- **Escribir las decisiones con su fecha evitó discutirlas dos veces.** La cola sin conexión se recortó y se retomó, y PostGIS se difirió y no se instaló; la bitácora permitió reconstruir el porqué de cada caso.
+- **Las estimaciones se rotulan como tales.** Con tres puntos casi alineados, el cálculo situó un emisor en el borde del plano con un ajuste sin error aparente; por eso las posiciones se rotulan «estimada» y la limitación quedó escrita.
+
+---
+
+## Bibliografía
+
+Alvarado, M. y Díaz, G. (2026). *SignalMap. Hito 1: propuesta de producto y arquitectura* [Informe de curso, Universidad Mayor]. https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf
+
+Android Developers. (s. f.). *Wi-Fi scanning overview*. Google. Recuperado el 12 de noviembre de 2026, de https://developer.android.com/develop/connectivity/wifi/wifi-scan
+
+PENDIENTE T26: agregar aquí la Ley 21.719, solo si se cita en la sección 8.
 
 ---
 
@@ -388,3 +413,47 @@ erDiagram
         integer frequency_mhz "NOT NULL, 2400 a 7125"
     }
 ```
+
+### Anexo B. Rutas de la API
+
+La Tabla 4 reúne las 21 rutas del servicio, tal como están en el contrato (`docs/api-contract.md`, sección 5), que coincide con las rutas declaradas en `backend/src/routes/`. Las rutas 1 a 13 son del Hito 2; las 14 a 21 son del Hito 3 (tira NFC, mediciones y análisis del piso). Todas las respuestas de error tienen la forma `{ "message": "..." }`.
+
+Tabla 4. Rutas de la API
+
+| # | Verbo | Ruta | Roles | Parámetros | Éxito | Errores |
+|---|---|---|---|---|---|---|
+| 1 | `GET` | `/health` | público | — | `200` | — |
+| 2 | `POST` | `/api/v1/auth/login` | público | cuerpo: `email`, `password` | `200` | `400` · `401` |
+| 3 | `GET` | `/api/v1/buildings` | todos | — | `200` | `400` · `401` |
+| 4 | `GET` | `/api/v1/buildings/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
+| 5 | `POST` | `/api/v1/buildings` | `admin` | cuerpo: `name` | `201` + `Location` | `400` · `401` · `403` · `409` |
+| 6 | `PATCH` | `/api/v1/buildings/:id` | `admin` | ruta: `id` · cuerpo: `name` | `200` | `400` · `401` · `403` · `404` · `409` |
+| 7 | `DELETE` | `/api/v1/buildings/:id` | `admin` | ruta: `id` | `204` | `400` · `401` · `403` · `404` · `409` |
+| 8 | `GET` | `/api/v1/floors` | todos | consulta: `building_id` (obligatorio) | `200` | `400` · `401` · `404` |
+| 9 | `GET` | `/api/v1/points` | todos | consulta: `floor_id` (obligatorio) | `200` | `400` · `401` · `404` |
+| 10 | `GET` | `/api/v1/points/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
+| 11 | `POST` | `/api/v1/points` | `admin`, `tecnico` | cuerpo: `floor_id`, `code`, `x`, `y`, `nfc_uid` | `201` + `Location` | `400` · `401` · `403` · `404` · `409` · `422` |
+| 12 | `PATCH` | `/api/v1/points/:id` | `admin`, `tecnico` | ruta: `id` · cuerpo: `code`, `x`, `y`, `nfc_uid` (al menos uno) | `200` | `400` · `401` · `403` · `404` · `409` · `422` |
+| 13 | `DELETE` | `/api/v1/points/:id` | `admin` | ruta: `id` | `204` | `400` · `401` · `403` · `404` · `409` |
+| 14 | `GET` | `/api/v1/points/by-tag/:nfc_uid` | todos | ruta: `nfc_uid` | `200` | `400` · `401` · `404` |
+| 15 | `POST` | `/api/v1/measurements` | `admin`, `tecnico` | cuerpo: `point_id`, `phase`, `client_uuid`, `readings`, `measured_at` (opcional) | `201` + `Location` (o `200` si el `client_uuid` ya existe) | `400` · `401` · `403` · `404` · `409` · `422` |
+| 16 | `GET` | `/api/v1/measurements` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 17 | `GET` | `/api/v1/measurements/:id` | todos | ruta: `id` | `200` | `400` · `401` · `404` |
+| 18 | `DELETE` | `/api/v1/measurements/:id` | `admin` | ruta: `id` · consulta: `reason` (obligatorio) | `204` | `400` · `401` · `403` · `404` · `409` |
+| 19 | `GET` | `/api/v1/heatmap` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 20 | `GET` | `/api/v1/emitters` | todos | consulta: `floor_id`, `phase` (obligatorios) | `200` | `400` · `401` · `404` |
+| 21 | `GET` | `/api/v1/recommendation` | todos | consulta: `floor_id` (obligatorio) | `200` | `400` · `401` · `404` |
+
+### Anexo C. Declaración de uso de inteligencia artificial
+
+El curso pide declarar qué herramienta se usó, en qué parte y cómo se verificó el resultado. Se usó Claude Code, el asistente de Anthropic que corre en la terminal: con el modelo Opus para las decisiones y el plan de trabajo, y con el modelo Sonnet para ejecutar las tareas una por una. Se usó junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`) y con las revisiones `/code-review` y `/security-review`.
+
+**En qué partes.** En el código del servicio, de la app Android y de la web, y en sus pruebas; en los scripts, el flujo de integración continua y los README; en el manual y en este documento, que el asistente redactó y el equipo revisó. En cada decisión de diseño el asistente presentó las alternativas con su costo y eligió el equipo; las decisiones quedaron escritas con su fecha en `CLAUDE.md` y en la sección 7.
+
+**Cómo se verificó:**
+
+- Las 589 pruebas del servicio (más 3 omitidas a propósito) se ejecutan contra una base PostgreSQL real, y la integración continua las corre en cada solicitud de incorporación, junto con la revisión de tipos y la compilación de la web y de la app.
+- Cada cambio entra por una solicitud de incorporación con aviso al compañero para su revisión, y las piezas de mayor riesgo pasaron por `/code-review` y `/security-review`. La revisión de código halló siete problemas en código escrito con ayuda del asistente (sección 7), que se corrigieron o se declararon.
+- El recorrido del producto se hizo a mano con un teléfono real y tiras NFC reales, con y sin conexión, por cable y por WiFi.
+- Las cifras del documento se contrastaron con el código, con las pruebas o con mediciones propias, y las referencias se abrieron en su fuente original; se citan solo las verificadas.
+- Lo que un integrante no pueda explicar no se entrega: ambos integrantes deben poder explicar cualquier parte del código entregado.
