@@ -223,7 +223,7 @@ El manual de uso e instalación (`docs/manual.md`) describe cómo levantar el pr
 5. Compilar la web con `npm run build` e iniciar el servicio con `npm start`.
 6. Instalar el APK de depuración en el teléfono y conectarlo al servicio con `adb reverse tcp:3000 tcp:3000`.
 
-Por WiFi, sin cable, la app usa HTTPS con una autoridad certificadora propia de la demostración (sección 7 del manual); con cable no hace falta, porque el tráfico no sale del computador. El manual cierra con las tres fallas más frecuentes: la codificación de `psql` en Windows, un teléfono que no alcanza al servicio y un nombre de red WiFi que no coincide con el real.
+Por WiFi, sin cable, la app usa HTTPS con una autoridad certificadora propia de la demostración (sección 7 del manual); con cable no hace falta, porque el tráfico no sale del computador. El manual incluye las tres fallas más frecuentes (sección 5): la codificación de `psql` en Windows, un teléfono que no alcanza al servicio y un nombre de red WiFi que no coincide con el real.
 
 ### 6.1 Lo que se trabó
 
