@@ -118,7 +118,7 @@ Antes de medir, en el teléfono: **NFC activado**, **WiFi encendido** (aunque no
 
 ## 3. Usuarios y datos de prueba
 
-`npm run seed` crea una organización ficticia, un edificio y tres usuarios. Las claves son las que se escribieron en el `.env`; no hay ninguna fija en el repositorio.
+`npm run seed` crea una organización ficticia, dos edificios y tres usuarios. Las claves son las que se escribieron en el `.env`; no hay ninguna fija en el repositorio.
 
 | Email | Rol | Clave | Qué puede hacer |
 |---|---|---|---|
@@ -128,7 +128,7 @@ Antes de medir, en el teléfono: **NFC activado**, **WiFi encendido** (aunque no
 
 Para medir se usa `tecnico@demo.cl` en la app; para ver, `admin@demo.cl` en la web.
 
-Los datos son el edificio **Torre Norte**, con un único piso, **Piso 3** (40 m × 25 m), y **24 puntos** (`P-01` a `P-24`) en una grilla de seis columnas y cuatro filas. Después del seed **ningún punto tiene mediciones**. Tres puntos corresponden a tiras NFC reales; el resto tiene códigos inventados que ninguna tira reproduce (están en [`db/seed.sql`](../db/seed.sql)).
+El edificio que se mide es **Torre Norte**, con un único piso, **Piso 3** (40 m × 25 m), y **24 puntos** (`P-01` a `P-24`) en una grilla de seis columnas y cuatro filas. El segundo, **Oficinas Centro**, no tiene pisos ni puntos y no está asignado al usuario `cliente` (que por eso no lo ve): aparece en el selector de la web y no hay que medirlo. Después del seed **ningún punto tiene mediciones**. Tres puntos corresponden a tiras NFC reales; el resto tiene códigos inventados que ninguna tira reproduce (están en [`db/seed.sql`](../db/seed.sql)).
 
 | Punto | Posición en el plano (m) | UID de la tira |
 |---|---|---|
