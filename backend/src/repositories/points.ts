@@ -30,6 +30,20 @@ export async function findById(id: number, scope: ReadScope): Promise<Point | un
   return rows[0];
 }
 
+export type PointWithPlace = Point & { floor: { id: number; name: string }; building: { id: number; name: string } };
+
+// El nfc_uid llega en mayúsculas (como se guarda). Misma visibilidad que findById.
+export async function findByTag(nfcUid: string, scope: ReadScope): Promise<PointWithPlace | undefined> {
+  const { rows } = await query<PointWithPlace>(
+    `SELECT ${COLUMNS},
+            json_build_object('id', f.id, 'name', f.name) AS floor,
+            json_build_object('id', b.id, 'name', b.name) AS building
+     ${FROM_VISIBLE} AND p.nfc_uid = $3`,
+    [scope.orgId, scope.assignedTo, nfcUid],
+  );
+  return rows[0];
+}
+
 // El service ya comprobó que el piso es visible y que las coordenadas caben. code
 // repetido en el piso o nfc_uid repetido → 409 (traducido en db.ts). La FK floor_id no va
 // al mapa de conflictos: un piso inexistente es 404 y lo decide el service.
@@ -56,8 +70,11 @@ export async function update(id: number, orgId: number, changes: PointChanges): 
   return rows[0];
 }
 
-// false si el punto no existe en la organización. Nada referencia a points: sin 409.
+// false si el punto no existe en la organización. Un punto con mediciones (aunque estén
+// anuladas) no se borra: 409, mapeado solo en esta llamada (ver `query` en db.ts).
 export async function remove(id: number, orgId: number): Promise<boolean> {
-  const { rowCount } = await query(`DELETE FROM points p USING floors f, buildings b WHERE ${IN_ORG}`, [id, orgId]);
+  const { rowCount } = await query(`DELETE FROM points p USING floors f, buildings b WHERE ${IN_ORG}`, [id, orgId], {
+    measurements_point_id_fkey: 'El punto tiene mediciones y no se puede borrar',
+  });
   return rowCount === 1;
 }

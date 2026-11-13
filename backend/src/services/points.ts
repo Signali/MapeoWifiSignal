@@ -31,6 +31,14 @@ export async function getById(user: TokenUser, id: number) {
   return point;
 }
 
+// La app resuelve el punto al leer una tira. Mismo 404 si ningún punto la tiene, es de otra
+// organización o (cliente) de un edificio no asignado.
+export async function getByTag(user: TokenUser, nfcUid: string) {
+  const point = await points.findByTag(nfcUid, readScope(user));
+  if (!point) throw new AppError('not_found', 'Tira NFC no registrada');
+  return point;
+}
+
 // Crear y editar: admin y tecnico (lo exige la ruta). Las medidas del piso no cambian por
 // la API, así que leer el piso y después escribir no abre una carrera.
 export async function create(user: TokenUser, point: points.NewPoint) {

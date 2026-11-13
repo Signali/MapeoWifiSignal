@@ -30,3 +30,12 @@ postman/*.postman_environment.json
 # Postman (configuracion local de la app)
 .postman/
 postman/globals/
+
+# Android (local.properties, cachés de Gradle y Kotlin, APK)
+android/local.properties
+android/.gradle/
+android/.kotlin/
+*.apk
+
+# Certificados y claves de HTTPS local (los genera backend/scripts/tls-certs.sh)
+certs/

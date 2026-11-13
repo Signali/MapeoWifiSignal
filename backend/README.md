@@ -79,6 +79,26 @@ Servicio cerrado
 
 Si una petición no termina en **8 s**, corta las conexiones y sale con código 1 (Docker mata el proceso a los 10 s). Un **segundo `Ctrl+C`** durante el cierre corta al instante (código 1). El test automático de esto (`tests/shutdown.test.ts`) corre solo en Linux (el CI): en Windows una señal enviada por código termina el proceso sin pasar por el manejador, así que ahí se prueba a mano con `Ctrl+C`.
 
+### HTTPS (opcional): usar la app por WiFi, sin cable
+
+Por defecto el servicio habla HTTP. Eso basta con el cable (`adb reverse`), porque el tráfico llega a `127.0.0.1` y no sale del cable. Para que el teléfono use la red WiFi sin cable, el tráfico sale del equipo y debe ir cifrado. Para eso el servicio puede hablar HTTPS con una autoridad certificadora (CA) propia de la demo:
+
+1. **Requisito:** `openssl` (viene con Git Bash).
+2. **Certificados** (desde la raíz, con la IP del PC en esa red; se ve con `ipconfig`):
+   ```bash
+   bash backend/scripts/tls-certs.sh 192.168.1.16
+   ```
+   La primera vez crea la CA (`certs/ca.key` y `certs/ca.crt`) y copia su certificado **público** a la app (`android/app/src/main/res/raw/signalmap_ca.crt`). Cada vez emite `certs/server.crt` y `certs/server.key`, válidos 30 días para `localhost`, `127.0.0.1` y esa IP. Si cambias de red, se vuelve a correr con la IP nueva: la app no cambia. Solo si la CA es nueva (cambió `signalmap_ca.crt`) hay que recompilar e instalar la app.
+3. **`.env`:** `TLS_CERT_FILE=certs/server.crt` y `TLS_KEY_FILE=certs/server.key` (las dos juntas; rutas desde la raíz). Al arrancar, el servicio dice `(development, HTTPS)`.
+4. **App:** en el campo «servidor», `https://<IP>:3000`. El teléfono y el PC deben estar en la misma red, y el firewall de Windows debe dejar entrar el puerto (si la red es «pública», `netsh advfirewall firewall add rule name="SignalMap" dir=in action=allow protocol=TCP localport=3000`, en un PowerShell de administrador).
+
+Cosas que conviene saber:
+
+- La carpeta `certs/` **no se versiona** (`.gitignore`): las claves privadas nunca van al repositorio. Solo el PC que tiene `certs/ca.key` puede emitir certificados que la app acepte. Otro integrante que quiera probar sin cable corre el script en su PC (crea su propia CA) y recompila la app.
+- Con TLS activo, el mismo puerto habla solo HTTPS; el navegador avisará de un certificado no confiable en `https://localhost:3000`. Para usar la web y el teléfono a la vez, levanta dos instancias: `PORT=3000` sin TLS (web y cable) y `PORT=3443 TLS_CERT_FILE=... TLS_KEY_FILE=... npm start` para el teléfono.
+- `curl` en Windows pide además `--ssl-no-revoke` con una CA propia: `curl --ssl-no-revoke --cacert certs/ca.crt https://127.0.0.1:3443/health`.
+- Qué protege y qué no: cifra la conexión y comprueba que el servidor es el nuestro. No reemplaza un despliegue real (certificado de una autoridad pública, HTTPS en un proxy y APK de producción), que queda fuera de este hito.
+
 ### Usuarios de prueba (creados por `npm run seed`)
 
 | Email | Rol | Clave | Edificios que ve |
@@ -86,6 +106,15 @@ Si una petición no termina en **8 s**, corta las conexiones y sale con código 
 | `admin@demo.cl` | `admin` | `SEED_ADMIN_PASSWORD` | Todos los de la organización |
 | `tecnico@demo.cl` | `tecnico` | `SEED_TECNICO_PASSWORD` | Todos los de la organización |
 | `cliente@demo.cl` | `cliente` | `SEED_CLIENTE_PASSWORD` | Solo «Torre Norte» |
+
+## La web
+
+La web (`frontend/`) se usa de dos formas:
+
+- **En desarrollo:** `npm run dev` en `frontend/` (`http://localhost:5173`). Vite redirige `/api` al servicio, que debe estar en `:3000`.
+- **En la demo:** un solo proceso, sin CORS. `npm run build` en `frontend/` y `npm start` en `backend/` → `http://localhost:3000/` muestra la web y `/api/v1/...` la API.
+
+Express sirve `frontend/dist` después de las rutas de la API (`src/app.ts`). Si `dist/` no existe (tests, desarrollo), no hace nada. No hay fallback a `index.html`: la web no tiene rutas propias, la selección va en la URL como parámetros de consulta. Todo `/api` sin ruta sigue respondiendo `404` JSON.
 
 ## Autenticación (JWT)
 
@@ -122,7 +151,7 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 
 ## Puntos (segundo recurso) y pisos (solo lectura)
 
-`/api/v1/points` con `GET ?floor_id=`, `GET /:id`, `POST`, `PATCH` y `DELETE`, y `GET /api/v1/floors?building_id=` (contrato §5, filas 8 a 13). Mismo molde que edificios:
+`/api/v1/points` con `GET ?floor_id=`, `GET /:id`, `GET /by-tag/:nfc_uid`, `POST`, `PATCH` y `DELETE`, y `GET /api/v1/floors?building_id=` (contrato §5, filas 8 a 14). Mismo molde que edificios:
 
 | Capa | Archivo | Qué hace |
 |---|---|---|
@@ -133,8 +162,30 @@ Quien conoce `JWT_SECRET` puede fabricar tokens de cualquier rol, así que es la
 | Repositorio | `repositories/points.ts`, `repositories/floors.ts` | `JOIN` con `buildings` y el filtro `VISIBLE` de edificios en lectura; `org_id` del edificio en `UPDATE`/`DELETE`. `code` repetido en el piso y `nfc_uid` repetido → `409` vía `query()` |
 
 - Orden de las respuestas: `401 → 403 → 400 → 404 → 422 → 409`. Si un punto queda fuera del piso y además está repetido, gana el `422` (se valida antes de escribir).
+- **Tira NFC → punto (Hito 3, fila 14):** `GET /api/v1/points/by-tag/:nfc_uid` lo usa la app al leer una tira. Devuelve el punto con su `floor` y su `building`. Se declara **antes** de `/:id` en `routes/points.ts` (si no, `by-tag` se leería como un id). El UID se acepta en minúsculas o mayúsculas, sin separadores (`400` si no es hexadecimal o pasa de 32); desconocido, de otra organización o de un edificio no asignado al cliente → `404 "Tira NFC no registrada"`. `findByTag` reutiliza la visibilidad de `findById` y arma `floor` y `building` con `json_build_object`.
 - Los pisos no se crean ni se editan por la API, así que leer sus medidas y después escribir no abre una carrera.
 - Tests: `tests/points.test.ts`, con los mismos datos propios que edificios (otra organización, cliente sin asignaciones, asignación cruzada) más un edificio de la organización 1 **no asignado** al cliente, con piso y punto.
+
+## Mediciones (tercer recurso, Hito 3): registrar, leer una, leer las de un piso y anular
+
+`POST /api/v1/measurements`, `GET /api/v1/measurements?floor_id=&phase=`, `GET /api/v1/measurements/:id` y `DELETE /api/v1/measurements/:id?reason=` (contrato §5 filas 15 a 18).
+
+| Capa | Archivo | Qué hace |
+|---|---|---|
+| Ruta | `routes/measurements.ts` | `POST`: `requireRole('admin', 'tecnico')`; `GET /` y `GET /:id`: todos los roles; `DELETE /:id`: solo `admin`. Orden: `authenticate` → `requireRole` → `validate` |
+| Schema | `schemas/measurements.ts` | `point_id` (`bodyId`), `phase` (`antes`/`despues`), `client_uuid` (UUID, a minúsculas), `measured_at` opcional (ISO 8601 con zona), `readings` (1 a 100; `bssid` a minúsculas y sin repetir, `ssid` de 0 a 32, `rssi_dbm` entero de −120 a 0, `frequency_mhz` entero de 2400 a 7125). Se validan **todas** las lecturas · `measurementsQuery` (`floor_id` y `phase`, obligatorios) · `voidQuery` (`reason`: `punto_equivocado`, `fase_equivocada` o `condiciones_anomalas`) |
+| Controller | `controllers/measurements.ts` | `201` + `Location`, o `200` si el `client_uuid` ya estaba |
+| Service | `services/measurements.ts`, `services/signal-category.ts` | Ver `services/README.md` |
+| Repositorio | `repositories/measurements.ts`, `repositories/organizations.ts` | `insert` guarda la medición y sus lecturas en **una sola sentencia** (`WITH … ON CONFLICT (client_uuid) DO NOTHING` + `jsonb_to_recordset`): entran juntas o no entra nada. Una medición es visible si lo es el edificio de su punto (`VISIBLE`) |
+
+- **Idempotencia (cola sin conexión de la app):** reenviar el mismo `client_uuid` devuelve `200` con la medición ya guardada, sin duplicar y sin comparar el cuerpo. Se resuelve **antes** del `404` y del `422`: un reenvío tardío no falla porque el punto o la fecha ya no sirvan. Un `client_uuid` de otra organización → `409`.
+- **Mediciones del piso (fila 16):** la web la usa para pintar el plano. Devuelve **un elemento por cada punto del piso**, ordenado por `point_id`, con su última medición válida de la fase o `measurement: null`. «Última» = `measured_at` más reciente y, a igual fecha, la de mayor `id`; una anulada no cuenta. Se resuelve en una consulta (`LEFT JOIN LATERAL`, apoyada en `measurements_point_phase_idx`) más una de lecturas para todas las mediciones encontradas. `floor_id` y `phase` son obligatorios; piso no visible → `404 "Piso no encontrado"`. Se declara `GET /` antes de `/:id`.
+- **Anular (fila 18):** `DELETE` no borra: marca `voided_at`, `void_reason` y `voided_by` con un `UPDATE` que ya filtra por organización y por «no anulada». Si no actualiza ninguna fila, el service distingue `409 "La medición ya está anulada"` de `404 "Medición no encontrada"` (inexistente o de otra organización). No hay forma de des-anular.
+- **Borrar un punto con mediciones (fila 13):** `409 "El punto tiene mediciones y no se puede borrar"`, también si todas están anuladas. La FK `measurements_point_id_fkey` se mapea solo en `points.remove` (tercer parámetro de `query()`; ver `repositories/README.md`).
+- **Minimización de datos:** solo se guardan las lecturas del SSID de la organización (`organizations.wifi_ssid`, comparación exacta). Las de otras redes se validan y se descartan. Sin ninguna → `201` con `sin_senal`.
+- **Análisis del piso (filas 19 a 21):** `GET /api/v1/heatmap?floor_id=&phase=` (mapa de calor IDW), `GET /api/v1/emitters?floor_id=&phase=` (posición estimada de cada emisor por trilateración; ≥ 3 puntos) y `GET /api/v1/recommendation?floor_id=` (ubicación recomendada del repetidor, siempre con la fase «antes»). Solo lectura, todos los roles (el `cliente`, solo sus edificios). Calculan a partir de la última medición válida de cada punto; la matemática es de funciones puras en `services/` (`heatmap.ts`, `trilateration.ts`, `recommendation.ts`, `analysis-model.ts`) con las constantes del contrato §4. Capas: `routes/analysis.ts` → `controllers/analysis.ts` → `services/analysis.ts` → `repositories/measurements.ts` (`latestByFloor` ahora trae también `x` e `y` del punto). Tests: `tests/heatmap.test.ts`, `tests/trilateration.test.ts`, `tests/recommendation.test.ts` (funciones, con datos sintéticos) y `tests/analysis.test.ts` (rutas, un caso por respuesta del contrato).
+- **Limitación del análisis (rutas 19 a 21):** cada petición recalcula todo desde las mediciones, sin caché, y `recommendation` ajusta todos los BSSID aunque use solo el de referencia. Con ~24 puntos por piso es instantáneo; con muchos más puntos o BSSID habría que guardar los emisores estimados o limitar el ajuste. No se optimizó a propósito (el cálculo está probado y no hacía falta).
+- Tests: `tests/measurements.test.ts` (crea un edificio de la organización 1 no asignado al cliente y otra organización con su punto, y borra solo lo suyo) y `tests/signal-category.test.ts`.
 
 ## Scripts
 
@@ -153,8 +204,9 @@ Cada push y cada Pull Request a `main` corre [`.github/workflows/ci.yml`](../.gi
 
 1. Levanta un **PostgreSQL 17** vacío. El superusuario solo crea el rol `signalmap_user` (sin superusuario) y la base `signalmap_test`, como en el paso 1 de [`db/README.md`](../db/README.md).
 2. Crea las tablas con `db/schema.sql` (`psql -v ON_ERROR_STOP=1`) como `signalmap_user`.
-3. Instala Node (versión de `.nvmrc`) y las dependencias con `npm ci` (exactas, desde `package-lock.json`).
-4. Corre `npm run typecheck` y `npm test`.
+3. Instala Node (versión de `.nvmrc`), y en `frontend/` corre `npm ci`, `npm run typecheck` y `npm run build` (la web compilada la sirve Express y la prueba `tests/web.test.ts`).
+4. Instala las dependencias del backend con `npm ci` (exactas, desde `package-lock.json`).
+5. Corre `npm run typecheck` y `npm test`.
 
 Las variables de entorno del CI están en el mismo YAML, con **valores falsos** (`ci_*_falsa`). La base existe solo durante el run, así que no hay nada que proteger y no se usan GitHub Secrets. Si `src/config.ts` o el seed empiezan a exigir una variable nueva, hay que agregarla también ahí (y en `.env.example`), o el CI falla al arrancar.
 

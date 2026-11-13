@@ -5,7 +5,7 @@ Modelo de datos y scripts de la base de datos (PostgreSQL 17).
 | Archivo | Contenido |
 |---|---|
 | `er-diagram.md` | Diagrama entidad-relación (Mermaid), relaciones, comportamiento al borrar y qué regla garantiza la base y cuál el servicio |
-| `schema.sql` | Crea las 7 tablas **desde cero** en una base vacía |
+| `schema.sql` | Crea las 9 tablas **desde cero** en una base vacía |
 | `seed.sql` | Datos de dominio de ejemplo (sin usuarios ni claves). **Vacía las tablas** y recarga. Lo ejecuta `npm run seed` (ver [`backend/README.md`](../backend/README.md)), que además crea los usuarios con las claves del `.env` |
 
 ## Requisitos
@@ -46,7 +46,7 @@ psql -h localhost -U signalmap_user -d signalmap      -v ON_ERROR_STOP=1 -f db/s
 psql -h localhost -U signalmap_user -d signalmap_test -v ON_ERROR_STOP=1 -f db/schema.sql
 ```
 
-Salida esperada: `BEGIN`, siete `CREATE TABLE`, un `CREATE INDEX` y `COMMIT`.
+Salida esperada: `BEGIN`, nueve `CREATE TABLE`, dos `CREATE INDEX` y `COMMIT`.
 
 ### 3. Verificar
 
@@ -54,7 +54,9 @@ Salida esperada: `BEGIN`, siete `CREATE TABLE`, un `CREATE INDEX` y `COMMIT`.
 psql -h localhost -U signalmap_user -d signalmap -c "\dt"
 ```
 
-Debe listar: `buildings`, `email_domains`, `floors`, `organizations`, `points`, `user_buildings`, `users`.
+Debe listar 9 tablas: `buildings`, `email_domains`, `floors`, `measurements`, `network_readings`, `organizations`, `points`, `user_buildings`, `users`.
+
+Para cargar los datos de ejemplo (`npm run seed`) el `.env` necesita además `SEED_WIFI_SSID`, el nombre exacto de la red WiFi de la organización (ver `.env.example`).
 
 ## Comportamiento del script
 
@@ -72,3 +74,33 @@ CREATE DATABASE signalmap OWNER signalmap_user;
 ```
 
 Después, repetir el paso 2.
+
+### Pasar al esquema del Hito 3 (bases ya creadas)
+
+Si tus bases se crearon con el esquema del Hito 2 (7 tablas), hay que **recrearlas**: `schema.sql` es el único script desde cero y no hay migración. Se pierden los datos de esas bases, que son de ejemplo (el seed los vuelve a cargar). Con el servicio detenido, como `postgres`:
+
+```sql
+DROP DATABASE signalmap;
+DROP DATABASE signalmap_test;
+CREATE DATABASE signalmap      OWNER signalmap_user;
+CREATE DATABASE signalmap_test OWNER signalmap_user;
+```
+
+Luego:
+1. Repetir el paso 2 (`schema.sql` en las dos bases).
+2. Agregar `SEED_WIFI_SSID` a tu `.env` (está en `.env.example`).
+3. Correr `npm run seed` en `backend/`.
+
+### Pasar al esquema con el contorno del piso (2026-11-11)
+
+`floors` suma dos columnas: `outline` (contorno real del edificio) y `plan_url` (imagen del plano). Si tus bases ya tienen el esquema de 9 tablas, **no hace falta recrearlas**: como `signalmap_user`, en `signalmap` y en `signalmap_test`:
+
+```sql
+ALTER TABLE floors
+  ADD COLUMN outline jsonb
+    CHECK (outline IS NULL OR (jsonb_typeof(outline) = 'array' AND jsonb_array_length(outline) >= 3)),
+  ADD COLUMN plan_url varchar(200)
+    CHECK (plan_url IS NULL OR plan_url ~ '^/plans/[A-Za-z0-9._-]+$');
+```
+
+Las bases nuevas ya las traen en `schema.sql`. Con `outline` y `plan_url` en `NULL` el piso se comporta como antes (rectángulo, sin imagen).

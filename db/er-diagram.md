@@ -1,7 +1,7 @@
-# Modelo de datos — SignalMap (Hito 2)
+# Modelo de datos — SignalMap (Hitos 2 y 3)
 
-> **Estado:** validado (2026-11-04). 7 tablas. Motor: PostgreSQL 17.
-> Fuente de las reglas: `docs/api-contract.md` (contrato acordado el 2026-11-04).
+> **Estado:** 7 tablas validadas el 2026-11-04 (Hito 2); `measurements` y `network_readings` y `organizations.wifi_ssid` agregadas el 2026-11-11 (Hito 3). 9 tablas. Motor: PostgreSQL 17.
+> Fuente de las reglas: `docs/api-contract.md` (rutas 1 a 13 del Hito 2; 14 a 18 del Hito 3).
 
 ## Diagrama ER
 
@@ -15,10 +15,15 @@ erDiagram
     floors ||--o{ points : "tiene"
     users ||--o{ user_buildings : "se le asignan"
     buildings ||--o{ user_buildings : "se asigna a"
+    points ||--o{ measurements : "se mide en"
+    users ||--o{ measurements : "midio"
+    users |o--o{ measurements : "anulo"
+    measurements ||--o{ network_readings : "capta"
 
     organizations {
         integer id PK "identity"
         varchar name "NOT NULL"
+        varchar wifi_ssid "NOT NULL, 1-32, nombre exacto de la red de la organizacion"
     }
 
     email_domains {
@@ -49,6 +54,8 @@ erDiagram
         varchar name "NOT NULL, ej. Piso 3, UK con building_id"
         numeric width_m "numeric(7,2), NOT NULL, mayor que 0"
         numeric height_m "numeric(7,2), NOT NULL, mayor que 0"
+        jsonb outline "contorno real [[x,y],...], 3 o más vértices; NULL = rectángulo"
+        varchar plan_url "imagen del plano, /plans/..., NULL = sin imagen"
     }
 
     points {
@@ -64,6 +71,28 @@ erDiagram
         integer user_id PK, FK
         integer building_id PK, FK
     }
+
+    measurements {
+        integer id PK "identity"
+        integer point_id FK "NOT NULL"
+        integer user_id FK "NOT NULL, quien midio (la API no lo devuelve)"
+        varchar phase "NOT NULL: antes, despues"
+        uuid client_uuid UK "NOT NULL, lo genera la app"
+        timestamptz measured_at "NOT NULL, hora del escaneo o de recepcion"
+        timestamptz received_at "NOT NULL, siempre del servidor"
+        timestamptz voided_at "NULL si la medicion vale"
+        varchar void_reason "NULL o punto_equivocado, fase_equivocada, condiciones_anomalas"
+        integer voided_by FK "NULL si la medicion vale"
+    }
+
+    network_readings {
+        integer id PK "identity"
+        integer measurement_id FK "NOT NULL, UK con bssid"
+        varchar bssid "NOT NULL, aa:bb:cc:dd:ee:ff en minusculas"
+        varchar ssid "NOT NULL, 0-32, vacio = red oculta"
+        smallint rssi_dbm "NOT NULL, -120 a 0"
+        integer frequency_mhz "NOT NULL, 2400 a 7125"
+    }
 ```
 
 ## Relaciones y comportamiento al borrar
@@ -77,6 +106,9 @@ erDiagram
 | `buildings` → `floors` | 1 a N | `RESTRICT` | Contrato: borrar un edificio con pisos es `409`, sin cascada |
 | `floors` → `points` | 1 a N | `RESTRICT` | Ídem; no se pierden puntos por borrar un piso |
 | `users` ↔ `buildings` (`user_buildings`) | N a M | `CASCADE` en ambas FK | Es solo un vínculo de asignación: no debe impedir borrar un edificio sin pisos (`204`) |
+| `points` → `measurements` (`point_id`) | 1 a N | `RESTRICT` | Contrato: borrar un punto con mediciones (aunque estén anuladas) es `409`; las mediciones no se pierden |
+| `users` → `measurements` (`user_id`, `voided_by`) | 1 a N | `RESTRICT` | No se borra un usuario que midió o anuló: queda la trazabilidad |
+| `measurements` → `network_readings` | 1 a N | `CASCADE` | Una lectura no existe sin su medición |
 
 ## Emails: corporativos primero, personales separados
 
@@ -119,7 +151,16 @@ El login sigue siendo solo con `email` y `password` (el contrato no cambia). El 
 | `x <= width_m` e `y <= height_m` del piso (`422`) | **Servicio**: depende de otra tabla; un `CHECK` no puede consultarla |
 | Aislamiento por organización (`404`) | **Repositorio**: `JOIN` con `buildings` y filtro por `org_id` |
 | Visibilidad del `cliente` (`404`) | **Repositorio**: `JOIN` con `user_buildings` en cada consulta |
+| `phase` solo `antes` o `despues` | Base: `CHECK (phase IN ('antes', 'despues'))` |
+| `client_uuid` único: reenviar no duplica (`200`) | Base: `UNIQUE (client_uuid)`; el servicio devuelve la medición ya guardada |
+| Anulación completa o ninguna (fecha, motivo y quién) | Base: `CHECK` de `measurements_void_chk` y lista cerrada de `void_reason` |
+| Anular dos veces es `409`; no se puede des-anular | **Servicio** |
+| `bssid` en minúsculas con 6 pares; `rssi_dbm` −120 a 0; `frequency_mhz` 2400 a 7125 | Base: `CHECK` (la API valida antes con Zod) |
+| Un `bssid` una vez por medición | Base: `UNIQUE (measurement_id, bssid)` |
+| Se guardan solo las lecturas del `wifi_ssid` de la organización | **Servicio** (comparación exacta, distingue mayúsculas) |
+| `measured_at` entre los últimos 30 días y 5 minutos en el futuro (`422`) | **Servicio**: depende del reloj; un `CHECK` no sirve |
+| Categoría (`buena`, `regular`, `debil`, `sin_senal`) | **Servicio** (`services/signal-category.ts`): no se guarda, se calcula |
 
-## Fuera de este modelo (Hito 3)
+## PostGIS
 
-Campañas, mediciones y lecturas de red (parte del modelo del Hito 1) y la columna `geometry(Point, 0)` de PostGIS (ver decisión en `CLAUDE.md`). No se crean tablas vacías por adelantado.
+No hizo falta: con ~24 puntos por piso y coordenadas 2D en metros, ninguna consulta del Hito 3 es espacial (se listan por piso y se pintan en un plano), así que `x` e `y` siguen como `numeric`. Es la decisión revisada que preveía `CLAUDE.md`.

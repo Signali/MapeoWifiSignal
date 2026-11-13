@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Política de red de la app:
+  - Todo el tráfico va por HTTPS, y además de las autoridades del sistema se confía en la
+    autoridad propia de la demo (res/raw/signalmap_ca.crt, solo certificado público; la clave
+    privada queda en el PC y nunca se versiona). Ver backend/README.md, sección HTTPS.
+  - HTTP sin cifrar solo hacia 127.0.0.1 y localhost: es el uso por cable con `adb reverse`,
+    donde el tráfico no sale del teléfono ni del cable. Cualquier otra dirección en HTTP se bloquea.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/signalmap_ca" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

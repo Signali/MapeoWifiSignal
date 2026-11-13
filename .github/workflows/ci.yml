@@ -45,6 +45,7 @@ jobs:
       SEED_ADMIN_PASSWORD: ci_admin_falsa
       SEED_TECNICO_PASSWORD: ci_tecnico_falsa
       SEED_CLIENTE_PASSWORD: ci_cliente_falsa
+      SEED_WIFI_SSID: SignalMap Demo
 
     defaults:
       run:
@@ -57,7 +58,9 @@ jobs:
         with:
           node-version-file: backend/.nvmrc
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Crear rol y base de tests (db/README.md, paso 1)
         env:
@@ -72,6 +75,39 @@ jobs:
           PGPASSWORD: ${{ env.DB_PASSWORD }}
         run: psql -h localhost -U "$DB_USER" -d "$DB_NAME_TEST" -v ON_ERROR_STOP=1 -f ../db/schema.sql
 
+      # La web se compila antes de los tests: Express sirve frontend/dist (tests/web.test.ts).
+      - name: Web - instalar dependencias
+        working-directory: frontend
+        run: npm ci
+      - name: Web - revisar tipos
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Web - compilar
+        working-directory: frontend
+        run: npm run build
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # Avisa si la app deja de compilar. No es obligatorio: no está en los checks de main.
+  android:
+    runs-on: ubuntu-26.04
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # JDK 25: el que exige android/gradle/gradle-daemon-jvm.properties (así Gradle no descarga otro).
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Sin setup-android: el runner ya trae el SDK de Android (ANDROID_HOME) y Gradle descarga lo que falte.
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: ./gradlew assembleDebug testDebugUnitTest

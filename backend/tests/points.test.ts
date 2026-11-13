@@ -8,8 +8,10 @@ import { signToken } from '../src/services/token.ts';
 // Pisos y puntos (contrato §5 filas 8 a 13, §6.8 a §6.13) contra la app real y signalmap_test.
 // Seed: org 1, Torre Norte (id 1, asignada al cliente id 3) con el Piso 3 (id 1, 40 x 25 m)
 // y 24 puntos (P-07 = id 7); Oficinas Centro (id 2) sin pisos ni asignación.
-const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04A23B1C5D8080' };
-const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25 };
+const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04C7DC7FBF2A81' };
+// Sin contorno cargado, el piso sale con su rectángulo completo y sin imagen de plano.
+const RECT_40_25 = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 25 }, { x: 0, y: 25 }];
+const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25, outline: RECT_40_25, plan_url: null };
 const FORBIDDEN = { message: 'No tiene permiso para esta acción' };
 const BAD_ID = { message: 'El id debe ser un número entero' };
 const BUILDING_NOT_FOUND = { message: 'Edificio no encontrado' };
@@ -72,7 +74,7 @@ beforeAll(async () => {
     [ids.annexFloor, ANNEX_NFC],
   );
 
-  ids.otherOrg = await insertId(`INSERT INTO organizations (name) VALUES ('Otra Org Puntos') RETURNING id`, []);
+  ids.otherOrg = await insertId(`INSERT INTO organizations (name, wifi_ssid) VALUES ('Otra Org Puntos', 'Otra Red') RETURNING id`, []);
   ids.otherBuilding = await insertId(`INSERT INTO buildings (org_id, name) VALUES ($1, 'Torre Norte') RETURNING id`, [
     ids.otherOrg,
   ]);
@@ -103,6 +105,8 @@ beforeAll(async () => {
 const createdIds: number[] = [];
 
 afterAll(async () => {
+  // Las mediciones que insertó el test de DELETE (409) deben irse antes que sus puntos.
+  await pool.query('DELETE FROM measurements WHERE point_id = ANY($1)', [createdIds]);
   await pool.query('DELETE FROM points WHERE id = ANY($1) OR floor_id = ANY($2)', [
     createdIds,
     [ids.annexFloor, ids.otherFloor],
@@ -176,7 +180,17 @@ describe('GET /api/v1/floors?building_id= (fila 8)', () => {
   test('técnico, edificio de la org no asignado al cliente → 200', async () => {
     const res = await request(app).get(`/api/v1/floors?building_id=${ids.annexBuilding}`).set('Authorization', auth.tecnico);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([{ id: ids.annexFloor, building_id: ids.annexBuilding, name: 'Piso 1', width_m: 10, height_m: 8 }]);
+    expect(res.body).toEqual([
+      {
+        id: ids.annexFloor,
+        building_id: ids.annexBuilding,
+        name: 'Piso 1',
+        width_m: 10,
+        height_m: 8,
+        outline: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 8 }, { x: 0, y: 8 }],
+        plan_url: null,
+      },
+    ]);
   });
 
   test.each([
@@ -307,6 +321,73 @@ describe('GET /api/v1/points/:id (fila 10)', () => {
     ['admin de otra org pide P-07', (): number => 7, 'adminOtraOrg'],
   ] as const)('el punto %s → 404', async (_label, point, role) => {
     expectError(await getPoint(point(), auth[role]), 404, POINT_NOT_FOUND);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// Se usa el P-24 (UID inventado del seed): así estos tests no dependen de las tiras reales.
+describe('GET /api/v1/points/by-tag/:nfc_uid (fila 14)', () => {
+  const P24 = { id: 24, floor_id: 1, code: 'P-24', x: 38.5, y: 2, nfc_uid: '04A23B1C5D9180' };
+  const P24_RESPONSE = { ...P24, floor: { id: 1, name: 'Piso 3' }, building: { id: 1, name: 'Torre Norte' } };
+  const NOT_REGISTERED = { message: 'Tira NFC no registrada' };
+  const BAD_TAG = { message: 'nfc_uid debe tener de 1 a 32 caracteres hexadecimales' };
+  const byTag = (uid: string, token = auth.admin) =>
+    request(app).get(`/api/v1/points/by-tag/${uid}`).set('Authorization', token);
+
+  test.each(['admin', 'tecnico', 'cliente'] as const)('%s → 200 con el punto, su piso y su edificio', async (role) => {
+    const res = await byTag(P24.nfc_uid, auth[role]);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(P24_RESPONSE);
+  });
+
+  test('el UID en minúsculas → 200 con el mismo punto (nfc_uid en mayúsculas)', async () => {
+    const res = await byTag(P24.nfc_uid.toLowerCase());
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(P24_RESPONSE);
+  });
+
+  test('no devuelve org_id ni datos internos', async () => {
+    const res = await byTag(P24.nfc_uid);
+    expect(Object.keys(res.body).sort()).toEqual(['building', 'code', 'floor', 'floor_id', 'id', 'nfc_uid', 'x', 'y']);
+  });
+
+  test('técnico, tira de un edificio no asignado al cliente → 200', async () => {
+    const res = await byTag(ANNEX_NFC, auth.tecnico);
+    expect(res.status).toBe(200);
+    expect(res.body.code).toBe('A-01');
+    expect(res.body.building).toEqual({ id: ids.annexBuilding, name: 'Anexo Puntos' });
+  });
+
+  test.each([
+    ['XYZ', 'no es hexadecimal'],
+    ['04A2:3B', 'tiene separadores'],
+    ['A'.repeat(33), 'tiene 33 caracteres'],
+  ])('UID %s (%s) → 400', async (uid) => {
+    expectError(await byTag(uid), 400, BAD_TAG);
+  });
+
+  test('parámetro de consulta desconocido → 400', async () => {
+    expectError(
+      await request(app).get(`/api/v1/points/by-tag/${P24.nfc_uid}?floor_id=1`).set('Authorization', auth.admin),
+      400,
+    );
+  });
+
+  test('sin UID, /points/by-tag/ responde como /points/:id → 400', async () => {
+    expectError(await request(app).get('/api/v1/points/by-tag/').set('Authorization', auth.admin), 400, BAD_ID);
+  });
+
+  test('sin token → 401', async () => expect401(await request(app).get(`/api/v1/points/by-tag/${P24.nfc_uid}`)));
+
+  test.each([
+    ['ningún punto tiene esa tira', 'FFFFFFFF', 'admin'],
+    ['es de otra org', OTHER_NFC, 'admin'],
+    ['es de un edificio no asignado al cliente', ANNEX_NFC, 'cliente'],
+    ['es de un edificio asignado por error a otra org', OTHER_NFC, 'cliente'],
+    ['el cliente no tiene asignaciones', P24.nfc_uid, 'clienteSinEdificios'],
+    ['admin de otra org pide la tira del P-24', P24.nfc_uid, 'adminOtraOrg'],
+  ] as const)('la tira %s → 404', async (_label, uid, role) => {
+    expectError(await byTag(uid, auth[role]), 404, NOT_REGISTERED);
   });
 });
 
@@ -644,6 +725,25 @@ describe('DELETE /api/v1/points/:id (fila 13)', () => {
 
   test('admin borra un punto de un edificio no asignado al cliente → 204', async () => {
     const point = await createdPoint({ floor_id: ids.annexFloor, x: 6, y: 6 });
+    expect((await del(point.id, auth.admin)).status).toBe(204);
+  });
+
+  test.each([
+    ['vigente', false],
+    ['anulada', true],
+  ])('punto con una medición %s → 409 (sigue existiendo); sin mediciones se borra', async (_label, voided) => {
+    const point = await createdPoint();
+    await pool.query(
+      `INSERT INTO measurements (point_id, user_id, phase, client_uuid, measured_at, voided_at, void_reason, voided_by)
+       SELECT $1, u.id, 'antes', gen_random_uuid(), now(),
+              CASE WHEN $2::boolean THEN now() END, CASE WHEN $2::boolean THEN 'punto_equivocado' END,
+              CASE WHEN $2::boolean THEN u.id END
+       FROM users u WHERE u.role = 'admin' ORDER BY u.id LIMIT 1`,
+      [point.id, voided],
+    );
+    expectError(await del(point.id, auth.admin), 409, { message: 'El punto tiene mediciones y no se puede borrar' });
+    expect((await getPoint(point.id)).status).toBe(200);
+    await pool.query('DELETE FROM measurements WHERE point_id = $1', [point.id]);
     expect((await del(point.id, auth.admin)).status).toBe(204);
   });
 

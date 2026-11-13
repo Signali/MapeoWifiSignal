@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   Sample data extraction rules file; uncomment and customize as necessary.
+   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   for details.
+-->
+<data-extraction-rules>
+    <!-- Se respalda lo que tomó el técnico (la cola de mediciones), pero no el token de sesión. -->
+    <cloud-backup>
+        <exclude domain="sharedpref" path="session.xml" />
+        <exclude domain="sharedpref" path="tags.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="session.xml" />
+        <exclude domain="sharedpref" path="tags.xml" />
+    </device-transfer>
+</data-extraction-rules>
