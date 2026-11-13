@@ -41,7 +41,12 @@ export function AnalysisPanel({ emitters, recommendation, loading, showHeat, sho
       </div>
 
       <div>
-        <h3>Emisores estimados</h3>
+        <h3>
+          <span className="swatch swatch-emitter" aria-hidden="true">
+            E
+          </span>
+          Emisores estimados
+        </h3>
         {emitters === null ? (
           pending
         ) : emitters.length === 0 ? (
@@ -60,7 +65,12 @@ export function AnalysisPanel({ emitters, recommendation, loading, showHeat, sho
       </div>
 
       <div>
-        <h3>Ubicación recomendada del repetidor</h3>
+        <h3>
+          <span className="swatch swatch-repeater" aria-hidden="true">
+            +
+          </span>
+          Ubicación recomendada del repetidor
+        </h3>
         {recommendation === null ? (
           pending
         ) : recommendation.position ? (

@@ -26,7 +26,7 @@ A continuación podrá visualizar el primer prototipo:
 - [Prototipo versión 1.0](https://www.figma.com/make/DSvQteygbvInD0FsngpKSB/Prototipo-navegable-SignalMap?t=dhTFBYDAmpXw2Hxb-20&fullscreen=1)
 
 ## Instalación (resumen)
-Manual completo, con datos de prueba y fallas frecuentes: `docs/manual.md` (se publica el 13/11).
+Manual completo, con datos de prueba y fallas frecuentes: [`docs/manual.md`](docs/manual.md).
 
 1. **Requisitos:** **Node.js 26 o superior** (fijado en `backend/.nvmrc`) y **PostgreSQL 17 o superior**. Para la app: teléfono Android 10 o superior con NFC y `adb` instalado.
 2. **Base de datos:** crear el rol y las bases, y cargar las tablas: [`db/README.md`](db/README.md), pasos 1 a 3.

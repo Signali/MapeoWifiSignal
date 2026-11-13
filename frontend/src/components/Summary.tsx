@@ -1,27 +1,45 @@
+import type { CSSProperties } from 'react'
 import type { Category } from '../api/types.ts'
 import { CATEGORY_STYLE } from '../categories.ts'
 import type { CategoryKey } from '../categories.ts'
-
-const ORDER: CategoryKey[] = ['buena', 'regular', 'debil', 'sin_senal', 'sin_medir']
 
 interface Props {
   // Una categoría por punto del piso; null = sin medición en la fase.
   categories: (Category | null)[]
 }
 
-// Conteo por categoría: «Buena 1 · Regular 0 · … · Sin medir 23».
+// Resumen del piso: dos tarjetas («Cobertura buena» y «Zonas débiles»). Solo cuenta lo que el servicio
+// ya categorizó; no calcula umbrales. El total de puntos medidos está en el cajetín del plano.
 export function Summary({ categories }: Props) {
   const counts: Record<CategoryKey, number> = { buena: 0, regular: 0, debil: 0, sin_senal: 0, sin_medir: 0 }
   for (const c of categories) counts[c ?? 'sin_medir']++
+  const measured = categories.length - counts.sin_medir
+  const goodShare = measured === 0 ? null : Math.round((counts.buena * 100) / measured)
 
   return (
-    <p className="summary">
-      {ORDER.map((key, i) => (
-        <span key={key}>
-          {i > 0 && ' · '}
-          {CATEGORY_STYLE[key].label} {counts[key]}
+    <div className="kpis">
+      <div className="kpi kpi-good">
+        <span className="swatch" style={{ '--c': CATEGORY_STYLE.buena.color } as CSSProperties} aria-hidden="true">
+          {CATEGORY_STYLE.buena.letter}
         </span>
-      ))}
-    </p>
+        <div>
+          <small>Cobertura buena</small>
+          <strong>{goodShare === null ? '–' : `${goodShare} %`}</strong>
+          <span className="of">
+            {counts.buena} de {measured} medidos
+          </span>
+        </div>
+      </div>
+      <div className="kpi kpi-weak">
+        <span className="swatch" style={{ '--c': CATEGORY_STYLE.debil.color } as CSSProperties} aria-hidden="true">
+          {CATEGORY_STYLE.debil.letter}
+        </span>
+        <div>
+          <small>Zonas débiles</small>
+          <strong>{counts.debil}</strong>
+          <span className="of">{counts.debil === 1 ? 'punto en Débil' : 'puntos en Débil'}</span>
+        </div>
+      </div>
+    </div>
   )
 }
