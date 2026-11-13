@@ -235,6 +235,62 @@ PENDIENTE T22: resultado del ensayo en equipo limpio en PC-Gabriel (clon nuevo, 
 
 ---
 
+## 7. Evolución de decisiones
+
+La Tabla 3 es la bitácora de las decisiones que más cambiaron el producto desde el informe del Hito 1 (Alvarado y Díaz, 2026), en orden cronológico. Cada fila indica la fecha, qué se decidió, qué se descartó, por qué y, cuando ocurrió, qué salió mal y cómo se resolvió. Las fechas de los días 4 a 9 de noviembre corresponden al Hito 2 y las siguientes, al Hito 3.
+
+Tabla 3. Bitácora de decisiones
+
+| Fecha (2026) | Decisión | Alternativas | Motivo | Qué salió mal y cómo se resolvió |
+|---|---|---|---|---|
+| 04-11 | TypeScript ejecutado directamente por Node 26, sin compilar; `tsc` solo revisa tipos | Compilar a `dist/` con `tsc` | Sin dependencias ni paso de build | Costo asumido: no se pueden usar `enum`, `namespace` ni propiedades de parámetro, y el proyecto depende de la versión de Node. Quedó fijada en `.nvmrc` y `engines` |
+| 04-11 | `pg` con SQL explícito y parámetros, sin ORM, solo en `repositories/` (comparación escrita el 06-11) | Prisma; Knex o Kysely | El SQL se ve y se explica tal cual; menos capas con dos personas | `numeric` se entrega como texto en `pg`: se fijó un único `setTypeParser` global y un test recorre todas las columnas `numeric` |
+| 04-11 | Errores con forma `{ "message": "..." }`; el código HTTP da la clase del error (el Hito 1 usaba códigos con nombre, como `TAG_UNKNOWN`) | Un campo `code` por error | El código HTTP y el mensaje bastan a los clientes | La app y la web traducen por código HTTP a mensajes propios (Tabla 2). Agregar un `code` sigue siendo un cambio compatible |
+| 04-11 | JWT HS256 propio con `node:crypto` | Librería de JWT | Cero dependencias nuevas | La verificación pasó a ser responsabilidad del proyecto: tests para `alg` distinto de HS256 (incluido `none`), firma alterada, secreto distinto, token vencido y token deforme, siempre `401` |
+| 04-11 (medido el 09-11) | `bcryptjs` para las claves | `bcrypt` nativo | No compila al instalarse; igual en cualquier equipo | El documento del Hito 2 decía entre 60 y 100 ms por hash; en la prueba de carga un login costó unos 183 ms y, al ejecutarse en el único hilo de Node, con tres logins simultáneos `GET /health` subió de 2 ms a cerca de 180 ms. Se declaró como límite conocido; no se cambió el código (sección 9) |
+| 04-11 | PostgreSQL 17 instalado en cada equipo, sin contenedores | Docker; servicio en la nube | Menos piezas que explicar y probar | El ensayo del 06-11 en un equipo nuevo (Windows 11) se trabó en tres pasos que los README no traían: codificación UTF-8 de `psql`, `PATH` de PostgreSQL y política de ejecución de PowerShell. Los tres se agregaron a los README |
+| 04-11 y 11-11 | PostGIS: el Hito 1 la declaraba y decía que se implementaría en el Hito 2; el 04-11 se difirió al Hito 3 con la condición de escribir antes la consulta espacial que la justificara; el 11-11 se acordó hacer el cálculo en TypeScript y evaluar PostGIS solo con el núcleo cerrado. **No se instaló** | (a) PostGIS para el mapa de calor y la cobertura; (b) todo en memoria; (c) memoria primero y PostGIS después, si sobraba tiempo | Con unos 24 puntos por piso el cálculo en memoria rinde igual y es más fácil de probar con datos sintéticos. Instalarla exigía la extensión en los tres equipos, otra imagen en el CI y recrear las bases, con riesgo para el arranque en el equipo del docente | Al revisar el alcance el 11-11 apareció que el mapa de calor y la recomendación sí hacen consultas espaciales (puntos dentro de un radio, cobertura por posición candidata), de modo que la razón original, «no hay consulta espacial», dejó de valer. La razón que quedó fue el costo y el riesgo; el cálculo vive en funciones puras (`heatmap.ts`, `trilateration.ts`, `recommendation.ts`) |
+| 10-11 | Flujo principal con el sistema real del Hito 1: app Android que lee la tira por NFC (`enableReaderMode`, solo con «Medir» visible) y mide con `WifiManager` | Solo puntos cargados desde la web; emulador; despacho en primer plano; filtro en el manifiesto | El enunciado evalúa el recorrido completo; con un emulador la medición habría sido simulada | Era el riesgo principal del plan (permisos y límites de Android). Android permite 4 búsquedas cada 2 minutos: la app lleva su propio contador con cuenta regresiva y no guarda nada si el sistema devuelve resultados viejos. El UID de la tira se normaliza a hexadecimal en mayúsculas |
+| 10-11 | Solo se guardan las lecturas de la red WiFi de la organización (SSID cargado por seed); las demás se descartan sin guardarse | Colorear por la red más fuerte de todas; guardar todas las redes | Para comparar el efecto de un repetidor importa la red de la empresa, y los BSSID de vecinos o de puntos de acceso personales podrían identificar personas (minimización) | El 12-11 una sola mayúscula de diferencia entre `Wifi_Sala` (en `.env`) y `WiFi_Sala` (la red real) dejó todos los puntos en «Sin señal». Se documentó en el manual como una de las tres fallas frecuentes |
+| 10-11 (implementada el 11-11) | Una medición se anula, con un motivo de una lista fija; no se borra. Borrar un punto con mediciones responde `409` | Borrar mediciones; «medir de nuevo y vale la última» | Conserva el historial y quién anuló y cuándo; `ON DELETE RESTRICT` ya protegía la jerarquía | Sin incidentes registrados |
+| 10-11 | `measured_at` lo envía la app (hora del escaneo); `received_at` lo pone siempre el servidor | Usar solo la fecha de recepción | Con la cola sin conexión, una medición antigua enviada tarde quedaría como «la última» | El reloj del teléfono pasó a definir la fecha: en la prueba iba unos 47 segundos adelantado. El servicio acepta entre los últimos 30 días y 5 minutos hacia adelante, y responde `422` fuera de eso |
+| 10-11 | Cola sin conexión en un archivo JSON del espacio privado de la app, con reenvío mientras la app está abierta y `client_uuid` para no duplicar (el Hito 1 decía Room) | Room (tres dependencias y un procesador de anotaciones para pocas filas); WorkManager (envío en segundo plano); solo un botón | Cumple lo que se le informó al docente con el menor costo | El mismo 10-11 la cola quedó fuera del alcance y se retomó porque se le había informado al docente que las mediciones se enviarían al volver la conexión. La revisión del 11-11 halló que una medición pendiente podía conservar el punto de otro servidor al cambiar la dirección; se corrigió ese día |
+| 10-11 | `HttpURLConnection` y `org.json`, en un solo `ApiClient.kt` | OkHttp; Retrofit | Tres llamadas no justifican dependencias ni un plugin | El primer inicio de sesión por HTTPS del 11-11 falló sin causa visible, porque la app mostraba el error real como «no se pudo conectar»; el segundo intento funcionó y no se estableció la causa del primero |
+| 10-11 (rediseño el 12-11) | La web no copia el prototipo de Figma del Hito 1: se rediseñó con la paleta «aurora», plano como hoja de levantamiento y tema claro y oscuro. La app adoptó la misma identidad | Copiar el prototipo | El prototipo tenía pestañas y salas que el modelo de datos no contempla; se retomaron solo la leyenda con umbrales, el resumen del piso, los chips de puntos y el botón del repetidor | La revisión de calidad del 12-11 halló la cabecera en dos filas a 1024 px, el plano ilegible en teléfono, la falta de `h1`, un favicon inexistente y objetivos táctiles de 30 px. Se corrigieron ese mismo día |
+| 10-11 y 11-11 | Docker queda fuera (el Hito 1 lo incluía para el volumen de planos). Se mantiene el diseño «listo para Docker» | Escribir `Dockerfile` y `docker-compose.yml` sin probarlos; dejar la decisión abierta | No suma puntos de rúbrica, el equipo de desarrollo no tiene WSL2 y no quedaba medio día libre sin tocar lo obligatorio | El 10-11 se había dejado «por ahora no» con un nuevo análisis el 12-11; el análisis se adelantó al 11-11 y confirmó la exclusión |
+| 10-11 y 11-11 | Mapa de calor, trilateración y recomendación del repetidor vuelven al alcance: el 10-11 se habían recortado y el 11-11 se decidió incluirlos, con el reporte PDF como última pieza y primera en recortarse | Declararlos como limitación | Se prometieron en el Hito 1 | No había repetidor real ni tiempo de conseguir uno, por lo que la demostración muestra solo la fase «Antes» y la ubicación recomendada, rotulada «estimada». La prueba real del 12-11 con tres puntos produjo un emisor de 5 GHz pegado al borde del plano, con tres puntos casi alineados (sección 9). El reporte PDF no se entregó |
+| 11-11 | HTTPS opcional con una autoridad certificadora propia y HTTP sin cifrar solo hacia `127.0.0.1` y `localhost` | HTTP sin cifrar en todo el APK de depuración (decisión del 10-11) | Permite usar la app por WiFi, sin cable, sin aceptar tráfico sin cifrar hacia cualquier dirección | En la prueba real del 12-11 la medición por WiFi no llegaba: el teléfono estaba en la red de la universidad sin haber iniciado sesión en su portal y Android enviaba el tráfico por datos móviles. Se resolvió iniciando sesión en el portal y apagando los datos móviles; quedó en el manual |
+| 11-11 | Revisión integral (`/code-review` y `/security-review`) antes de congelar el producto | — | Un criterio de calidad más alto que el mínimo de la rúbrica | La revisión de código dio siete hallazgos. Se corrigieron ese día el análisis de otra fase al cambiar de fase, un `500` al medir un punto recién borrado, la cola con el punto de otro servidor y el mapa de calor sin recorte por el contorno. Los otros tres (`n_fixed` con distancias iguales, caché de tiras y repeticiones del análisis) se resolvieron o declararon en un PR posterior. La revisión de seguridad no halló nada |
+
+PENDIENTE T22: fila del ensayo en equipo limpio de PC-Gabriel, con su fecha y lo que se corrigió en el README o el manual.
+
+---
+
+## 8. Datos personales
+
+PENDIENTE T26: sección a cargo de Gabriel.
+
+---
+
+## 9. Limitaciones
+
+Estas son las limitaciones del producto entregado, tal como estaba al cierre.
+- **La cola sin conexión funciona solo con la app abierta.** La app reenvía las mediciones pendientes al abrirla, cuando Android avisa que hay red y con el botón «Enviar ahora». No hay envío en segundo plano.
+- **Cifrado de la conexión.** El APK de depuración admite HTTP sin cifrar solo hacia `127.0.0.1` y `localhost` (el uso por cable con `adb reverse`). Por WiFi se usa HTTPS con una autoridad certificadora propia: su clave privada vive en un solo equipo, de modo que otro equipo debe generar la suya y recompilar la app, y el certificado del servidor dura 30 días y vale solo para una dirección IP.
+- **Sin gestión de usuarios ni renovación del token.** Los usuarios se crean solo por seed y el token vence sin poder renovarse; hay que iniciar sesión de nuevo.
+- **Login con límite de rendimiento.** `bcryptjs` calcula el hash en el hilo único de Node y el servicio no limita los intentos (sección 7).
+- **La web no tiene pruebas automatizadas.** El servicio sí las tiene, con integración continua; la web se verificó con revisión de tipos, compilación y recorrido manual.
+- **Sin Docker ni nube.** El proyecto se instala en cada equipo con los pasos de la sección 6.
+- **Límite de 4 búsquedas WiFi cada 2 minutos.** Es una restricción de Android; la app lleva su propio contador y la demostración debe respetarla.
+- **La fecha de una medición la define el reloj del teléfono** (`measured_at`). El servicio solo rechaza lo que cae fuera de los últimos 30 días y los próximos 5 minutos.
+- **La fase «Después» y la mejora tras instalar un repetidor no se comprobaron con un repetidor real.** La fase existe en la base, la API y la web, pero solo se probó hasta el estado vacío y con datos de prueba.
+- **La ubicación recomendada es una estimación.** En la prueba real del 12 de noviembre solo se observó el caso «todos los puntos tienen señal buena», en que no hay posición que recomendar; una recomendación con posición no se vio en una prueba real.
+- **La posición de un emisor puede ser poco fiable con pocos puntos o casi alineados.** En esa prueba, el emisor de 5 GHz quedó en el borde del plano con tres puntos casi en línea. Con tres puntos el exponente de pérdida se fija en 3,0 y no se ajusta.
+- **Una red mesh se estima por BSSID.** Los nodos de una misma red no se agrupan en un solo equipo físico.
+- **No se entregó el reporte en PDF del piso.** Era la última pieza del análisis y la primera en recortarse; el contrato no incluye una ruta para él.
+
+---
+
 ## Anexos
 
 ### Anexo A. Modelo de datos completo
