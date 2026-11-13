@@ -163,4 +163,4 @@ El login sigue siendo solo con `email` y `password` (el contrato no cambia). El 
 
 ## PostGIS
 
-No hizo falta: con ~24 puntos por piso y coordenadas 2D en metros, ninguna consulta del Hito 3 es espacial (se listan por piso y se pintan en un plano), así que `x` e `y` siguen como `numeric`. Es la decisión revisada que preveía `CLAUDE.md`.
+No se instaló. El mapa de calor y la recomendación sí hacen cálculos espaciales (puntos dentro de un radio, cobertura por posición candidata), pero con ~24 puntos por piso y coordenadas 2D en metros se resuelven en memoria, en funciones puras de TypeScript (`heatmap.ts`, `recommendation.ts`), con el mismo rendimiento y más fáciles de probar. Instalar PostGIS exigía la extensión en cada equipo, otra imagen en el CI y recrear las bases, así que `x` e `y` siguen como `numeric`. Es la decisión revisada que preveía `CLAUDE.md`.
