@@ -62,7 +62,7 @@ Con más puntos medidos, el panel de análisis bajo el plano ofreció tres resul
 
 ## 3. Arquitectura final
 
-El sistema quedó como un monolito en capas con tres clientes de una misma API. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido.
+El sistema quedó como un monolito en capas con una sola API, que usan tres roles desde dos sitios: el administrador y el técnico, desde la app y la web, y el cliente, solo desde la web. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido.
 
 Figura 5. Componentes del sistema: app Android, web y API sobre PostgreSQL
 
