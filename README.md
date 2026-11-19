@@ -11,14 +11,14 @@ Orden alfabético por apellido.
 | Gabriel Díaz | [@Gabo-collab](https://github.com/Gabo-collab) |
 
 ## Informes
-- Documento final del Hito 3 (PDF): se publica en `docs/` el 16/11.
+- [Documento final del Hito 3](docs/documento-final.md) (fuente en Markdown)
+- [Manual de uso e instalación](docs/manual.md)
 - [Documento técnico del Hito 2 (PDF)](docs/SignalMap-Hito2-Documento-Tecnico.pdf) · fuente: [`docs/documento-tecnico.md`](docs/documento-tecnico.md)
 - [Contrato de la API](docs/api-contract.md)
 - [Informe Hito 1](https://www.figma.com/make/GeF2PReF8GgNYtE66CsW4b/Informe-Hito-1-SignalMap?t=2NkAt4R6hcLpgEdY-20&fullscreen=1&preview-route=%2F%23s3)
 - [Informe Hito 1 en PDF](https://acrobat.adobe.com/id/urn:aaid:sc:US:3780a647-8e7f-4e54-949e-dcd4983e6c32) · [SignalMapH1-V3.pdf](https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf)
 
 ## Video y presentación
-- Video promocional (2 minutos): se publica el 15/11.
 - [Presentación Hito 1](https://www.figma.com/make/FIy60xlOH9mtFJnlq3qHQC/Presentaci%C3%B3n-comercial-t%C3%A9cnica?t=Lktr7tHhvJ8Ct3oH-20&fullscreen=1)
 
 ## Interfaz y prototipo (Figma)
