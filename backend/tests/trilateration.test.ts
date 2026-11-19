@@ -5,7 +5,7 @@ import type { EmitterSample } from '../src/services/trilateration.ts';
 
 const FLOOR = { width_m: 40, height_m: 25 }; // Piso 3 del seed
 
-// Puntos del seed: P-07, P-08 y P-09 (las 3 tiras reales) y otros que forman figura.
+// Puntos del seed: P-07, P-08 y P-09 (tres de las 5 tiras reales) y otros que forman figura.
 const P07 = { x: 12.5, y: 8 };
 const P08 = { x: 12.5, y: 2 };
 const P09 = { x: 19, y: 2 };

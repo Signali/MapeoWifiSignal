@@ -35,7 +35,7 @@ SELECT id, 'Piso 3', 40.00, 25.00 FROM buildings WHERE name = 'Torre Norte';
 
 -- 24 puntos en 6 columnas x 4 filas, recorridas en zigzag (bajando y subiendo
 -- por columna). P-07 coincide con el ejemplo del contrato: (12.5, 8.0).
--- P-07, P-08 y P-09 llevan el UID de las 3 tiras NFC reales; el resto, UID inventados.
+-- P-07 a P-11 llevan el UID de las 5 tiras NFC reales; el resto, UID inventados.
 INSERT INTO points (floor_id, code, x, y, nfc_uid)
 SELECT f.id, p.code, p.x, p.y, p.nfc_uid
 FROM floors f
@@ -47,11 +47,11 @@ CROSS JOIN (VALUES
     ('P-04',  6.00, 20.00, '04A23B1C5D7D80'),
     ('P-05', 12.50, 20.00, '04A23B1C5D7E80'),
     ('P-06', 12.50, 14.00, '04A23B1C5D7F80'),
-    ('P-07', 12.50,  8.00, '04C7DC7FBF2A81'),
-    ('P-08', 12.50,  2.00, '04D3DC7FBF2A81'),
-    ('P-09', 19.00,  2.00, '04D2DC7FBF2A81'),
-    ('P-10', 19.00,  8.00, '04A23B1C5D8380'),
-    ('P-11', 19.00, 14.00, '04A23B1C5D8480'),
+    ('P-07', 12.50,  8.00, '048CA97FC32A81'),
+    ('P-08', 12.50,  2.00, '048BA97FC32A81'),
+    ('P-09', 19.00,  2.00, '0489A97FC32A81'),
+    ('P-10', 19.00,  8.00, '0484A97FC32A81'),
+    ('P-11', 19.00, 14.00, '0483A97FC32A81'),
     ('P-12', 19.00, 20.00, '04A23B1C5D8580'),
     ('P-13', 25.50, 20.00, '04A23B1C5D8680'),
     ('P-14', 25.50, 14.00, '04A23B1C5D8780'),
