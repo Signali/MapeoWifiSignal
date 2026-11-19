@@ -15,7 +15,7 @@ Hay dos formas de conectar el teléfono con el servicio:
 - **Git**, para clonar el repositorio.
 - **Teléfono Android 10 o superior** con NFC, con las opciones de desarrollador y la **depuración USB** activadas y el equipo autorizado en el teléfono.
 - **`adb`** (herramientas de plataforma de Android, *platform-tools*). En Windows suele quedar en `%LOCALAPPDATA%\Android\Sdk\platform-tools`; si no está en el `PATH`, se escribe la ruta completa.
-- **Tres tiras NFC** de la demostración (ver sección 3) y la red WiFi que se va a medir.
+- **Cinco tiras NFC** de la demostración (ver sección 3) y la red WiFi que se va a medir.
 - **Android Studio** solo si se quiere compilar la app. Para solo usarla basta el APK ya compilado (sección 2.7).
 
 ## 2. Instalación paso a paso
@@ -128,13 +128,15 @@ Antes de medir, en el teléfono: **NFC activado**, **WiFi encendido** (aunque no
 
 Para medir se usa `tecnico@demo.cl` en la app; para ver, `admin@demo.cl` en la web.
 
-Los datos son el edificio **Torre Norte**, con un único piso, **Piso 3** (40 m × 25 m), y **24 puntos** (`P-01` a `P-24`) en una grilla de seis columnas y cuatro filas. Después del seed **ningún punto tiene mediciones**. Tres puntos corresponden a tiras NFC reales; el resto tiene códigos inventados que ninguna tira reproduce (están en [`db/seed.sql`](../db/seed.sql)).
+Los datos son el edificio **Torre Norte**, con un único piso, **Piso 3** (40 m × 25 m), y **24 puntos** (`P-01` a `P-24`) en una grilla de seis columnas y cuatro filas. Después del seed **ningún punto tiene mediciones**. Cinco puntos (`P-07` a `P-11`) corresponden a tiras NFC reales; el resto tiene códigos inventados que ninguna tira reproduce (están en [`db/seed.sql`](../db/seed.sql)).
 
 | Punto | Posición en el plano (m) | UID de la tira |
 |---|---|---|
-| `P-07` | (12,5; 8,0) | `04C7DC7FBF2A81` |
-| `P-08` | (12,5; 2,0) | `04D3DC7FBF2A81` |
-| `P-09` | (19,0; 2,0) | `04D2DC7FBF2A81` |
+| `P-07` | (12,5; 8,0) | `048CA97FC32A81` |
+| `P-08` | (12,5; 2,0) | `048BA97FC32A81` |
+| `P-09` | (19,0; 2,0) | `0489A97FC32A81` |
+| `P-10` | (19,0; 8,0) | `0484A97FC32A81` |
+| `P-11` | (19,0; 14,0) | `0483A97FC32A81` |
 
 `P-07` queda sin medir a propósito: es el que se mide durante la demostración y el que pasa de «Sin medir» a tener color.
 

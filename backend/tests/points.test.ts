@@ -8,7 +8,7 @@ import { signToken } from '../src/services/token.ts';
 // Pisos y puntos (contrato §5 filas 8 a 13, §6.8 a §6.13) contra la app real y signalmap_test.
 // Seed: org 1, Torre Norte (id 1, asignada al cliente id 3) con el Piso 3 (id 1, 40 x 25 m)
 // y 24 puntos (P-07 = id 7); Oficinas Centro (id 2) sin pisos ni asignación.
-const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '04C7DC7FBF2A81' };
+const P07 = { id: 7, floor_id: 1, code: 'P-07', x: 12.5, y: 8, nfc_uid: '048CA97FC32A81' };
 // Sin contorno cargado, el piso sale con su rectángulo completo y sin imagen de plano.
 const RECT_40_25 = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 25 }, { x: 0, y: 25 }];
 const PISO_3 = { id: 1, building_id: 1, name: 'Piso 3', width_m: 40, height_m: 25, outline: RECT_40_25, plan_url: null };
