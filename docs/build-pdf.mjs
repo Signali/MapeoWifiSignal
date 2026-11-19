@@ -95,6 +95,9 @@ p:has(+ pre), p:has(+ .mermaid), p:has(+ .stack), p:has(+ .bars), p:has(+ table)
 hr { display: none; }
 .shots { display: flex; justify-content: center; gap: 4mm; margin: 0 0 5mm; }
 .shots img { display: block; max-width: 100%; max-height: 100mm; object-fit: contain; border: .25mm solid var(--line); }
+/* Imágenes sueltas de Markdown (p. ej. el manual): sin esto salen a tamaño real, se pasan del margen y Edge encoge toda la hoja. */
+p:has(> img) { display: flex; justify-content: center; gap: 4mm; margin: 0 0 5mm; break-inside: avoid; }
+p:has(> img) img { display: block; flex: 0 1 auto; min-width: 0; max-width: 100%; max-height: 100mm; object-fit: contain; border: .25mm solid var(--line); }
 .mermaid { display: flex; justify-content: center; margin: 0 0 5mm; break-inside: avoid; }
 .mermaid svg { max-width: 100%; max-height: 82mm; height: auto; }
 .mermaid.grande svg { max-height: 195mm; }

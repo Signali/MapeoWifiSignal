@@ -22,7 +22,7 @@ Este documento describe el producto tal como quedó construido en el Hito 3: la 
 
 ## 2. El producto construido
 
-El recorrido principal del producto tiene cuatro pasos: mirar el piso en la web, medir un punto con la app, ver el resultado en la web y recargar para comprobar que el dato persiste. Se usó la organización ficticia de prueba, con el edificio Torre Norte, su Piso 3 (40 m por 25 m) y 24 puntos. Tres de ellos corresponden a tiras NFC reales; el P-07, el que se mide en el recorrido, comienza sin mediciones.
+El recorrido principal del producto tiene cuatro pasos: mirar el piso en la web, medir un punto con la app, ver el resultado en la web y recargar para comprobar que el dato persiste. Se usó la organización ficticia de prueba, con el edificio Torre Norte, su Piso 3 (40 m por 25 m) y 24 puntos. Cinco de ellos (P-07 a P-11) corresponden a tiras NFC reales; el P-07, el que se mide en el recorrido, comienza sin mediciones.
 
 ### 2.1 Entrar a la web
 
@@ -62,7 +62,7 @@ Con más puntos medidos, el panel de análisis bajo el plano ofreció tres resul
 
 ## 3. Arquitectura final
 
-El sistema quedó como un monolito en capas con tres clientes de una misma API. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido.
+El sistema quedó como un monolito en capas con una sola API, que usan tres roles desde dos sitios: el administrador y el técnico, desde la app y la web, y el cliente, solo desde la web. La Figura 5 muestra las piezas: la app Android del técnico y la web consumen la misma API, y solo esta habla con la base de datos. La web compilada la sirve el mismo proceso de Express que atiende `/api/v1`, de modo que en la demostración hay un solo proceso, un solo puerto y ningún problema de CORS. Con un equipo de dos personas, esa fue la forma más simple que cumplía lo pedido.
 
 Figura 5. Componentes del sistema: app Android, web y API sobre PostgreSQL
 
@@ -214,7 +214,7 @@ Figura 9. La app con una medición pendiente por falta de conexión
 
 ## 6. Ejecución reproducible
 
-El manual de uso e instalación (`docs/manual.md`) describe cómo levantar el proyecto en otro equipo; el `README.md` de la raíz trae su resumen. Los requisitos son Windows 11 o equivalente, Node.js 26, PostgreSQL 17, Git y, para la app, un teléfono Android 10 o superior con NFC, `adb` y tres tiras NFC. La instalación sigue seis pasos:
+El manual de uso e instalación (`docs/manual.md`) describe cómo levantar el proyecto en otro equipo; el `README.md` de la raíz trae su resumen. Los requisitos son Windows 11 o equivalente, Node.js 26, PostgreSQL 17, Git y, para la app, un teléfono Android 10 o superior con NFC, `adb` y cinco tiras NFC. La instalación sigue seis pasos:
 
 1. Clonar el repositorio.
 2. Crear el rol y las bases de datos y cargar las nueve tablas con `db/schema.sql`.
