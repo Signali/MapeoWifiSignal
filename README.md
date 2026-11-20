@@ -19,6 +19,7 @@ Orden alfabético por apellido.
 - [Informe Hito 1 en PDF](https://acrobat.adobe.com/id/urn:aaid:sc:US:3780a647-8e7f-4e54-949e-dcd4983e6c32) · [SignalMapH1-V3.pdf](https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf)
 
 ## Video y presentación
+- [Video promocional del Hito 3 (2 minutos)](https://www.youtube.com/watch?v=jBAVNxzhcEs)
 - [Presentación Hito 1](https://www.figma.com/make/FIy60xlOH9mtFJnlq3qHQC/Presentaci%C3%B3n-comercial-t%C3%A9cnica?t=Lktr7tHhvJ8Ct3oH-20&fullscreen=1)
 
 ## Interfaz y prototipo (Figma)
