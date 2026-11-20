@@ -42,9 +42,9 @@ Figura 2. La app: el punto identificado por la tira y el resultado de la medici�
 
 ### 2.3 Ver el resultado en la web
 
-De vuelta en la web, al pulsar «Actualizar» el P-07 apareció pintado según su categoría (Figura 3): Buena con una señal más fuerte que −65 dBm, Regular entre −65 y −70 dBm y Débil con una más débil que −70 dBm. El resumen pasó a «Puntos medidos 1 de 24». Cada categoría lleva color y una letra (B, R, D), de modo que no depende solo del color. Al hacer clic en el punto se abrió su detalle: categoría, nivel de señal, fecha de la medición y las redes captadas (Figura 4).
+De vuelta en la web, al pulsar «Actualizar» el P-07 dejó de aparecer «sin medir» (borde punteado) y quedó pintado según su categoría: Buena con una señal más fuerte que −65 dBm, Regular entre −65 y −70 dBm y Débil con una más débil que −70 dBm, y el contador «Puntos medidos» subió en uno. La Figura 3 muestra el plano de ese piso con datos de prueba (19 de 24 puntos medidos, con el P-07 todavía sin medir), para ver los colores, el mapa de calor y la ubicación estimada del repetidor. Cada categoría lleva color y una letra (B, R, D), de modo que no depende solo del color. Al hacer clic en el punto se abrió su detalle: categoría, nivel de señal, fecha de la medición y las redes captadas (Figura 4).
 
-Figura 3. El plano del piso 3 en la fase «Antes», con los puntos medidos y el análisis
+Figura 3. El plano del piso 3 en la fase «Antes», con datos de prueba, los puntos medidos y el análisis
 
 <div class="shots"><img src="img/web-plano-antes.png" alt="Plano del piso 3 con los puntos pintados según su categoría"></div>
 
