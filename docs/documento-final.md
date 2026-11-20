@@ -474,7 +474,7 @@ Tabla 4. Rutas de la API
 
 El curso pide declarar qué herramienta se usó, en qué parte y cómo se verificó el resultado. Se usó Claude Code, el asistente de Anthropic que corre en la terminal: con el modelo Opus para las decisiones y el plan de trabajo, y con el modelo Sonnet para ejecutar las tareas una por una. Se usó junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`) y con las revisiones `/code-review` y `/security-review`.
 
-**En qué partes.** En el código del servicio, de la app Android y de la web, y en sus pruebas; en los scripts, el flujo de integración continua y los README; en el manual y en este documento, que el asistente redactó y el equipo revisó. En cada decisión de diseño el asistente presentó las alternativas con su costo y eligió el equipo; las decisiones quedaron escritas con su fecha en `CLAUDE.md` y en la sección 7.
+**En qué partes.** En el código del servicio, de la app Android y de la web, y en sus pruebas; en los scripts, el flujo de integración continua y los README; en el manual y en este documento, que el asistente redactó y el equipo revisó. En cada decisión de diseño el asistente presentó las alternativas con su costo y eligió el equipo; las decisiones quedaron escritas con su fecha en el archivo de instrucciones del asistente (`CLAUDE.md`, que se usó en local y no forma parte de la entrega; ver `Skills/README.md`) y en la sección 7.
 
 **Cómo se verificó:**
 
