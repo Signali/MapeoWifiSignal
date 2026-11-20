@@ -11,7 +11,7 @@ Orden alfabético por apellido.
 | Gabriel Díaz | [@Gabo-collab](https://github.com/Gabo-collab) |
 
 ## Informes
-- [Documento final del Hito 3](docs/documento-final.md) (fuente en Markdown)
+- [Documento final del Hito 3 (PDF)](docs/SignalMap-Hito3-Documento-Final.pdf) · fuente: [`docs/documento-final.md`](docs/documento-final.md)
 - [Manual de uso e instalación](docs/manual.md)
 - [Documento técnico del Hito 2 (PDF)](docs/SignalMap-Hito2-Documento-Tecnico.pdf) · fuente: [`docs/documento-tecnico.md`](docs/documento-tecnico.md)
 - [Contrato de la API](docs/api-contract.md)
@@ -19,7 +19,7 @@ Orden alfabético por apellido.
 - [Informe Hito 1 en PDF](https://acrobat.adobe.com/id/urn:aaid:sc:US:3780a647-8e7f-4e54-949e-dcd4983e6c32) · [SignalMapH1-V3.pdf](https://github.com/user-attachments/files/33674569/SignalMapH1-V3.pdf)
 
 ## Video y presentación
-- [Video promocional del Hito 3 (2 minutos)](https://www.youtube.com/watch?v=jBAVNxzhcEs)
+- [Video promocional del Hito 3](https://www.youtube.com/watch?v=jBAVNxzhcEs) (1:34)
 - [Presentación Hito 1](https://www.figma.com/make/FIy60xlOH9mtFJnlq3qHQC/Presentaci%C3%B3n-comercial-t%C3%A9cnica?t=Lktr7tHhvJ8Ct3oH-20&fullscreen=1)
 
 ## Interfaz y prototipo (Figma)
@@ -66,7 +66,7 @@ Nunca subir el `.env` ni escribir claves reales en `.env.example`, en el README 
 | Carpeta / archivo | Contenido |
 |---|---|
 | [`backend/`](backend/README.md) | Código del servicio (API REST) en capas e instrucciones para levantarlo |
-| [`docs/`](docs/README.md) | Documento técnico (PDF) y tabla de la API |
+| [`docs/`](docs/README.md) | Documento final del Hito 3 y documento técnico del Hito 2 (PDF), manual y tabla de la API |
 | [`db/`](db/README.md) | Modelo de datos y script de creación de la base de datos |
 | [`postman/`](postman/README.md) | Colección del cliente de pruebas |
 | [`android/`](android/README.md) | App Android del técnico (Kotlin + Compose) |
