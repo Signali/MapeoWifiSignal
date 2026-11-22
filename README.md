@@ -77,3 +77,21 @@ Nunca subir el `.env` ni escribir claves reales en `.env.example`, en el README 
 
 ## Skills
 Skills de Claude Code usadas en el proyecto y declaración de uso: [Skills](Skills/README.md)
+
+## Créditos y licencias de terceros
+El código propio tiene licencia MIT ([`LICENSE`](LICENSE)). Lo de terceros conserva su licencia:
+
+| Qué | Dónde se usa | Licencia |
+|---|---|---|
+| Express, pg, Zod, Vitest, Supertest | Servicio (`backend/`) | MIT |
+| bcryptjs | Servicio (`backend/`) | BSD-3-Clause |
+| React, Vite | Web (`frontend/`) | MIT |
+| TypeScript | Servicio y web | Apache 2.0 |
+| AndroidX, Jetpack Compose, Material 3 | App (`android/`) | Apache 2.0 |
+| Bricolage Grotesque, Lexend, JetBrains Mono, IBM Plex Sans | Web, app y presentación, con el texto de su licencia (`OFL-*.txt`) junto a cada copia | SIL Open Font License 1.1 |
+| `karpathy-guidelines` | `.claude/skills/` (ver [Skills](Skills/README.md)) | MIT |
+| marked, Mermaid | Generación del PDF (`docs/build-pdf.mjs`, desde jsDelivr; no se incluyen en el repo) | MIT |
+
+Las dependencias de npm y de Gradle no se suben al repositorio: se descargan con `npm install` y al compilar la app. Las dependencias indirectas de npm también tienen licencias permisivas (MIT, ISC, BSD y Apache 2.0); la excepción es `lightningcss` (MPL 2.0), que solo se usa para compilar la web y no forma parte de lo que se entrega. El APK de depuración no muestra los avisos de licencia de AndroidX y Compose; quedan declarados aquí.
+
+**Video promocional:** animación hecha con [Remotion](https://www.remotion.dev/) (licencia gratuita para equipos de hasta tres personas) y [GSAP](https://gsap.com/) (licencia estándar sin costo), con capturas del producto real. La voz es sintética, de ElevenLabs (plan gratuito, uso no comercial, voz «Max» de su biblioteca). Los efectos de sonido se generaron por código y el video no tiene música. Los créditos aparecen al final del video, y el uso de IA está declarado en el Anexo C del documento final.
