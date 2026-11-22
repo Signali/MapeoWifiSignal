@@ -38,7 +38,7 @@ Dos formas de usar la app:
 
 ## Diseño
 
-Misma identidad que la web: paleta «aurora» en tema claro y oscuro según el sistema (sin color dinámico, para que se vea igual en todos los teléfonos), Lexend en el texto, Bricolage Grotesque en los títulos y JetBrains Mono en códigos y niveles. Las fuentes son variables (licencia OFL) y están en `app/src/main/res/font/`. Los colores de categoría están en `ui/theme/Color.kt` y las piezas de la pantalla en `ui/Components.kt`.
+Misma identidad que la web: paleta «aurora» en tema claro y oscuro según el sistema (sin color dinámico, para que se vea igual en todos los teléfonos), Lexend en el texto, Bricolage Grotesque en los títulos y JetBrains Mono en códigos y niveles. Las fuentes son variables (licencia OFL) y están en `app/src/main/res/font/`; el texto de cada licencia va en `app/src/main/assets/licenses/` y se empaqueta en el APK al compilar. Los colores de categoría están en `ui/theme/Color.kt` y las piezas de la pantalla en `ui/Components.kt`.
 
 Regla visual, igual que en la web: línea continua = medido; línea punteada = pendiente o por identificar. Por eso la ficha que espera una tira y la tarjeta de «Pendientes» llevan borde punteado. La letra de la categoría (B, R, D, ×) va siempre dentro del color.
 
