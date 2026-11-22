@@ -142,7 +142,7 @@ sequenceDiagram
   A->>Q: remove(client_uuid)
 ```
 
-La base de datos tiene nueve tablas: las siete del Hito 2 (organizaciones, dominios de email, usuarios, edificios, pisos, puntos y asignaciones usuario–edificio) más `measurements` y `network_readings`, que guardan cada medición y las redes que captó. El Hito 3 también agregó al piso su contorno real (`outline`) y la imagen de su plano (`plan_url`). El diagrama completo está en el Anexo A; es el mismo de `db/er-diagram.md` y coincide con `db/schema.sql`.
+La base de datos tiene nueve tablas: las siete del Hito 2 (organizaciones, dominios de email, usuarios, edificios, pisos, puntos y asignaciones usuario–edificio) más `measurements` y `network_readings`, que guardan cada medición y las redes que captó. El Hito 3 también agregó al piso su contorno real (`outline`) y la imagen de su plano (`plan_url`), aunque el seed de la demostración no los carga (sección 9). El diagrama completo está en el Anexo A; es el mismo de `db/er-diagram.md` y coincide con `db/schema.sql`.
 
 ---
 
@@ -313,6 +313,7 @@ Estas son las limitaciones del producto entregado, tal como estaba al cierre.
 - **La ubicación recomendada es una estimación.** En la prueba real del 12 de noviembre solo se observó el caso «todos los puntos tienen señal buena», en que no hay posición que recomendar; una recomendación con posición no se vio en una prueba real.
 - **La posición de un emisor puede ser poco fiable con pocos puntos o casi alineados.** En esa prueba, el emisor de 5 GHz quedó en el borde del plano con tres puntos casi en línea. Con tres puntos el exponente de pérdida se fija en 3,0 y no se ajusta.
 - **Una red mesh se estima por BSSID.** Los nodos de una misma red no se agrupan en un solo equipo físico.
+- **El piso de la demostración no usa un plano real.** El servicio y la web aceptan el contorno real del piso y la imagen de su plano, pero el seed no los carga: el piso 3 de la Torre Norte es un rectángulo de 40 × 25 m sin imagen de fondo.
 - **No se entregó el reporte en PDF del piso.** Era la última pieza del análisis y la primera en recortarse; el contrato no incluye una ruta para él.
 
 ---
@@ -472,9 +473,9 @@ Tabla 4. Rutas de la API
 
 ### Anexo C. Declaración de uso de inteligencia artificial
 
-El curso pide declarar qué herramienta se usó, en qué parte y cómo se verificó el resultado. Se usó Claude Code, el asistente de Anthropic que corre en la terminal: con el modelo Opus para las decisiones y el plan de trabajo, y con el modelo Sonnet para ejecutar las tareas una por una. Se usó junto con la skill `karpathy-guidelines` (documentada en `Skills/README.md`) y con las revisiones `/code-review` y `/security-review`.
+El curso pide declarar qué herramienta se usó, en qué parte y cómo se verificó el resultado. Se usó Claude Code, el asistente de Anthropic que corre en la terminal: con el modelo Opus para las decisiones y el plan de trabajo, y con el modelo Sonnet para ejecutar las tareas una por una. Se usó junto con las skills `karpathy-guidelines` y `frontend-design` (esta última para el acabado visual de la web y de la app) y con las revisiones `/code-review` y `/security-review`, todas documentadas en `Skills/README.md`. En la auditoría final se usaron además, como listas de control y sin instalarlas, las skills externas `humanizer` (para revisar el texto de este documento) y `production-audit` (para revisar el producto como si fuera a producción). Para la voz del video promocional se usó ElevenLabs, un servicio de voz sintética, en su plan gratuito (uso no comercial) y con la voz «Max» de su biblioteca.
 
-**En qué partes.** En el código del servicio, de la app Android y de la web, y en sus pruebas; en los scripts, el flujo de integración continua y los README; en el manual y en este documento, que el asistente redactó y el equipo revisó. En cada decisión de diseño el asistente presentó las alternativas con su costo y eligió el equipo; las decisiones quedaron escritas con su fecha en el archivo de instrucciones del asistente (`CLAUDE.md`, que se usó en local y no forma parte de la entrega; ver `Skills/README.md`) y en la sección 7.
+**En qué partes.** En el código del servicio, de la app Android y de la web, y en sus pruebas; en los scripts, el flujo de integración continua y los README; en el manual y en este documento, que el asistente redactó y el equipo revisó. También en el video promocional: el asistente programó la animación (Remotion y GSAP) y los efectos de sonido sobre las capturas reales del producto, y redactó el guion de voz; el equipo aprobó el guion y ElevenLabs generó la locución a partir de ese texto. El video no tiene música. En cada decisión de diseño el asistente presentó las alternativas con su costo y eligió el equipo; las decisiones quedaron escritas con su fecha en el archivo de instrucciones del asistente (`CLAUDE.md`, que se usó en local y no forma parte de la entrega; ver `Skills/README.md`) y en la sección 7.
 
 **Cómo se verificó:**
 
@@ -482,4 +483,5 @@ El curso pide declarar qué herramienta se usó, en qué parte y cómo se verifi
 - Cada cambio entra por una solicitud de incorporación con aviso al compañero para su revisión, y las piezas de mayor riesgo pasaron por `/code-review` y `/security-review`. La revisión de código halló siete problemas en código escrito con ayuda del asistente (sección 7), que se corrigieron o se declararon.
 - El recorrido del producto se hizo a mano con un teléfono real y tiras NFC reales, con y sin conexión, por cable y por WiFi.
 - Las cifras del documento se contrastaron con el código, con las pruebas o con mediciones propias, y las referencias se abrieron en su fuente original; se citan solo las verificadas.
+- En el video, la locución se escuchó completa sobre la imagen y se comprobó que dijera exactamente el guion aprobado, sin cifras leídas. Las capturas son del producto real, y la duración (menos de 2:00) y el volumen del audio se midieron en el archivo final. Los créditos del video nombran a Remotion, GSAP, las fuentes y la voz de ElevenLabs.
 - Lo que un integrante no pueda explicar no se entrega: ambos integrantes deben poder explicar cualquier parte del código entregado.
