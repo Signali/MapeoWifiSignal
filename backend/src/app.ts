@@ -10,6 +10,8 @@ import { pointsRouter } from './routes/points.ts';
 
 // La app se arma aparte de server.ts para que los tests la usen sin abrir un puerto.
 export const app = express();
+// Sin la cabecera X-Powered-By: no anuncia el framework a quien consulta el servicio.
+app.disable('x-powered-by');
 
 app.use(express.json());
 
