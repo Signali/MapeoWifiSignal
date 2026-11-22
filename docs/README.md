@@ -12,7 +12,7 @@ Documentación entregable del proyecto.
 - [`documento-tecnico.md`](documento-tecnico.md) — fuente del documento técnico (Markdown). El PDF se genera desde acá.
 - [`documento-final.md`](documento-final.md) — fuente del documento final del Hito 3 (Markdown). El PDF se genera desde acá.
 - [`build-pdf.mjs`](build-pdf.mjs) — genera el PDF: `node docs/build-pdf.mjs` (documento técnico del Hito 2) o `node docs/build-pdf.mjs [fuente.md] [salida.pdf]` (p. ej. `node docs/build-pdf.mjs docs/documento-final.md docs/SignalMap-Hito3-Documento-Final.pdf`). No usa dependencias del repo, pero necesita Edge o Chrome instalado e **internet**: marked y mermaid se cargan de jsDelivr, con versión fija, y las fuentes (Bricolage Grotesque, IBM Plex Sans y JetBrains Mono) de Google Fonts.
-- [`SignalMap-Hito3-Documento-Final.pdf`](SignalMap-Hito3-Documento-Final.pdf) — el documento final del Hito 3 en PDF (31 páginas), generado desde `documento-final.md`.
+- [`SignalMap-Hito3-Documento-Final.pdf`](SignalMap-Hito3-Documento-Final.pdf) — el documento final del Hito 3 en PDF (32 páginas), generado desde `documento-final.md`.
 - [`SignalMap-Hito2-Documento-Tecnico.pdf`](SignalMap-Hito2-Documento-Tecnico.pdf) — el documento técnico en PDF.
 - [`presentacion/presentacion.html`](presentacion/presentacion.html) — presentación de 7 minutos (8 diapositivas). Se abre en el navegador, sin internet; hay que llevar la carpeta `presentacion/fonts/` junto al archivo. `?` muestra los atajos y `P` abre la ventana del presentador con las notas y el cronómetro.
 
