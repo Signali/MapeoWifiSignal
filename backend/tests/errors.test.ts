@@ -14,6 +14,11 @@ describe('app real', () => {
     expect(res.body).toEqual({ status: 'ok' });
   });
 
+  test('no anuncia el framework (sin X-Powered-By)', async () => {
+    const res = await request(app).get('/health');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+
   test('ruta inexistente → 404', async () => {
     const res = await request(app).get('/api/v1/no-existe');
     expect(res.status).toBe(404);
