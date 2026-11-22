@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { config } from './config.ts';
+import { accessLog } from './middlewares/access-log.ts';
 import { errorHandler, notFound } from './middlewares/error-handler.ts';
 import { emittersRouter, heatmapRouter, recommendationRouter } from './routes/analysis.ts';
 import { authRouter } from './routes/auth.ts';
@@ -12,6 +14,10 @@ import { pointsRouter } from './routes/points.ts';
 export const app = express();
 // Sin la cabecera X-Powered-By: no anuncia el framework a quien consulta el servicio.
 app.disable('x-powered-by');
+
+// Registro de accesos: antes de express.json para que también queden los 400 por JSON roto y los
+// 413. En los tests se apaga (tienen el suyo en tests/access-log.test.ts).
+if (config.env !== 'test') app.use('/api', accessLog());
 
 app.use(express.json());
 

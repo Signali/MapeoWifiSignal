@@ -13,20 +13,28 @@ import { BCRYPT_ROUNDS } from '../src/password.ts';
 
 const ORG_NAME = 'Inmobiliaria Norte';
 
+// Claves de ejemplo de .env.example: son públicas (están en el repo), así que con ellas cualquiera
+// entraría como admin, también por la red de la sala. tests/seed-env.test.ts las mantiene sincronizadas.
+const EXAMPLE_PASSWORDS = new Set(['cambiar_clave_admin', 'cambiar_clave_tecnico', 'cambiar_clave_cliente']);
+const seedPassword = z
+  .string()
+  .min(1)
+  .refine((value) => !EXAMPLE_PASSWORDS.has(value), 'no puede ser la clave de ejemplo de .env.example');
+
+export const seedEnvSchema = z.object({
+  SEED_ADMIN_PASSWORD: seedPassword,
+  SEED_TECNICO_PASSWORD: seedPassword,
+  SEED_CLIENTE_PASSWORD: seedPassword,
+  // Nombre exacto de la red WiFi de la organización (1 a 32 caracteres, como en la base).
+  SEED_WIFI_SSID: z.string().min(1).max(32),
+});
+
 export async function seed(): Promise<void> {
   if (config.env === 'production') {
     throw new Error('El seed borra todos los datos: no se corre con NODE_ENV=production');
   }
 
-  const passwords = z
-    .object({
-      SEED_ADMIN_PASSWORD: z.string().min(1),
-      SEED_TECNICO_PASSWORD: z.string().min(1),
-      SEED_CLIENTE_PASSWORD: z.string().min(1),
-      // Nombre exacto de la red WiFi de la organización (1 a 32 caracteres, como en la base).
-      SEED_WIFI_SSID: z.string().min(1).max(32),
-    })
-    .parse(process.env);
+  const passwords = seedEnvSchema.parse(process.env);
 
   const users = [
     { emailLocal: 'admin', role: 'admin', password: passwords.SEED_ADMIN_PASSWORD },

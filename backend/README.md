@@ -28,7 +28,7 @@ En la raíz de `src/`: `config.ts` (entorno validado), `errors.ts` (`AppError`) 
 
 Flujo de una petición: `route → middleware → controller → service → repository → base de datos`.
 
-Errores: un service lanza `AppError(kind, message)` (`src/errors.ts`), sin códigos HTTP; el controller no lo captura y `middlewares/error-handler.ts` responde `{ "message": "..." }` con el código del contrato. Un error inesperado responde `500` genérico y deja el detalle en el log (stderr). Detalle en [`src/middlewares/README.md`](src/middlewares/README.md).
+Errores: un service lanza `AppError(kind, message)` (`src/errors.ts`), sin códigos HTTP; el controller no lo captura y `middlewares/error-handler.ts` responde `{ "message": "..." }` con el código del contrato. Un error inesperado responde `500` genérico y deja el detalle en el log (stderr). Cada petición a la API deja además una línea en el registro de accesos (stdout), sin datos de más: ver [`src/middlewares/README.md`](src/middlewares/README.md). Detalle en [`src/middlewares/README.md`](src/middlewares/README.md).
 
 Fuera de `src/`: `scripts/seed.ts` (herramienta de desarrollo, no parte del servicio) y `tests/`.
 

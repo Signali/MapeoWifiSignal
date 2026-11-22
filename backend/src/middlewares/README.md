@@ -1,5 +1,18 @@
 # middlewares/
-Autenticación (JWT), validación de entrada y manejo centralizado de errores. Sin lógica de negocio.
+Registro de accesos, autenticación (JWT), validación de entrada y manejo centralizado de errores. Sin lógica de negocio.
+
+## `access-log.ts`: registro de accesos
+
+Una línea por petición a `/api` en la salida estándar (Ley 21.719; documento final §8):
+
+```
+acceso 2026-11-22T03:32:16.235Z POST /api/v1/auth/login 200 usuario=1 111ms
+```
+
+- Se monta en `app.ts` **antes** de `express.json()`, para registrar también los `400` por JSON roto y los `413`. `/health` y la web no se registran.
+- El usuario se lee al terminar la respuesta: `req.user.id` si el token era válido, o `res.locals.userId`, que deja el controller del login al aceptar las credenciales. Sin ninguno de los dos, `usuario=-` (incluidos los logins fallidos).
+- **Nunca** escribe la IP, el email, el cuerpo (el login trae la clave), el token ni los parámetros de consulta (el motivo de una anulación es texto libre). Lo comprueba `tests/access-log.test.ts`.
+- Con `NODE_ENV=test` no se monta, para no llenar la salida de los tests; sus tests usan una app propia.
 
 ## `error-handler.ts`: errores centralizados
 

@@ -49,7 +49,7 @@ En Git Bash o Linux: `cp .env.example .env`. Luego se abre `.env` y se completan
 
 - `DB_PASSWORD`: la clave de `signalmap_user` del paso anterior.
 - `JWT_SECRET`: un secreto propio de al menos 32 caracteres (el README indica cómo generarlo). El servicio no arranca con el valor de ejemplo.
-- `SEED_ADMIN_PASSWORD`, `SEED_TECNICO_PASSWORD` y `SEED_CLIENTE_PASSWORD`: las claves de los tres usuarios de prueba. Son las que se usan para iniciar sesión.
+- `SEED_ADMIN_PASSWORD`, `SEED_TECNICO_PASSWORD` y `SEED_CLIENTE_PASSWORD`: las claves de los tres usuarios de prueba. Son las que se usan para iniciar sesión. Hay que cambiarlas: `npm run seed` no acepta las de ejemplo de `.env.example`, que son públicas, y avisa con el mensaje «no puede ser la clave de ejemplo de .env.example».
 - **`SEED_WIFI_SSID`: el nombre exacto de la red WiFi de la sala, respetando mayúsculas y minúsculas.** Es el paso donde más se falla: el sistema solo guarda las lecturas de esa red y descarta las demás. Si el nombre no coincide, todos los puntos quedan «Sin señal» (falla 5.3).
 - `TLS_CERT_FILE` y `TLS_KEY_FILE`: **deben quedar vacías** para el camino con cable (así vienen en `.env.example`). Con ellas completas, el servicio habla solo HTTPS y la app, que por cable usa `http://127.0.0.1:3000`, no se conecta.
 
