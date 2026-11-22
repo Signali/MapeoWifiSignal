@@ -86,6 +86,8 @@ npm start
 
 Debe escribir `SignalMap API escuchando en el puerto 3000 (development, HTTP)`. Para comprobarlo, abrir `http://localhost:3000/health` en el navegador: responde `{"status":"ok"}`. La web está en `http://localhost:3000/`. El servicio queda corriendo en esa terminal; se detiene con `Ctrl+C`. Si dice `HTTPS` en lugar de `HTTP`, el `.env` tiene las variables `TLS_*` completas: vaciarlas y reiniciar. (No sirve vaciarlas con `$env:TLS_CERT_FILE = ""` en PowerShell: eso elimina la variable y el `.env` vuelve a aplicarse.)
 
+Mientras corre, cada petición a la API escribe en esa terminal una línea del registro de accesos, por ejemplo `acceso 2026-11-22T03:32:16.235Z POST /api/v1/auth/login 200 usuario=1 111ms`: fecha, método, ruta, código, id del usuario (`-` sin sesión) y duración. No incluye claves, emails, IP ni el contenido de la petición, así que la terminal se puede mostrar en pantalla.
+
 ### 2.7 Instalar la app en el teléfono
 
 Con el teléfono conectado por USB y autorizado (`adb devices` lo debe mostrar como `device`):
@@ -211,6 +213,7 @@ La app muestra este mismo mensaje ante cualquier fallo de conexión, incluido un
 **Solución.**
 - **Límite de búsquedas.** Android permite 4 búsquedas de WiFi cada 2 minutos. Basta esperar el tiempo que indica la app. Para quitar el límite, en el teléfono: Opciones de desarrollador → desactivar **«Limitación de búsqueda de Wi-Fi»**.
 - **Nombre de red distinto.** `SEED_WIFI_SSID` no coincide con el nombre real de la red, o difiere en una mayúscula, un espacio o una tilde. Es un caso real: con `Wifi_Sala` en el `.env` y la red llamada `WiFi_Sala` (una sola mayúscula de diferencia), la app mostró «Sin señal», «Se guardaron 0 lecturas de la red de la organización; se descartaron 33 de otras redes». El nombre se copia tal cual desde los ajustes WiFi del teléfono. Corregirlo en el `.env`, volver a correr `npm run seed` (que borra las mediciones anteriores) y medir de nuevo.
+- **Demasiadas redes visibles.** La app envía como máximo las 100 redes más fuertes que ve, de todas las redes, y el servicio después guarda solo las de la organización. En un lugar con más de 100 puntos de acceso visibles (varias redes en 2,4 y 5 GHz), los de la organización pueden quedar fuera y el punto se guarda «Sin señal» aunque la red funcione. Si pasa en un solo lugar y el nombre de la red es el correcto, medir en una zona donde el teléfono vea menos redes. Es una limitación conocida (documento final, sección 9).
 
 ## 6. Datos que conviene conocer
 
